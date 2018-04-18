@@ -1,0 +1,176 @@
+# Copyright 2017, 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
+# Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+
+#
+#  This is a template YAML file to deploy the Kubernetes Operator for WebLogic.
+#
+
+#### note: comments with four hashes (like this one) provide information to internal
+#### developers and will be removed before publishing the code externally
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: weblogic-operator-cm
+  namespace: {{ .Release.Namespace }}
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
+data:
+  serviceaccount: {{ .Values.serviceAccount }}
+  targetNamespaces: "{{ .Values.targetNamespaces | nospace }}"
+  externalOperatorCert: {{ .Values.externalOperatorCert }}
+  internalOperatorCert: {{ required "internalOperatorCert is required" .Values.internalOperatorCert }}
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: weblogic-operator-secrets
+  namespace: {{ .Release.Namespace }}
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
+type: Opaque
+data:
+  externalOperatorKey: {{ .Values.externalOperatorKey }}
+  internalOperatorKey: {{ required "internalOperatorKey is required" .Values.internalOperatorKey }}
+
+---
+apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: weblogic-operator
+  # set the namespace that you want the operator deployed in here
+  namespace: {{ .Release.Namespace }}
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  template:
+    metadata:
+     labels:
+        weblogic.operatorName: {{ .Release.Namespace }}
+        app: weblogic-operator
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount }}
+      containers:
+      - name: weblogic-operator
+        #### this will change after publishing externally ####
+        #### if you are using a manually built image, probably from a personal branch, you should
+        #### use a tag other that "latest" to identify it, and update the tag on this line
+        image: {{ .Values.image }}
+        #### won't need 'always' after publishing externally - that is just needed during
+        #### development to make sure we pick up the latest build
+        #### If you are using an image that you manually deployed, set this to "Never"
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        command: ["bash"]
+        args: ["/operator/operator.sh"]
+        #### these variables are hang overs from the oow demo, may remove them
+        env:
+        - name: OPERATOR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: OPERATOR_VERBOSE
+          value: "false"
+        - name: JAVA_LOGGING_LEVEL
+          value: "{{ .Values.javaLoggingLevel }}"
+        #### If you wish to enable remote debugging, uncomment the following lines and set
+        #### the value to the port number you want to use - note that you will also need to
+        #### update the Service definition to expose this port
+        {{- if .Values.remoteDebugNodePortEnabled }}
+        - name: REMOTE_DEBUG_PORT
+          value: "{{ .Values.internalDebugHttpPort }}"
+        {{- end }}
+        volumeMounts:
+        - name: weblogic-operator-cm-volume
+          mountPath: /operator/config
+        - name: weblogic-operator-secrets-volume
+          mountPath: /operator/secrets
+          readOnly: true
+        # uncomment this mount if using the ELK integration:
+        {{- if .Values.elkIntegrationEnabled }}
+        - mountPath: /logs
+          name: log-dir
+          readOnly: false
+        {{- end }}
+        livenessProbe:
+          exec:
+            command:
+              - bash
+              - '/operator/livenessProbe.sh'
+          initialDelaySeconds: 120
+          periodSeconds: 5
+      # Uncomment this container if using ELK integration:
+      {{- if .Values.elkIntegrationEnabled }}
+      - name: logstash
+        image: logstash:5
+        args: ["-f", "/logs/logstash.conf"]
+        volumeMounts:
+        - mountPath: /logs
+          name: log-dir
+        env:
+        - name: ELASTICSEARCH_HOST
+          value: "elasticsearch.{{ .Release.Namespace }}.svc.cluster.local"
+        - name: ELASTICSEARCH_PORT
+          value: "9200"
+      {{- end }}
+      volumes:
+      - name: weblogic-operator-cm-volume
+        configMap:
+          name: weblogic-operator-cm
+      - name: weblogic-operator-secrets-volume
+        secret:
+          secretName: weblogic-operator-secrets
+      # Uncomment this volume if using ELK integration:
+      {{- if .Values.elkIntegrationEnabled }}
+      - name: log-dir
+        emptyDir:
+          medium: Memory
+      {{- end }}
+      imagePullSecrets:
+      - name: 
+
+---
+{{- if or (.Values.remoteDebugNodePortEnabled) (.Values.externalOperatorCert) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-weblogic-operator-svc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: weblogic-operator
+  ports:
+    {{- if .Values.externalOperatorCert }}
+    - port: 8081
+      nodePort: {{ .Values.externalRestHttpsPort }}
+      name: rest
+    {{- end }}
+    {{- if .Values.remoteDebugNodePortEnabled }}
+    #### uncomment this port if you enable remote debugging, and make sure the value matches
+    #### the one you defined above
+    - port: {{ .Values.internalDebugHttpPort }}
+      nodePort: {{ .Values.externalDebugHttpPort }}
+      name: debug
+    {{- end }}
+{{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: internal-weblogic-operator-svc
+  namespace: {{ .Release.Namespace }}
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: weblogic-operator
+  ports:
+    - port: 8082
+      name: rest
+

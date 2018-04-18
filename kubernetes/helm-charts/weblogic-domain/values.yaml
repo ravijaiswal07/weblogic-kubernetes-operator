@@ -1,0 +1,97 @@
+# Copyright 2017, 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
+# Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+
+# Boolean indicating if weblogic domain should be created
+createWeblogicDomain: false
+
+# Port number for admin server
+adminPort: 7001
+
+# Name of the Admin Server
+adminServerName: admin-server
+
+# Script used to create the domain.
+createDomainScript: /u01/weblogic/create-domain-script.sh
+
+# Name of the WebLogic domain to create
+domainName: base_domain
+
+# Unique id identifying a domain.
+# This id must be unique across all domains in a Kubernetes cluster
+domainUid: domain1
+
+# Type of WebLogic Cluster
+# Legal values are "CONFIGURED" or "DYNAMIC"
+clusterType: DYNAMIC
+
+# Cluster name
+clusterName: cluster-1
+
+# Number of managed servers to generate for the domain
+configuredManagedServerCount: 2
+
+# Number of managed servers to initially start for the domain
+initialManagedServerReplicas: 2
+
+# Base string used to generate managed server names
+managedServerNameBase: managed-server
+
+# Port number for each managed server
+managedServerPort: 8001
+
+# Persistent volume type for the domain's storage.
+# The value must be 'HOST_PATH' or 'NFS'.
+# If using 'NFS', weblogicDomainStorageNFSServer must be specified.
+weblogicDomainStorageType: HOST_PATH
+
+# The server name or ip address of the NFS server to use for the domain's storage.
+# The following line must be uncomment and customized if weblogicDomainStorateType is NFS:
+#weblogicDomainStorageNFSServer: nfsServer
+
+# Physical path of the persistent volume storage
+weblogicDomainStoragePath: /scratch/k8s_dir/domain1
+
+# Total storage allocated by the persistent volume
+weblogicDomainStorageSize: 10Gi
+
+# Reclaim policy of the domain's persistent storage
+# The valid values are: 'Retain', 'Delete', and 'Recycle'
+weblogicDomainStorageReclaimPolicy: Retain
+
+# Boolean indicating if production mode is enabled for the domain
+productionModeEnabled: true
+
+# Name of the Kubernetes secret for the Admin Server's username and password
+weblogicCredentialsSecretName: domain1-weblogic-credentials
+
+# Name of the Kubernetes secret to access the Docker Store to pull the WebLogic Server Docker image
+# This value is optional.
+weblogicImagePullSecretName:
+
+# Port for the T3Channel of the NetworkAccessPoint
+t3ChannelPort: 30012
+
+# Public address for T3Channel of the NetworkAccessPoint.  This value should be set to the
+# kubernetes server address, which you can get by running "kubectl cluster-info".  If this
+# value is not set to that address, WLST will not be able to connect from outside the
+# kubernetes cluster.
+t3PublicAddress: kubernetes
+
+# Boolean to indicate if the channel should be exposed as a service
+exposeAdminT3Channel: false
+
+# NodePort to expose for the admin server
+adminNodePort: 30701
+
+# Boolean to indicate if the adminNodePort will be exposed
+exposeAdminNodePort: true
+
+# Load balancer to deploy.  Supported values are:TRAEFIK, NONE
+loadBalancer: TRAEFIK
+
+# Load balancer web port
+loadBalancerWebPort: 30305
+
+# Load balancer dashboard port
+loadBalancerDashboardPort: 30315
+

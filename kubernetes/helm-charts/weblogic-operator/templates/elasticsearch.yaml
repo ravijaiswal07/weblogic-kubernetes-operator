@@ -1,3 +1,4 @@
+{{- if .Values.elkIntegrationEnabled }}
 # Copyright 2017, 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
 # Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
 
@@ -5,7 +6,6 @@ apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   name: elasticsearch
-  namespace: default
   labels:
     app: elasticsearch
 spec:
@@ -29,7 +29,6 @@ kind: Service
 apiVersion: v1
 metadata:
   name: elasticsearch
-  namespace: default
 spec:
   ports:
   - name: http
@@ -42,3 +41,4 @@ spec:
     targetPort: 9300
   selector:
     app: elasticsearch
+{{- end }}
