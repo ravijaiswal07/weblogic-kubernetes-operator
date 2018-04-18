@@ -1,13 +1,23 @@
-# Copyright 2017, 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
-# Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
-
+#
+# Service Account for WebLogic Operator
+#
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ .Values.serviceAccount }}
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
+---
 #
 # creating cluster roles
 #
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ include "weblogic-operator.cluster-role" . }}
+  name: weblogic-operator-cluster-role
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
 rules:
 - apiGroups: [""]
   resources: ["namespaces", "persistentvolumes"]
@@ -28,7 +38,9 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ include "weblogic-operator.cluster-role-nonresource" . }}
+  name: weblogic-operator-cluster-role-nonresource
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
 rules:
 - nonResourceURLs: ["/version/*"]
   verbs: ["get"]
@@ -40,6 +52,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: {{ .Release.Namespace }}-operator-rolebinding
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
 subjects:
 - kind: ServiceAccount
   name: {{ .Values.serviceAccount }}
@@ -47,13 +61,15 @@ subjects:
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: {{ include "weblogic-operator.cluster-role" . }}
+  name: weblogic-operator-cluster-role
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: {{ .Release.Namespace }}-operator-rolebinding-nonresource
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
 subjects:
 - kind: ServiceAccount
   name: {{ .Values.serviceAccount }}
@@ -61,13 +77,15 @@ subjects:
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: {{ include "weblogic-operator.cluster-role-nonresource" . }}
+  name: weblogic-operator-cluster-role-nonresource
   apiGroup: rbac.authorization.k8s.io
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: {{ .Release.Namespace }}-operator-rolebinding-discovery
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
 subjects:
 - kind: ServiceAccount
   name: {{ .Values.serviceAccount }}
@@ -82,6 +100,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: {{ .Release.Namespace }}-operator-rolebinding-auth-delegator
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
 subjects:
 - kind: ServiceAccount
   name: {{ .Values.serviceAccount }}
@@ -98,33 +118,54 @@ roleRef:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ include "weblogic-operator.namespace-role" $ }}
+  name: weblogic-operator-namespace-role
+  labels:
+    weblogic.operatorName: {{ .Release.Namespace }}
 rules:
 - apiGroups: [""]
   resources: ["secrets", "persistentvolumeclaims"]
   verbs: ["get", "list", "watch"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
-  resources: ["services", "pods", "networkpolicies"]
+  resources: ["services", "configmaps", "pods", "jobs", "events"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
-
-#
-# creating role-bindings for each target namespace
-#
-{{- $targetNamespaces := .Values.targetNamespaces | nospace | splitList "," -}}
-{{- range $target:= $targetNamespaces }}
+- apiGroups: [""]
+  resources: ["pods/logs"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+- apiGroups: ["settings.k8s.io"]
+  resources: ["podpresets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
+- apiGroups: ["extensions"]
+  resources: ["podsecuritypolicies", "networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection"]
 ---
+#
+# creating role-bindings
+#
+{{- $relname := .Release.Namespace -}}
+{{- $serviceaccount := .Values.serviceAccount -}}
+{{- range .Values.targetNamespacesList }}
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: weblogic-operator-rolebinding
-  namespace: {{ $target }}
+  namespace: {{ . }}
+  labels:
+    weblogic.operatorName: {{ $relname }}
 subjects:
 - kind: ServiceAccount
-  name: {{ $.Values.serviceAccount }}
-  namespace: {{ $.Release.Namespace }}
+  name: {{ $serviceaccount }}
+  namespace: {{ $relname }}
   apiGroup: ""
 roleRef:
   kind: ClusterRole
-  name: {{ include "weblogic-operator.namespace-role" $ }}
+  name: weblogic-operator-namespace-role
   apiGroup: ""
+---
 {{- end }}
+

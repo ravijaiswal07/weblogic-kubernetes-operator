@@ -8,6 +8,10 @@ serviceAccount: weblogic-operator
 # A comma separated list of target namespaces the operator manages
 targetNamespaces: "default"
 
+# A list of target namespaces the operator manages (same as targetNamespaces but in list format)
+targetNamespacesList:
+ - "default"
+
 # The docker image containing the operator code.
 image: container-registry.oracle.com/middleware/weblogic-kubernetes-operator:latest
 

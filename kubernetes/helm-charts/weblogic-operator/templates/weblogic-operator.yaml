@@ -110,7 +110,7 @@ spec:
           name: log-dir
         env:
         - name: ELASTICSEARCH_HOST
-          value: "elasticsearch.{{ .Release.Namespace }}.svc.cluster.local"
+          value: "elasticsearch.default.svc.cluster.local"
         - name: ELASTICSEARCH_PORT
           value: "9200"
       {{- end }}
