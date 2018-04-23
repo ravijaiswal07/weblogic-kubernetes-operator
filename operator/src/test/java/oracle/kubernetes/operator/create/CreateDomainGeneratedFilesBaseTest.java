@@ -388,7 +388,53 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
                   .value(getInputs().getJavaOptions()))
                 .addElement(newEnvVar()
                   .name("USER_MEM_ARGS")
-                  .value("-Xms64m -Xmx256m "))))));
+                  .value("-Xms64m -Xmx256m ")))))
+          .withServerDefaults(newServer()
+            .withImage("store/oracle/weblogic:12.2.1.3")
+            .withImagePullPolicy("IfNotPresent")
+            .withStartedServerState("RUNNING")
+            .withShutdownPolicy("GRACEFUL_SHUTDOWN")
+            .withGracefulShutdownTimeout(10)
+            .withGracefulShutdownIgnoreSessions(false)
+            .withGracefulShutdownWaitForSessions(true)
+            .withEnv(newEnvVarList()
+              .addElement(newEnvVar()
+                .name("JAVA_OPTIONS")
+                .value(getInputs().getJavaOptions()))
+              .addElement(newEnvVar()
+                .name("USER_MEM_ARGS")
+                .value("-Xms64m -Xmx256m "))))
+          .withNonClusteredServerDefaults(newNonClusteredServer()
+            .withNonClusteredServerStartPolicy("ALWAYS"))
+          .withServer(
+            getInputs().getAdminServerName(),
+            newNonClusteredServer()
+              .withNonClusteredServerStartPolicy("NEVER")
+              .withStartedServerState("ADMIN")
+              .withRestartedLabel("step1")
+              .withImage("store/oracle/weblogic:12.2.1.3")
+              .withImagePullPolicy("Never")
+              .withShutdownPolicy("FORCED_SHUTDOWN")
+              .withGracefulShutdownTimeout(20)
+              .withGracefulShutdownIgnoreSessions(true)
+              .withGracefulShutdownWaitForSessions(false))
+          .withClusterDefaults(newClusterParams()
+            .withReplicas(Integer.parseInt(getInputs().getInitialManagedServerReplicas()))
+            .withMaxSurge(newIntOrString("30%"))
+            .withMaxUnavailable(newIntOrString("15%"))
+            .withServerDefaults(newClusteredServer()
+              .withClusteredServerStartPolicy("IF_NEEDED")))
+          .withCluster(
+            getInputs().getClusterName(),
+            newCluster()
+              .withReplicas(Integer.parseInt(getInputs().getInitialManagedServerReplicas()))
+              .withMaxSurge(newIntOrString("25%"))
+              .withMaxUnavailable(newIntOrString("35%"))
+              .withServer(
+                "managed-server-1",
+                newClusteredServer()
+                  .withClusteredServerStartPolicy("NEVER")))
+);
   }
 
   @Test
