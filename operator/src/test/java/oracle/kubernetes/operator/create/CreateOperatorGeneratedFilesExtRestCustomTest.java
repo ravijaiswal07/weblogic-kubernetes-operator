@@ -4,6 +4,7 @@
 package oracle.kubernetes.operator.create;
 
 import io.kubernetes.client.models.V1Service;
+import static oracle.kubernetes.operator.utils.CreateOperatorInputs.*;
 import org.junit.BeforeClass;
 
 /**
@@ -15,7 +16,7 @@ public class CreateOperatorGeneratedFilesExtRestCustomTest extends CreateOperato
 
   @BeforeClass
   public static void setup() throws Exception {
-    setup(CreateOperatorInputs.newInputs().setupExternalRestCustomCert());
+    setup(newInputs().setupExternalRestCustomCert());
   }
 
   @Override

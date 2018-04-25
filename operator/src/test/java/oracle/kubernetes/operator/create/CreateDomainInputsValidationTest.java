@@ -7,9 +7,14 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static oracle.kubernetes.operator.create.CreateDomainInputs.*;
-import static oracle.kubernetes.operator.create.ExecResultMatcher.*;
-import static org.hamcrest.MatcherAssert.assertThat;
+import oracle.kubernetes.operator.utils.CreateDomainInputs;
+import static oracle.kubernetes.operator.utils.CreateDomainInputs.*;
+import oracle.kubernetes.operator.utils.ExecResult;
+import static oracle.kubernetes.operator.utils.ExecResultMatcher.*;
+import oracle.kubernetes.operator.utils.ExecCreateDomain;
+import static oracle.kubernetes.operator.utils.GeneratedDomainYamlFiles.*;
+import oracle.kubernetes.operator.utils.UserProjects;
+import static org.hamcrest.MatcherAssert.*;
 
 /**
  * Tests that create-weblogic-domain.sh properly validates the parameters
@@ -259,12 +264,11 @@ public class CreateDomainInputsValidationTest {
 
   @Test
   public void createDomain_with_weblogicDomainStorageTypeHostPath_and_missingWeblogicDomainStorageNFSServer_succeeds() throws Exception {
-    GeneratedDomainYamlFiles
-      .generateDomainYamlFiles(
-        newInputs()
-          .weblogicDomainStorageType(STORAGE_TYPE_HOST_PATH)
-          .weblogicDomainStorageNFSServer(""))
-      .remove();
+    generateDomainYamlFiles(
+      newInputs()
+        .weblogicDomainStorageType(STORAGE_TYPE_HOST_PATH)
+        .weblogicDomainStorageNFSServer(""))
+    .remove();
   }
 
   @Test
@@ -292,21 +296,19 @@ public class CreateDomainInputsValidationTest {
 
   @Test
   public void createDomain_with_weblogicDomainStorageReclaimPolicyRecycle_succeeds() throws Exception {
-    GeneratedDomainYamlFiles
-      .generateDomainYamlFiles(
-        newInputs()
-          .weblogicDomainStorageReclaimPolicy(STORAGE_RECLAIM_POLICY_RECYCLE))
-      .remove();
+    generateDomainYamlFiles(
+      newInputs()
+        .weblogicDomainStorageReclaimPolicy(STORAGE_RECLAIM_POLICY_RECYCLE))
+    .remove();
   }
 
   @Test
   public void createDomain_with_weblogicDomainStorageReclaimPolicyDelete_and_tmpWeblogicDomainStoragePath_succeeds() throws Exception {
-    GeneratedDomainYamlFiles
-      .generateDomainYamlFiles(
-        newInputs()
-          .weblogicDomainStorageReclaimPolicy(STORAGE_RECLAIM_POLICY_DELETE)
-          .weblogicDomainStoragePath("/tmp/"))
-      .remove();
+    generateDomainYamlFiles(
+      newInputs()
+        .weblogicDomainStorageReclaimPolicy(STORAGE_RECLAIM_POLICY_DELETE)
+        .weblogicDomainStoragePath("/tmp/"))
+    .remove();
   }
 
   @Test
@@ -518,7 +520,7 @@ public class CreateDomainInputsValidationTest {
 
   private void createDomain_with_validInputs_succeeds(CreateDomainInputs inputs) throws Exception {
     // throws an error if the inputs are not valid, succeeds otherwise:
-    GeneratedDomainYamlFiles.generateDomainYamlFiles(inputs).remove();
+    generateDomainYamlFiles(inputs).remove();
   }
 
   private String invalidBooleanParamValueError(String param, String val) {

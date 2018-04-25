@@ -5,8 +5,8 @@ package oracle.kubernetes.operator.create;
 
 import io.kubernetes.client.models.V1Job;
 import io.kubernetes.client.models.V1PersistentVolume;
-import static oracle.kubernetes.operator.create.CreateDomainInputs.*;
-import static oracle.kubernetes.operator.create.KubernetesArtifactUtils.*;
+import static oracle.kubernetes.operator.utils.CreateDomainInputs.*;
+import static oracle.kubernetes.operator.utils.KubernetesArtifactUtils.*;
 import oracle.kubernetes.weblogic.domain.v1.Domain;
 import org.junit.BeforeClass;
 
@@ -21,7 +21,7 @@ public class CreateDomainGeneratedFilesOptionalFeaturesEnabledTest extends Creat
   @BeforeClass
   public static void setup() throws Exception {
     setup(
-      CreateDomainInputs.newInputs()
+      newInputs()
         .exposeAdminNodePort("true")
         .exposeAdminT3Channel("true")
         .clusterType("CONFIGURED")

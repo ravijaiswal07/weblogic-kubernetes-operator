@@ -10,12 +10,16 @@ import org.junit.Test;
 
 import static java.util.Arrays.asList;
 import static oracle.kubernetes.operator.LabelConstants.*;
-import static oracle.kubernetes.operator.create.CreateOperatorInputs.readInputsYamlFile;
-import static oracle.kubernetes.operator.create.KubernetesArtifactUtils.*;
-import static oracle.kubernetes.operator.create.YamlUtils.yamlEqualTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
+import oracle.kubernetes.operator.utils.CreateOperatorInputs;
+import static oracle.kubernetes.operator.utils.CreateOperatorInputs.*;
+import oracle.kubernetes.operator.utils.GeneratedOperatorYamlFiles;
+import static oracle.kubernetes.operator.utils.GeneratedOperatorYamlFiles.*;
+import static oracle.kubernetes.operator.utils.KubernetesArtifactUtils.*;
+import oracle.kubernetes.operator.utils.ParsedWeblogicOperatorSecurityYaml;
+import oracle.kubernetes.operator.utils.ParsedWeblogicOperatorYaml;
+import static oracle.kubernetes.operator.utils.YamlUtils.*;
+import static org.hamcrest.MatcherAssert.*;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Base class for testing that the all artifacts in the yaml files that
@@ -44,7 +48,7 @@ public abstract class CreateOperatorGeneratedFilesBaseTest {
 
   protected static void setup(CreateOperatorInputs val) throws Exception {
     inputs = val;
-    generatedFiles = GeneratedOperatorYamlFiles.generateOperatorYamlFiles(getInputs());
+    generatedFiles = generateOperatorYamlFiles(getInputs());
   }
 
   @AfterClass

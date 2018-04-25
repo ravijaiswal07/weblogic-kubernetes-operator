@@ -16,9 +16,18 @@ import io.kubernetes.client.models.V1PersistentVolumeClaim;
 import io.kubernetes.client.models.V1Service;
 import io.kubernetes.client.models.V1ServiceAccount;
 import static oracle.kubernetes.operator.LabelConstants.*;
-import static oracle.kubernetes.operator.create.CreateDomainInputs.readInputsYamlFile;
-import static oracle.kubernetes.operator.create.KubernetesArtifactUtils.*;
-import static oracle.kubernetes.operator.create.YamlUtils.yamlEqualTo;
+import static oracle.kubernetes.operator.utils.CreateDomainInputs.*;
+import static oracle.kubernetes.operator.utils.GeneratedDomainYamlFiles.*;
+import static oracle.kubernetes.operator.utils.KubernetesArtifactUtils.*;
+import oracle.kubernetes.operator.utils.CreateDomainInputs;
+import oracle.kubernetes.operator.utils.GeneratedDomainYamlFiles;
+import oracle.kubernetes.operator.utils.ParsedCreateWeblogicDomainJobYaml;
+import oracle.kubernetes.operator.utils.ParsedDomainCustomResourceYaml;
+import oracle.kubernetes.operator.utils.ParsedTraefikSecurityYaml;
+import oracle.kubernetes.operator.utils.ParsedTraefikYaml;
+import oracle.kubernetes.operator.utils.ParsedWeblogicDomainPersistentVolumeClaimYaml;
+import oracle.kubernetes.operator.utils.ParsedWeblogicDomainPersistentVolumeYaml;
+import static oracle.kubernetes.operator.utils.YamlUtils.*;
 import oracle.kubernetes.weblogic.domain.v1.Domain;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -76,7 +85,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
 
   protected static void setup(CreateDomainInputs val) throws Exception {
     inputs = val;
-    generatedFiles = GeneratedDomainYamlFiles.generateDomainYamlFiles(getInputs());
+    generatedFiles = generateDomainYamlFiles(getInputs());
   }
 
   @AfterClass
@@ -390,13 +399,6 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
                   .name("USER_MEM_ARGS")
                   .value("-Xms64m -Xmx256m ")))))
           .withServerDefaults(newServer()
-            .withImage("store/oracle/weblogic:12.2.1.3")
-            .withImagePullPolicy("IfNotPresent")
-            .withStartedServerState("RUNNING")
-            .withShutdownPolicy("GRACEFUL_SHUTDOWN")
-            .withGracefulShutdownTimeout(10)
-            .withGracefulShutdownIgnoreSessions(false)
-            .withGracefulShutdownWaitForSessions(true)
             .withEnv(newEnvVarList()
               .addElement(newEnvVar()
                 .name("JAVA_OPTIONS")
@@ -404,37 +406,8 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
               .addElement(newEnvVar()
                 .name("USER_MEM_ARGS")
                 .value("-Xms64m -Xmx256m "))))
-          .withNonClusteredServerDefaults(newNonClusteredServer()
-            .withNonClusteredServerStartPolicy("ALWAYS"))
-          .withServer(
-            getInputs().getAdminServerName(),
-            newNonClusteredServer()
-              .withNonClusteredServerStartPolicy("NEVER")
-              .withStartedServerState("ADMIN")
-              .withRestartedLabel("step1")
-              .withImage("store/oracle/weblogic:12.2.1.3")
-              .withImagePullPolicy("Never")
-              .withShutdownPolicy("FORCED_SHUTDOWN")
-              .withGracefulShutdownTimeout(20)
-              .withGracefulShutdownIgnoreSessions(true)
-              .withGracefulShutdownWaitForSessions(false))
           .withClusterDefaults(newClusterParams()
-            .withReplicas(Integer.parseInt(getInputs().getInitialManagedServerReplicas()))
-            .withMaxSurge(newIntOrString("30%"))
-            .withMaxUnavailable(newIntOrString("15%"))
-            .withServerDefaults(newClusteredServer()
-              .withClusteredServerStartPolicy("IF_NEEDED")))
-          .withCluster(
-            getInputs().getClusterName(),
-            newCluster()
-              .withReplicas(Integer.parseInt(getInputs().getInitialManagedServerReplicas()))
-              .withMaxSurge(newIntOrString("25%"))
-              .withMaxUnavailable(newIntOrString("35%"))
-              .withServer(
-                "managed-server-1",
-                newClusteredServer()
-                  .withClusteredServerStartPolicy("NEVER")))
-);
+            .withReplicas(Integer.parseInt(getInputs().getInitialManagedServerReplicas()))));
   }
 
   @Test

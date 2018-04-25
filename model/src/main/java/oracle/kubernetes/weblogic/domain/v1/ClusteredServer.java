@@ -7,6 +7,7 @@ import java.util.List;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 import io.kubernetes.client.models.V1EnvVar;
+import io.kubernetes.client.models.V1LocalObjectReference;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -112,7 +113,7 @@ public class ClusteredServer
      * {@inheritDoc}
      */
     @Override
-    public ClusteredServer withImagePullSecrets(String imagePullSecrets) {
+    public ClusteredServer withImagePullSecrets(List<V1LocalObjectReference> imagePullSecrets) {
         super.withImagePullSecrets(imagePullSecrets);
         return this;
     }

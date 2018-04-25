@@ -4,7 +4,8 @@
 package oracle.kubernetes.operator.create;
 
 import io.kubernetes.client.models.V1PersistentVolume;
-import static oracle.kubernetes.operator.create.KubernetesArtifactUtils.*;
+import static oracle.kubernetes.operator.utils.CreateDomainInputs.*;
+import static oracle.kubernetes.operator.utils.KubernetesArtifactUtils.*;
 import org.junit.BeforeClass;
 
 /**
@@ -17,7 +18,7 @@ public class CreateDomainGeneratedFilesOptionalFeaturesDisabledTest extends Crea
 
   @BeforeClass
   public static void setup() throws Exception {
-    setup(CreateDomainInputs.newInputs()); // defaults to admin node port off, t3 channel off, 
+    setup(newInputs()); // defaults to admin node port off, t3 channel off, 
   }
 
   @Override

@@ -10,10 +10,13 @@ import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import static oracle.kubernetes.operator.create.CreateDomainInputs.*;
-import static oracle.kubernetes.operator.create.ExecCreateDomain.*;
-import static oracle.kubernetes.operator.create.ExecResultMatcher.*;
-import static oracle.kubernetes.operator.create.YamlUtils.*;
+import oracle.kubernetes.operator.utils.CreateDomainInputs;
+import static oracle.kubernetes.operator.utils.CreateDomainInputs.*;
+import oracle.kubernetes.operator.utils.DomainFiles;
+import static oracle.kubernetes.operator.utils.ExecCreateDomain.*;
+import static oracle.kubernetes.operator.utils.ExecResultMatcher.*;
+import static oracle.kubernetes.operator.utils.YamlUtils.*;
+import oracle.kubernetes.operator.utils.UserProjects;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 

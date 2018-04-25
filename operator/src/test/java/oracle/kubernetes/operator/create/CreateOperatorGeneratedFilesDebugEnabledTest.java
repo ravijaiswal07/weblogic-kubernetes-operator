@@ -6,7 +6,8 @@ package oracle.kubernetes.operator.create;
 import io.kubernetes.client.models.ExtensionsV1beta1Deployment;
 import io.kubernetes.client.models.V1Container;
 import io.kubernetes.client.models.V1Service;
-import static oracle.kubernetes.operator.create.KubernetesArtifactUtils.*;
+import static oracle.kubernetes.operator.utils.CreateOperatorInputs.*;
+import static oracle.kubernetes.operator.utils.KubernetesArtifactUtils.*;
 import org.junit.BeforeClass;
 
 /**
@@ -18,7 +19,7 @@ public class CreateOperatorGeneratedFilesDebugEnabledTest extends CreateOperator
 
   @BeforeClass
   public static void setup() throws Exception {
-    setup(CreateOperatorInputs.newInputs().enableDebugging());
+    setup(newInputs().enableDebugging());
   }
 
   @Override

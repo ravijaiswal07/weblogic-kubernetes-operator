@@ -32,8 +32,12 @@
       "type": "string"
     },
     "imagePullSecrets": {
-      "description": "The name of a kubernetes secrets object that contains the credentials needed to pull the WebLogic Docker image.",
-      "type": "string"
+      "description": "ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this DomainSpec. If specified, these secrets will be passed to individual puller implementations for them to use.",
+      "type": "array",
+      "items": {
+         "javaType": "io.kubernetes.client.models.V1LocalObjectReference",
+         "type": "object"
+      }
     },
     "shutdownPolicy": {
       "description": "Controls how the operator will stop this server.  Legal values are GRACEFUL_SHUTDOWN and FORCED_SHUTDOWN.",

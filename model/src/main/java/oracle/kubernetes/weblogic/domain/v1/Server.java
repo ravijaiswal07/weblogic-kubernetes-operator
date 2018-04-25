@@ -9,6 +9,7 @@ import javax.validation.Valid;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 import io.kubernetes.client.models.V1EnvVar;
+import io.kubernetes.client.models.V1LocalObjectReference;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -48,7 +49,7 @@ public class Server {
     @SerializedName("env")
     @Expose
     @Valid
-    private List<V1EnvVar> env = new ArrayList<V1EnvVar>();
+    private List<V1EnvVar> env = null;
     /**
      * WebLogic Docker image.  Defaults to store/oracle/weblogic:12.2.1.3
      * 
@@ -69,7 +70,7 @@ public class Server {
      */
     @SerializedName("imagePullSecrets")
     @Expose
-    private String imagePullSecrets;
+    private List<V1LocalObjectReference> imagePullSecrets = null;
     /**
      * Controls how the operator will stop this server.  Legal values are GRACEFUL_SHUTDOWN and FORCED_SHUTDOWN.
      * 
@@ -258,7 +259,7 @@ public class Server {
      * The name of a kubernetes secrets object that contains the credentials needed to pull the WebLogic Docker image.
      * @return image pull secrets
      */
-    public String getImagePullSecrets() {
+    public List<V1LocalObjectReference> getImagePullSecrets() {
         return imagePullSecrets;
     }
 
@@ -266,7 +267,7 @@ public class Server {
      * The name of a kubernetes secrets object that contains the credentials needed to pull the WebLogic Docker image.
      * @param image pull secrets
      */
-    public void setImagePullSecrets(String imagePullSecrets) {
+    public void setImagePullSecrets(List<V1LocalObjectReference> imagePullSecrets) {
         this.imagePullSecrets = imagePullSecrets;
     }
 
@@ -275,7 +276,7 @@ public class Server {
      * @param image pull secrets
      * @return this
      */
-    public Server withImagePullSecrets(String imagePullSecrets) {
+    public Server withImagePullSecrets(List<V1LocalObjectReference> imagePullSecrets) {
         this.imagePullSecrets = imagePullSecrets;
         return this;
     }
