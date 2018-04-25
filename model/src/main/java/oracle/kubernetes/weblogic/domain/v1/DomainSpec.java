@@ -657,14 +657,48 @@ public class DomainSpec {
         return this;
     }
 
+/*
+ * Temp scaffolding attribute to tell the operator whether to use the old cluster/server start rules or the new ones
+ * This needs to be removed once the operator and all the tests have caught up to the new models.
+ * null implies use the old rules.
+ */
+@SerializedName("useNewLifeCycleConfig")
+@Expose
+private Boolean useNewLifeCycleConfig;
+
+/**
+ * Temp scaffolding attribute to tell the operator whether to use the old cluster/server start rules or the new ones
+ * This needs to be removed once the operator and all the tests have caught up to the new models.
+ * null implies use the old rules.
+ * @return use old lifecycle config
+ */
+public Boolean getUseNewLifeCycleConfig() { return useNewLifeCycleConfig; }
+
+/**
+ * Temp scaffolding attribute to tell the operator whether to use the old cluster/server start rules or the new ones
+ * This needs to be removed once the operator and all the tests have caught up to the new models.
+ * null implies use the old rules.
+ * @param useNewLifeCycleCOnfig use new lifecycle config
+ */
+public void setUseNewLifeCycleConfig(Boolean useNewLifeCycleConfig) { this.useNewLifeCycleConfig = useNewLifeCycleConfig; }
+
+/**
+ * Temp scaffolding attribute to tell the operator whether to use the old cluster/server start rules or the new ones
+ * This needs to be removed once the operator and all the tests have caught up to the new models.
+ * null implies use the old rules.
+ * @param useNewLifeCycleCOnfig use new lifecycle config
+ * @return this
+ */
+public DomainSpec withUseNewLifeCycleConfig(Boolean useNewLifeCycleConfig) { this.useNewLifeCycleConfig = useNewLifeCycleConfig; return this;}
+
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("domainUID", domainUID).append("domainName", domainName).append("image", image).append("imagePullPolicy", imagePullPolicy).append("adminSecret", adminSecret).append("asName", asName).append("asPort", asPort).append("exportT3Channels", exportT3Channels).append("startupControl", startupControl).append("serverStartup", serverStartup).append("clusterStartup", clusterStartup).append("replicas", replicas).append("serverDefaults", serverDefaults).append("nonClusteredServerDefaults", nonClusteredServerDefaults).append("servers", servers).append("clusterDefaults", clusterDefaults).append("clusters", clusters).toString();
+        return new ToStringBuilder(this).append(useNewLifeCycleConfig).append("domainUID", domainUID).append("domainName", domainName).append("image", image).append("imagePullPolicy", imagePullPolicy).append("adminSecret", adminSecret).append("asName", asName).append("asPort", asPort).append("exportT3Channels", exportT3Channels).append("startupControl", startupControl).append("serverStartup", serverStartup).append("clusterStartup", clusterStartup).append("replicas", replicas).append("serverDefaults", serverDefaults).append("nonClusteredServerDefaults", nonClusteredServerDefaults).append("servers", servers).append("clusterDefaults", clusterDefaults).append("clusters", clusters).toString();
     }
 
     @Override
     public int hashCode() {
-        return new HashCodeBuilder().append(image).append(imagePullPolicy).append(asName).append(clusterDefaults).append(replicas).append(startupControl).append(domainUID).append(clusterStartup).append(asPort).append(servers).append(domainName).append(exportT3Channels).append(serverStartup).append(serverDefaults).append(adminSecret).append(nonClusteredServerDefaults).append(clusters).toHashCode();
+        return new HashCodeBuilder().append(useNewLifeCycleConfig).append(image).append(imagePullPolicy).append(asName).append(clusterDefaults).append(replicas).append(startupControl).append(domainUID).append(clusterStartup).append(asPort).append(servers).append(domainName).append(exportT3Channels).append(serverStartup).append(serverDefaults).append(adminSecret).append(nonClusteredServerDefaults).append(clusters).toHashCode();
     }
 
     @Override
@@ -676,7 +710,7 @@ public class DomainSpec {
             return false;
         }
         DomainSpec rhs = ((DomainSpec) other);
-        return new EqualsBuilder().append(image, rhs.image).append(imagePullPolicy, rhs.imagePullPolicy).append(asName, rhs.asName).append(clusterDefaults, rhs.clusterDefaults).append(replicas, rhs.replicas).append(startupControl, rhs.startupControl).append(domainUID, rhs.domainUID).append(clusterStartup, rhs.clusterStartup).append(asPort, rhs.asPort).append(servers, rhs.servers).append(domainName, rhs.domainName).append(exportT3Channels, rhs.exportT3Channels).append(serverStartup, rhs.serverStartup).append(serverDefaults, rhs.serverDefaults).append(adminSecret, rhs.adminSecret).append(nonClusteredServerDefaults, rhs.nonClusteredServerDefaults).append(clusters, rhs.clusters).isEquals();
+        return new EqualsBuilder().append(useNewLifeCycleConfig, rhs.useNewLifeCycleConfig).append(image, rhs.image).append(imagePullPolicy, rhs.imagePullPolicy).append(asName, rhs.asName).append(clusterDefaults, rhs.clusterDefaults).append(replicas, rhs.replicas).append(startupControl, rhs.startupControl).append(domainUID, rhs.domainUID).append(clusterStartup, rhs.clusterStartup).append(asPort, rhs.asPort).append(servers, rhs.servers).append(domainName, rhs.domainName).append(exportT3Channels, rhs.exportT3Channels).append(serverStartup, rhs.serverStartup).append(serverDefaults, rhs.serverDefaults).append(adminSecret, rhs.adminSecret).append(nonClusteredServerDefaults, rhs.nonClusteredServerDefaults).append(clusters, rhs.clusters).isEquals();
     }
 
 }

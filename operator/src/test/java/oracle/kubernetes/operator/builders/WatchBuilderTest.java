@@ -40,14 +40,6 @@ import static oracle.kubernetes.operator.builders.WatchBuilderTest.ParameterVali
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
-
-import java.util.Map;
-import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
-import oracle.kubernetes.weblogic.domain.v1.Cluster;
-import oracle.kubernetes.weblogic.domain.v1.api.WeblogicApi;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
 /**
  * Tests watches created by the WatchBuilder, verifying that they are created with the correct query URLs and
  * handle http response correctly. Uses PseudoServer to provide an in-memory test web server.
@@ -80,21 +72,6 @@ public class WatchBuilderTest extends HttpUserAgentTest {
         for (Memento memento : mementos) memento.revert();
         if (!validationErrors.isEmpty()) throw validationErrors.get(0);
     }
-
-@Test
-public void tempTmoreauTest() throws Exception {
-  DomainSpec ds1 = 
-    (new DomainSpec())
-      .withCluster("cluster1", (new Cluster()).withReplicas(5))
-      .withCluster("cluster2", (new Cluster()).withReplicas(3));
-System.out.println("MOREAUT_DEBUG ds1 " + ds1.toString());
-Gson gson = (new WeblogicApi()).getApiClient().getJSON().getGson();
-String json = gson.toJson(ds1);
-System.out.println("MOREAUT_DEBUG json " + json);
-DomainSpec ds2 = gson.fromJson(json, DomainSpec.class);
-System.out.println("MOREAUT_DEBUG ds2 " + ds2.toString());
-System.out.println("MOREAUT_DEBUG equals " + ds1.equals(ds2));
-}
 
     @Test
     public void whenDomainWatchReceivesAddResponse_returnItFromIterator() throws Exception {
