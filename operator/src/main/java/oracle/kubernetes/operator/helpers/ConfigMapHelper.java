@@ -623,7 +623,7 @@ public class ConfigMapHelper {
       Map<String, String> data = new HashMap<>();
       
       // HERE
-      data.put("weblogic-deploy.zip.base64", toBase64("/operator/weblogic-deploy.zip"));
+      // data.put("weblogic-deploy.zip.base64", toBase64("/operator/weblogic-deploy.zip"));
 
       data.put("utility.sh", 
           "#!/bin/bash\n" + 

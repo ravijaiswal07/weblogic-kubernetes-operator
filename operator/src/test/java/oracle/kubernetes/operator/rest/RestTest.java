@@ -58,12 +58,14 @@ public class RestTest {
   private static final String LATEST_HREF = OPERATOR_HREF + "/latest";
 
   private static final String SWAGGER = "swagger";
+  private static final String FILES = "files";
   private static final String DOMAINS = "domains";
   private static final String CLUSTERS = "clusters";
   private static final String DOMAIN1 = "domain1";
   private static final String CLUSTER1 = "cluster1";
 
   private static final String SWAGGER_HREF = LATEST_HREF + "/" + SWAGGER;
+  private static final String FILES_HREF = LATEST_HREF + "/" + FILES;
   private static final String DOMAINS_HREF = LATEST_HREF + "/" + DOMAINS;
   private static final String DOMAIN1_HREF = DOMAINS_HREF + "/" + DOMAIN1;
   private static final String DOMAIN1_CLUSTERS_HREF = DOMAIN1_HREF + "/" + CLUSTERS;
@@ -140,6 +142,7 @@ public class RestTest {
     want.addSelfAndParentLinks(V1_HREF, OPERATOR_HREF);
     want.addLink(DOMAINS, V1_HREF + "/" + DOMAINS);
     want.addLink(SWAGGER, V1_HREF + "/" + SWAGGER);
+    want.addLink(FILES, V1_HREF + "/" + FILES);
     verifyEntity(r, want);
   }
 
@@ -151,6 +154,7 @@ public class RestTest {
     want.addSelfAndParentLinks(LATEST_HREF, OPERATOR_HREF);
     want.addLink(DOMAINS, DOMAINS_HREF);
     want.addLink(SWAGGER, SWAGGER_HREF);
+    want.addLink(FILES, FILES_HREF);
     verifyEntity(r, want);
   }
 

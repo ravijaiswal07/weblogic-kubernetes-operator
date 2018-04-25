@@ -1,4 +1,4 @@
-// Copyright 2017, Oracle Corporation and/or its affiliates.  All rights reserved.
+// Copyright 2017, 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
 // Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.rest.resource;
@@ -50,6 +50,7 @@ public class VersionResource extends BaseResource {
     addSelfAndParentLinks(item);
     addLink(item, "domains");
     addLink(item, "swagger");
+    addLink(item, "files");
     LOGGER.exiting(item);
     return item;
   }
@@ -74,6 +75,18 @@ public class VersionResource extends BaseResource {
   public SwaggerResource getSwaggerResource() {
     LOGGER.entering(href());
     SwaggerResource result = new SwaggerResource(this, "swagger");
+    LOGGER.exiting(result);
+    return result;
+  }
+
+  /**
+   * Construct and return the 'files' jaxrs child resource.
+   * @return the swagger sub resource.
+   */
+  @Path("files")
+  public FilesResource getFilesResource() {
+    LOGGER.entering(href());
+    FilesResource result = new FilesResource(this, "files");
     LOGGER.exiting(result);
     return result;
   }

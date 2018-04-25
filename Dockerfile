@@ -5,12 +5,13 @@ FROM store/oracle/serverjre:8
 
 RUN mkdir /operator
 RUN mkdir /operator/lib
+RUN mkdir /operator/files
 ENV PATH=$PATH:/operator
 
 COPY src/scripts/* /operator/
 COPY operator/target/weblogic-kubernetes-operator-0.2.jar /operator/weblogic-kubernetes-operator.jar
-COPY target/weblogic-deploy.zip /operator/weblogic-deploy.zip
 COPY operator/target/lib/*.jar /operator/lib/
+COPY target/weblogic-deploy.zip /operator/files/weblogic-deploy.zip
 
 HEALTHCHECK --interval=1m --timeout=10s \
   CMD /operator/livenessProbe.sh
