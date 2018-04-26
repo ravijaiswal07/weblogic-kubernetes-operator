@@ -194,6 +194,11 @@ function main {
     shift
   done
 
+  if [ "$mode" = "" ]; then
+    # command line was empty or only specified '-t'
+    mode="commandLineError"
+  fi
+
   LOCAL_ROOT="${LOCAL_ROOT}/lease/id-${LOCAL_ID}"
 
   # Execute command line

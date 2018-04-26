@@ -1,0 +1,69 @@
+-------------------
+WDT Early Prototype
+-------------------
+
+------------
+Introduction
+------------
+
+This directory contains prototype code for optionally using weblogic-deploy-tool (WDT) 
+domain model yaml to generate a new WebLogic domain home instead of using 
+the off-line wlst script embedded in kubernetes/internal/create-weblogic-domain-job-template.yaml.
+
+This prototype uses 'create-weblogic-domain-inputs.yaml' as inputs -- the same
+inputs that the off-line wlst script uses in order to support partial customization.
+ 
+The run.sh integration test code uses this prototype by default.  To switch the integration
+tests back to wlst, see the DOMAIN_SETUP parameter in the run.sh.
+
+For WDT background, see https://github.com/oracle/weblogic-deploy-tooling/blob/master/README.md
+
+------------
+Instructions
+------------
+
+Follow these steps to use WDT.  Note that the run.sh integration tests follow the same steps.
+
+(1) Copy this directory to a new location, the 'working directory'.
+
+(2) Put a 'create-weblogic-domain-inputs.yaml' file in the working directory.
+
+(3) Put a 'wdt_model.yaml' in the working directory that uses the above inputs
+    via WDT macros.   See wdt_model_*.yaml in this directory for samples.
+
+(4) Deploy the working directory as a k8s config map, where the name of the config map 
+    is "${domainUID}-create-weblogic-domain-job-wdt-cm".  Plus label the
+    config map to give domain resource cleanup scripts a way to find it.
+
+    Variable key:
+
+      workingDirectory = the working directory specified in step (1)
+      namespace = namespace specified in create-weblogic-domain-inputs.yaml from step (2)
+      domainUID = domainUID specified in create-weblogic-domain-inputs.yaml from step (2)
+
+    Deploy config map:
+
+      kubectl -n ${namespace} create \
+              configmap ${domainUID}-create-weblogic-domain-job-wdt-cm \
+              --from-file=${workingDirectory}
+
+    Label config map:
+
+      kubectl -n ${namespace} label \
+              configmap ${domainUID}-create-weblogic-domain-job-wdt-cm \
+              domainUID=${domainUID}
+
+(5) Run create-weblogic-domain.sh as usual.
+
+    This script will launch a kubernetes job to setup the domain (as usual).
+
+    The job should detect the specially named configmap from (4), then create
+    the domain home by running the WDT wrapper script 'createDomain.sh' located
+    in the configmap (instead of running its custom off-line wlst script). 
+
+    The createDomain.sh script in turn will (A) download and install WDT in 
+    the domain's shared directory, and (B) run WDT using the wdt_model.yaml and
+    create-weblogic-domain-inputs.yaml files from the config map.
+
+    Finally, the job will subsequently run some off-line WLST to setup
+    initial node-manager settings in the domain home.
