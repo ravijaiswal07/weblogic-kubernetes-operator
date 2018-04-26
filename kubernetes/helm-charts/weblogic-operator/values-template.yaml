@@ -5,11 +5,8 @@
 # make requests to the Kubernetes API server.
 serviceAccount: weblogic-operator
 
-# A comma separated list of target namespaces the operator manages
-targetNamespaces: "default"
-
 # A list of target namespaces the operator manages (same as targetNamespaces but in list format)
-targetNamespacesList:
+targetNamespaces:
  - "default"
 
 # The docker image containing the operator code.

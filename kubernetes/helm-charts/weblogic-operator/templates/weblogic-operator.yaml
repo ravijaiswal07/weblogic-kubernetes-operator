@@ -17,7 +17,7 @@ metadata:
     weblogic.operatorName: {{ .Release.Namespace }}
 data:
   serviceaccount: {{ .Values.serviceAccount }}
-  targetNamespaces: "{{ .Values.targetNamespaces | nospace }}"
+  targetNamespaces: "{{- range $index, $targetnamespace := .Values.targetNamespaces }} {{- if $index }},{{ end }}{{- $targetnamespace }} {{- end }}"
   externalOperatorCert: {{ .Values.externalOperatorCert }}
   internalOperatorCert: {{ required "internalOperatorCert is required" .Values.internalOperatorCert }}
 
