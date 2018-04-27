@@ -3,7 +3,6 @@
 
 package oracle.kubernetes.weblogic.domain.v1;
 
-import java.util.ArrayList;
 import java.util.List;
 import javax.validation.Valid;
 import com.google.gson.annotations.Expose;
@@ -65,7 +64,7 @@ public class Server {
     @Expose
     private String imagePullPolicy;
     /**
-     * The name of a kubernetes secrets object that contains the credentials needed to pull the WebLogic Docker image.
+     * An optional list of references to secrets in the same namespace to use for pulling the WebLogic Docker image.
      * 
      */
     @SerializedName("imagePullSecrets")
@@ -256,7 +255,7 @@ public class Server {
     }
 
     /**
-     * The name of a kubernetes secrets object that contains the credentials needed to pull the WebLogic Docker image.
+     * An optional list of references to secrets in the same namespace to use for pulling the WebLogic Docker image.
      * @return image pull secrets
      */
     public List<V1LocalObjectReference> getImagePullSecrets() {
@@ -264,7 +263,7 @@ public class Server {
     }
 
     /**
-     * The name of a kubernetes secrets object that contains the credentials needed to pull the WebLogic Docker image.
+     * An optional list of references to secrets in the same namespace to use for pulling the WebLogic Docker image.
      * @param image pull secrets
      */
     public void setImagePullSecrets(List<V1LocalObjectReference> imagePullSecrets) {
@@ -272,7 +271,7 @@ public class Server {
     }
 
     /**
-     * The name of a kubernetes secrets object that contains the credentials needed to pull the WebLogic Docker image.
+     * An optional list of references to secrets in the same namespace to use for pulling the WebLogic Docker image.
      * @param image pull secrets
      * @return this
      */
