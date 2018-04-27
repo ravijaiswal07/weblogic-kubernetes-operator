@@ -5,8 +5,13 @@ package oracle.kubernetes.operator.create;
 
 import io.kubernetes.client.models.V1Job;
 import io.kubernetes.client.models.V1PersistentVolume;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import static oracle.kubernetes.operator.utils.CreateDomainInputs.*;
 import static oracle.kubernetes.operator.utils.KubernetesArtifactUtils.*;
+import static oracle.kubernetes.operator.utils.YamlUtils.*;
+
 import oracle.kubernetes.weblogic.domain.v1.Domain;
 import org.junit.BeforeClass;
 
@@ -26,7 +31,8 @@ public class CreateDomainGeneratedFilesOptionalFeaturesEnabledTest extends Creat
         .exposeAdminT3Channel("true")
         .clusterType("CONFIGURED")
         .weblogicImagePullSecretName("test-weblogic-image-pull-secret-name")
-        .loadBalancer(LOAD_BALANCER_TRAEFIK)
+        .loadBalancer(LOAD_BALANCER_APACHE)
+        .loadBalancerAppPrepath("/loadBalancerAppPrePath")
         .weblogicDomainStorageType(STORAGE_TYPE_NFS)
         .productionModeEnabled("true")
     );
@@ -57,5 +63,62 @@ public class CreateDomainGeneratedFilesOptionalFeaturesEnabledTest extends Creat
         .server(getInputs().getWeblogicDomainStorageNFSServer())
         .path(getInputs().getWeblogicDomainStoragePath()));
     return expected;
+  }
+
+  @Override
+  public void generatesCorrect_loadBalancerDeployment() throws Exception {
+    assertThat(
+      getActualApacheDeployment(),
+      yamlEqualTo(getExpectedApacheDeployment()));
+  }
+
+  @Override
+  public void generatesCorrect_loadBalancerServiceAccount() throws Exception {
+    assertThat(
+      getActualApacheServiceAccount(),
+      yamlEqualTo(getExpectedApacheServiceAccount()));  }
+
+  @Override
+  public void generatesCorrect_loadBalancerConfigMap() throws Exception {
+    // No config map in generated yaml for LOAD_BALANCER_APACHE
+  }
+
+  @Override
+  public void generatesCorrect_loadBalancerService() throws Exception {
+    assertThat(
+      getActualApacheService(),
+      yamlEqualTo(getExpectedApacheService()));
+  }
+
+  @Override
+  public void generatesCorrect_loadBalancerDashboardService() throws Exception {
+    // No dashboard service in generated yaml for LOAD_BALANCER_APACHE
+  }
+
+  @Override
+  public void generatesCorrect_loadBalancerClusterRole() throws Exception {
+    assertThat(
+      getActualApacheClusterRole(),
+      yamlEqualTo(getExpectedApacheClusterRole()));  }
+
+  @Override
+  public void generatesCorrect_loadBalancerClusterRoleBinding() throws Exception {
+    assertThat(
+      getActualApacheClusterRoleBinding(),
+      yamlEqualTo(getExpectedApacheClusterRoleBinding()));
+  }
+
+  @Override
+  public void loadBalancerSecurityYaml_hasCorrectNumberOfObjects() throws Exception {
+    assertThat(
+      getApacheSecurityYaml().getObjectCount(),
+      is(getApacheSecurityYaml().getExpectedObjectCount()));
+  }
+
+  @Override
+  public void loadBalancerYaml_hasCorrectNumberOfObjects() throws Exception {
+    assertThat(
+      getApacheYaml().getObjectCount(),
+      is(getApacheYaml().getExpectedObjectCount()));
   }
 }
