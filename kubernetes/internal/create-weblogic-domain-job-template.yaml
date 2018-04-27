@@ -105,9 +105,64 @@ data:
     export DOMAIN_HOME=${SHARED_PATH}/domain/%DOMAIN_NAME%
 
     # Create the domain
-    wlst.sh -skipWLSModuleScanning /u01/weblogic/create-domain.py
+
+    if [ -f /u01/wdt/createDomain.sh ]; then
+      # /u01/wdt files exist when the optional WDT configmap 
+      # '%DOMAIN_UID%-create-weblogic-domain-job-wdt-cm' is detected
+      echo "Creating domain via WDT"
+      /u01/wdt/createDomain.sh
+    else
+      echo "Creating domain via WLST"
+      wlst.sh -skipWLSModuleScanning /u01/weblogic/create-domain.py
+    fi
+
+    wlst.sh -skipWLSModuleScanning /u01/weblogic/create-domain-node-manager.py
+
+    # TODO it looks like this script prints 'Successfully Completed'
+    #      even if the domain create fails?
 
     echo "Successfully Completed"
+
+  create-domain-node-manager.py: |-
+    # This python script is used to init node manager setup in a new WebLogic domain
+
+    # Read the domain secrets from the common python file
+    execfile("/u01/weblogic/read-domain-secret.py")
+
+    domain_path        = os.environ.get("DOMAIN_HOME")
+
+    print('domain_path        : [%s]' % domain_path);
+    print('domain_name        : [%DOMAIN_NAME%]');
+    print('admin_username     : [%s]' % admin_username);
+
+    # Update Domain
+    readDomain(domain_path)
+
+    # Configure the node manager
+    # ==========================
+    cd('/NMProperties')
+    set('ListenAddress','0.0.0.0')
+    set('ListenPort',5556)
+    set('CrashRecoveryEnabled', 'true')
+    set('NativeVersionEnabled', 'true')
+    set('StartScriptEnabled', 'false')
+    set('SecureListener', 'false')
+    set('LogLevel', 'FINEST')
+    set('DomainsDirRemoteSharingEnabled', 'true')
+
+    # Set the Node Manager user name and password (domain name will change after writeDomain)
+    cd('/SecurityConfiguration/%DOMAIN_NAME%')
+    set('NodeManagerUsername', admin_username)
+    set('NodeManagerPasswordEncrypted', admin_password)
+
+    updateDomain()
+    closeDomain()
+    print 'Domain Updated'
+    print 'Done'
+
+    # Exit WLST
+    # =========
+    exit()
 
   create-domain.py: |-
     # This python script is used to create a WebLogic domain
@@ -167,23 +222,6 @@ data:
     # Write the domain and close the domain template
     # ==============================================
     setOption('OverwriteDomain', 'true')
-
-    # Configure the node manager
-    # ==========================
-    cd('/NMProperties')
-    set('ListenAddress','0.0.0.0')
-    set('ListenPort',5556)
-    set('CrashRecoveryEnabled', 'true')
-    set('NativeVersionEnabled', 'true')
-    set('StartScriptEnabled', 'false')
-    set('SecureListener', 'false')
-    set('LogLevel', 'FINEST')
-    set('DomainsDirRemoteSharingEnabled', 'true')
-
-    # Set the Node Manager user name and password (domain name will change after writeDomain)
-    cd('/SecurityConfiguration/base_domain')
-    set('NodeManagerUsername', admin_username)
-    set('NodeManagerPasswordEncrypted', admin_password)
 
     # Create a cluster
     # ======================
@@ -280,6 +318,8 @@ spec:
           volumeMounts:
           - mountPath: /u01/weblogic
             name: create-weblogic-domain-job-cm-volume
+          - mountPath: /u01/wdt
+            name: create-weblogic-domain-job-cm-wdt-volume
           - mountPath: /shared
             name: weblogic-domain-storage-volume
           - mountPath: /weblogic-operator/secrets
@@ -293,6 +333,11 @@ spec:
         - name: create-weblogic-domain-job-cm-volume
           configMap:
             name: %DOMAIN_UID%-create-weblogic-domain-job-cm
+        - name: create-weblogic-domain-job-cm-wdt-volume
+          configMap:
+            name: %DOMAIN_UID%-create-weblogic-domain-job-wdt-cm
+            defaultMode: 0755
+            optional: true
         - name: weblogic-domain-storage-volume
           persistentVolumeClaim:
             claimName: %DOMAIN_UID%-weblogic-domain-pvc

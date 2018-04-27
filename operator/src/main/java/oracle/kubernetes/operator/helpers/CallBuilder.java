@@ -122,12 +122,14 @@ public class CallBuilder {
   public VersionInfo readVersionCode() throws ApiException {
     ApiClient client = helper.take();
     try {
-      return new VersionApi(client).getCode();
+      return CALL_FACTORY.getVersionCode(client);
     } finally {
       helper.recycle(client);
     }
   }
-  
+
+  private static SynchronousCallFactory CALL_FACTORY = new SynchronousCallFactoryImpl();
+
   /* Namespaces */
 
   /**
@@ -172,8 +174,8 @@ public class CallBuilder {
     String _continue = "";
     ApiClient client = helper.take();
     try {
-      return new WeblogicApi(client).listWebLogicOracleV1NamespacedDomain(namespace, pretty, _continue,
-        fieldSelector, includeUninitialized, labelSelector, limit, resourceVersion, timeoutSeconds, watch);
+      return CALL_FACTORY.getDomainList(client, namespace, _continue, pretty, fieldSelector, includeUninitialized, labelSelector,
+            limit, resourceVersion, timeoutSeconds, watch);
     } finally {
       helper.recycle(client);
     }
@@ -248,7 +250,7 @@ public class CallBuilder {
   public V1beta1CustomResourceDefinition readCustomResourceDefinition(String name) throws ApiException {
     ApiClient client = helper.take();
     try {
-      return new ApiextensionsV1beta1Api(client).readCustomResourceDefinition(name, pretty, exact, export);
+      return CALL_FACTORY.readCustomResourceDefinition(client, name, pretty, exact, export);
     } finally {
       helper.recycle(client);
     }
@@ -264,7 +266,7 @@ public class CallBuilder {
       throws ApiException {
     ApiClient client = helper.take();
     try {
-      return new ApiextensionsV1beta1Api(client).createCustomResourceDefinition(body, pretty);
+      return CALL_FACTORY.createCustomResourceDefinition(client, body, pretty);
     } finally {
       helper.recycle(client);
     }
@@ -612,8 +614,8 @@ public class CallBuilder {
     String _continue = "";
     ApiClient client = helper.take();
     try {
-      return new CoreV1Api(client).listPersistentVolume(pretty, _continue, fieldSelector,
-        includeUninitialized, labelSelector, limit, resourceVersion, timeoutSeconds, watch);
+      return CALL_FACTORY.listPersistentVolumes(_continue, client, pretty, fieldSelector, includeUninitialized,
+                                                labelSelector, limit, resourceVersion, timeoutSeconds, watch);
     } finally {
       helper.recycle(client);
     }
@@ -788,7 +790,8 @@ public class CallBuilder {
   public V1SelfSubjectRulesReview createSelfSubjectRulesReview(V1SelfSubjectRulesReview body) throws ApiException {
     ApiClient client = helper.take();
     try {
-      return new AuthorizationV1Api(client).createSelfSubjectRulesReview(body, pretty);
+      String pretty = this.pretty;
+      return CALL_FACTORY.createSelfSubjectRulesReview(client, body, pretty);
     } finally {
       helper.recycle(client);
     }
@@ -962,6 +965,39 @@ public class CallBuilder {
   private <T> Step createRequestAsync(ResponseStep<T> next, RequestParams requestParams, CallFactory<T> factory) {
     return STEP_FACTORY.createRequestAsync(next, requestParams, factory, helper, timeoutSeconds, maxRetryCount, fieldSelector, labelSelector, resourceVersion);
   }
-  
 
+
+  public static class SynchronousCallFactoryImpl implements SynchronousCallFactory {
+    @Override
+    public V1beta1CustomResourceDefinition readCustomResourceDefinition(ApiClient client, String name, String pretty, Boolean exact, Boolean export) throws ApiException {
+      return new ApiextensionsV1beta1Api(client).readCustomResourceDefinition(name, pretty, exact, export);
+    }
+
+    @Override
+    public V1beta1CustomResourceDefinition createCustomResourceDefinition(ApiClient client, V1beta1CustomResourceDefinition body, String pretty) throws ApiException {
+      return new ApiextensionsV1beta1Api(client).createCustomResourceDefinition(body, pretty);
+    }
+
+    @Override
+    public V1SelfSubjectRulesReview createSelfSubjectRulesReview(ApiClient client, V1SelfSubjectRulesReview body, String pretty) throws ApiException {
+      return new AuthorizationV1Api(client).createSelfSubjectRulesReview(body, pretty);
+    }
+
+    @Override
+    public V1PersistentVolumeList listPersistentVolumes(String _continue, ApiClient client, String pretty, String fieldSelector, Boolean includeUninitialized, String labelSelector, Integer limit, String resourceVersion, Integer timeoutSeconds, Boolean watch) throws ApiException {
+      return new CoreV1Api(client).listPersistentVolume(pretty, _continue, fieldSelector,
+            includeUninitialized, labelSelector, limit, resourceVersion, timeoutSeconds, watch);
+    }
+
+    @Override
+    public VersionInfo getVersionCode(ApiClient client) throws ApiException {
+      return new VersionApi(client).getCode();
+    }
+
+    @Override
+    public DomainList getDomainList(ApiClient client, String namespace, String _continue, String pretty, String fieldSelector, Boolean includeUninitialized, String labelSelector, Integer limit, String resourceVersion, Integer timeoutSeconds, Boolean watch) throws ApiException {
+      return new WeblogicApi(client).listWebLogicOracleV1NamespacedDomain(namespace, pretty, _continue,
+            fieldSelector, includeUninitialized, labelSelector, limit, resourceVersion, timeoutSeconds, watch);
+    }
+  }
 }
