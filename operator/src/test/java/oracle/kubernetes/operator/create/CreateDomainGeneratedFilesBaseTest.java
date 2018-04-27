@@ -31,6 +31,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
   private static final String PROPERTY_TRAEFIK_TOML = "traefik.toml";
   private static final String PROPERTY_UTILITY_SH = "utility.sh";
   private static final String PROPERTY_CREATE_DOMAIN_JOB_SH = "create-domain-job.sh";
+  private static final String PROPERTY_CREATE_DOMAIN_NODE_MANAGER_PY = "create-domain-node-manager.py";
   private static final String PROPERTY_READ_DOMAIN_SECRET_PY = "read-domain-secret.py";
   private static final String PROPERTY_CREATE_DOMAIN_SCRIPT_SH = "create-domain-script.sh";
   private static final String PROPERTY_CREATE_DOMAIN_PY = "create-domain.py";
@@ -176,6 +177,9 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
                   .name("create-weblogic-domain-job-cm-volume")
                   .mountPath("/u01/weblogic"))
                 .addVolumeMountsItem(newVolumeMount()
+                  .name("create-weblogic-domain-job-cm-wdt-volume")
+                  .mountPath("/u01/wdt"))
+                .addVolumeMountsItem(newVolumeMount()
                   .name("weblogic-domain-storage-volume")
                   .mountPath("/shared"))
                 .addVolumeMountsItem(newVolumeMount()
@@ -185,6 +189,11 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
                 .name("create-weblogic-domain-job-cm-volume")
                   .configMap(newConfigMapVolumeSource()
                     .name(getInputs().getDomainUID() + "-create-weblogic-domain-job-cm")))
+              .addVolumesItem(newVolume()
+                .name("create-weblogic-domain-job-cm-wdt-volume")
+                  .configMap(newConfigMapVolumeSource()
+                    .name(getInputs().getDomainUID() + "-create-weblogic-domain-job-wdt-cm")
+                    .defaultMode(493)))
               .addVolumesItem(newVolume()
                 .name("weblogic-domain-storage-volume")
                 .persistentVolumeClaim(newPersistentVolumeClaimVolumeSource()
@@ -212,6 +221,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
     // it's currently safe to not clone it.
     String actualUtilitySh = getThenEmptyConfigMapDataValue(actual, PROPERTY_UTILITY_SH);
     String actualCreateDomainJobSh = getThenEmptyConfigMapDataValue(actual, PROPERTY_CREATE_DOMAIN_JOB_SH);
+    String actualCreateDomainNodeManagerPy = getThenEmptyConfigMapDataValue(actual, PROPERTY_CREATE_DOMAIN_NODE_MANAGER_PY);
     String actualReadDomainSecretPy = getThenEmptyConfigMapDataValue(actual, PROPERTY_READ_DOMAIN_SECRET_PY);
     String actualCreateDomainScriptSh = getThenEmptyConfigMapDataValue(actual, PROPERTY_CREATE_DOMAIN_SCRIPT_SH);
     String actualCreateDomainPy = getThenEmptyConfigMapDataValue(actual, PROPERTY_CREATE_DOMAIN_PY);
@@ -221,6 +231,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
 
     assertThatActualUtilityShIsCorrect(actualUtilitySh);
     assertThatActualCreateDomainJobShIsCorrect(actualCreateDomainJobSh);
+    assertThatActualCreateDomainNodeManagerPyIsCorrect(actualCreateDomainNodeManagerPy);
     assertThatActualReadDomainSecretPyIsCorrect(actualReadDomainSecretPy);
     assertThatActualCreateDomainScriptShIsCorrect(actualCreateDomainScriptSh);
     assertThatActualCreateDomainPyIsCorrect(actualCreateDomainPy);
@@ -240,6 +251,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName()))
         .putDataItem(PROPERTY_UTILITY_SH, "")
         .putDataItem(PROPERTY_CREATE_DOMAIN_JOB_SH, "")
+        .putDataItem(PROPERTY_CREATE_DOMAIN_NODE_MANAGER_PY, "")
         .putDataItem(PROPERTY_READ_DOMAIN_SECRET_PY, "")
         .putDataItem(PROPERTY_CREATE_DOMAIN_SCRIPT_SH, "")
         .putDataItem(PROPERTY_CREATE_DOMAIN_PY, "");
@@ -259,6 +271,10 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
       actualCreateDomainJobSh,
       containsRegexps(
         getInputs().getDomainName()));
+  }
+
+  protected void assertThatActualCreateDomainNodeManagerPyIsCorrect(String actualReadDomainSecretPy) {
+    // read-domain-secret.py doesn't depend on the inputs so don't bother checking its contents
   }
 
   protected void assertThatActualReadDomainSecretPyIsCorrect(String actualReadDomainSecretPy) {
