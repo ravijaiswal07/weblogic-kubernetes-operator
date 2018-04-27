@@ -16,6 +16,8 @@ import oracle.kubernetes.operator.utils.CreateDomainInputs;
 import oracle.kubernetes.operator.utils.ParsedApacheYaml;
 import oracle.kubernetes.operator.utils.ParsedApacheSecurityYaml;
 import oracle.kubernetes.operator.utils.GeneratedDomainYamlFiles;
+import oracle.kubernetes.operator.utils.ParsedApacheSecurityYaml;
+import oracle.kubernetes.operator.utils.ParsedApacheYaml;
 import oracle.kubernetes.operator.utils.ParsedCreateWeblogicDomainJobYaml;
 import oracle.kubernetes.operator.utils.ParsedDomainCustomResourceYaml;
 import oracle.kubernetes.operator.utils.ParsedTraefikSecurityYaml;

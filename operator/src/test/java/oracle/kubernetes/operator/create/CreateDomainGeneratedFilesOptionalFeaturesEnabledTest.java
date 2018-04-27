@@ -12,7 +12,6 @@ import static org.hamcrest.MatcherAssert.*;
 import static org.hamcrest.Matchers.*;
 import oracle.kubernetes.weblogic.domain.v1.Domain;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 /**
  * Tests that the all artifacts in the yaml files that create-weblogic-domain.sh
