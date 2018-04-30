@@ -2806,7 +2806,7 @@ function test_suite {
 # entry point
 
 if [ "$WERCKER" = "true" -o "$JENKINS" = "true" ]; then
-  if [ "${VERBOSE:-false}" = "true" ]; then
+  if [ "${VERBOSE:-true}" = "true" ]; then
     test_suite 2>&1 
     exit_status="$?"
   else
