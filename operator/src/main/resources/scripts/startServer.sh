@@ -101,6 +101,10 @@ else
   createServerScriptsProperties $domain_uid $server_name $domain_name
 fi
 
+echo "TODO Hack hack hack - do not merge into develop branch!"
+export PATCH_LIBPATH="/shared"
+touch /shared/libwlfileio3.so
+
 echo "Start the nodemanager"
 . ${NODEMGR_HOME}/startNodeManager.sh &
 
