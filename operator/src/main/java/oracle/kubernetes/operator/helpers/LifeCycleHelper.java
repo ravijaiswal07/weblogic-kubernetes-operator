@@ -11,6 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import io.kubernetes.client.custom.IntOrString;
 import static oracle.kubernetes.operator.KubernetesConstants.*;
+import oracle.kubernetes.operator.logging.LoggingFacade;
+import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
 import oracle.kubernetes.weblogic.domain.v1.Cluster;
 import oracle.kubernetes.weblogic.domain.v1.ClusterParams;
@@ -25,12 +27,14 @@ import org.apache.commons.lang3.ArrayUtils;
  */
 public class LifeCycleHelper {
 
+  private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
+
   protected LifeCycleHelper() {}
 
   private static final LifeCycleHelper INSTANCE = new LifeCycleHelper();
 
   private static final String SERVER_START_POLICY_ALWAYS = "ALWAYS";
-  private static final String SERVER_START_POLICY_NEVER = "ALWAYS";
+  private static final String SERVER_START_POLICY_NEVER = "NEVER";
 
   public static final String STARTED_SERVER_STATE_RUNNING = "RUNNING";
   public static final String STARTED_SERVER_STATE_ADMIN = "ADMIN";
@@ -52,7 +56,7 @@ public class LifeCycleHelper {
       .withNodePort(null)
       .withEnv(null)
       .withImage(DEFAULT_IMAGE)
-      .withImagePullPolicy(IFNOTPRESENT_IMAGEPULLPOLICY)
+      .withImagePullPolicy(null) // since the default value depends on whether image ends with ":latest"
       .withImagePullSecrets(null) // TBD - should it be an empty list?
       .withShutdownPolicy(SHUTDOWN_POLICY_FORCED_SHUTDOWN) // TBD - is this correct?
       .withGracefulShutdownTimeout(new Integer(0))
@@ -119,10 +123,12 @@ public class LifeCycleHelper {
    * @param serverName the name of the server
    * @return the effective configuration for the server
    */
-  public NonClusteredServer getEffectiveNonClusteredServer(DomainSpec domainSpec, String serverName) {
-    NonClusteredServer rtn = new NonClusteredServer();
-    getEffectiveProperties(rtn, getNonClusteredServerParents(domainSpec, serverName), NON_CLUSTERED_SERVER_PROPERTY_NAMES);
-    return rtn;
+  public NonClusteredServerConfig getEffectiveNonClusteredServerConfig(DomainSpec domainSpec, String serverName) {
+    LOGGER.entering(domainSpec, serverName);
+    NonClusteredServerConfig result =
+      toNonClusteredServerConfig(serverName, getEffectiveNonClusteredServer(domainSpec, serverName));
+    LOGGER.exiting(result);
+    return result;
   }
 
   /**
@@ -132,10 +138,12 @@ public class LifeCycleHelper {
    * @param serverName the name of the server
    * @return the effective configuration for the server
    */
-  public ClusteredServer getEffectiveClusteredServer(DomainSpec domainSpec, String clusterName, String serverName) {
-    ClusteredServer rtn = new ClusteredServer();
-    getEffectiveProperties(rtn, getClusteredServerParents(domainSpec, clusterName, serverName), CLUSTERED_SERVER_PROPERTY_NAMES);
-    return rtn;
+  public ClusteredServerConfig getEffectiveClusteredServerConfig(DomainSpec domainSpec, String clusterName, String serverName) {
+    LOGGER.entering(domainSpec, clusterName, serverName);
+    ClusteredServerConfig result =
+      toClusteredServerConfig(clusterName, serverName, getEffectiveClusteredServer(domainSpec, clusterName, serverName));
+    LOGGER.exiting(result);
+    return result;
   }
 
   /**
@@ -144,7 +152,118 @@ public class LifeCycleHelper {
    * @param clusterName the name of the cluster
    * @return the effective configuration for the cluster
    */
-  public Cluster getEffectiveCluster(DomainSpec domainSpec, String clusterName) {
+  public ClusterConfig getEffectiveClusterConfig(DomainSpec domainSpec, String clusterName) {
+    LOGGER.entering(domainSpec, clusterName);
+    ClusterConfig result =
+      toClusterConfig(clusterName, getEffectiveCluster(domainSpec, clusterName));
+    LOGGER.exiting(result);
+    return result;
+  }
+
+  protected NonClusteredServerConfig toNonClusteredServerConfig(String serverName, NonClusteredServer ncs) {
+    NonClusteredServerConfig rtn = (new NonClusteredServerConfig())
+      .withNonClusteredServerStartPolicy(ncs.getNonClusteredServerStartPolicy());
+    copyServerPropertiesToServerConfig(serverName, ncs, rtn);
+    return rtn;
+  }
+
+  protected ClusteredServerConfig toClusteredServerConfig(String clusterName, String serverName, ClusteredServer cs) {
+  ClusteredServerConfig rtn = (new ClusteredServerConfig())
+      .withClusterName(clusterName)
+      .withClusteredServerStartPolicy(cs.getClusteredServerStartPolicy());
+    copyServerPropertiesToServerConfig(serverName, cs, rtn);
+    return rtn;
+  }
+
+  protected ClusterConfig toClusterConfig(String clusterName, Cluster c) {
+    int replicas = toInt(c.getReplicas());
+    ClusterConfig rtn = (new ClusterConfig())
+      .withClusterName(clusterName)
+      .withReplicas(replicas) // TBD - not negative
+      .withMaxReplicas(getMaxReplicas(replicas, c.getMaxSurge()))
+      .withMinReplicas(getMinReplicas(replicas, c.getMaxUnavailable()));
+    // TBD - do we need to check that either min or max replicas doesn't equal replicas
+    // so that we have some wiggle room to automatically restart the cluster?
+    return rtn;
+  }
+
+  protected void copyServerPropertiesToServerConfig(String serverName, Server s, ServerConfig sc) {
+    sc
+      .withServerName(serverName)
+      .withStartedServerState(s.getStartedServerState())
+      .withRestartedLabel(s.getRestartedLabel())
+      .withNodePort(getNonNegativeInt("nodePort", toInt(s.getNodePort())))
+      .withEnv(s.getEnv())
+      .withImage(s.getImage())
+      .withImagePullPolicy(s.getImagePullPolicy())
+      .withImagePullSecrets(s.getImagePullSecrets())
+      .withShutdownPolicy(s.getShutdownPolicy())
+      .withGracefulShutdownTimeout(getNonNegativeInt("gracefulShutdownTimeout", toInt(s.getGracefulShutdownTimeout())))
+      .withGracefulShutdownIgnoreSessions(toBool(s.getGracefulShutdownIgnoreSessions()))
+      .withGracefulShutdownWaitForSessions(toBool(s.getGracefulShutdownWaitForSessions()));
+    if (sc.getStartedServerState() == null) {
+      sc.setStartedServerState(SERVER_DEFAULTS.getStartedServerState());
+    }
+    if (sc.getImage() == null) {
+      sc.setImage(DEFAULT_IMAGE);
+    }
+    if (sc.getImagePullPolicy() == null) {
+      sc.setImagePullPolicy(getDefaultImagePullPolicy(sc.getImage()));
+    }
+    if (sc.getShutdownPolicy() == null) {
+      sc.setShutdownPolicy(SERVER_DEFAULTS.getShutdownPolicy());
+    }
+  }
+
+  protected String getDefaultImagePullPolicy(String image) {
+    if (image != null && image.endsWith(LATEST_IMAGE_SUFFIX)) {
+      return ALWAYS_IMAGEPULLPOLICY;
+    } else {
+      return IFNOTPRESENT_IMAGEPULLPOLICY;
+    }
+  }
+
+  protected int getMaxReplicas(int replicas, IntOrString maxSurge) {
+    String context = "maxSurge " + maxSurge;
+    int delta = 0;
+    if (maxSurge.isInteger()) {
+      delta = getNonNegativeInt("maxSurge", toInt(maxSurge.getIntValue()));
+    } else {
+      int percent = getPercent(context, maxSurge.getStrValue());
+      delta = getPercentage(replicas, percent);
+    }
+    return replicas + delta;
+  }
+
+  protected int getMinReplicas(int replicas, IntOrString maxUnavailable) {
+    String context = "maxUnavailable " + maxUnavailable;
+    int delta = 0;
+    if (maxUnavailable.isInteger()) {
+      delta = getNonNegativeInt("maxUnavailable", toInt(maxUnavailable.getIntValue()));
+    } else {
+      int percent = getPercent(context, maxUnavailable.getStrValue());
+      delta = getPercentage(replicas, percent);
+    }
+    if (delta > replicas) {
+      logWarning(context, " maxUnavailable must be less or equal to replicas (" + replicas + "), using " + replicas);
+      delta = replicas;
+    }
+    return replicas - delta;
+  }
+
+  protected NonClusteredServer getEffectiveNonClusteredServer(DomainSpec domainSpec, String serverName) {
+    NonClusteredServer rtn = new NonClusteredServer();
+    getEffectiveProperties(rtn, getNonClusteredServerParents(domainSpec, serverName), NON_CLUSTERED_SERVER_PROPERTY_NAMES);
+    return rtn;
+  }
+
+  protected ClusteredServer getEffectiveClusteredServer(DomainSpec domainSpec, String clusterName, String serverName) {
+    ClusteredServer rtn = new ClusteredServer();
+    getEffectiveProperties(rtn, getClusteredServerParents(domainSpec, clusterName, serverName), CLUSTERED_SERVER_PROPERTY_NAMES);
+    return rtn;
+  }
+
+  protected Cluster getEffectiveCluster(DomainSpec domainSpec, String clusterName) {
     Cluster rtn = new Cluster();
     getEffectiveProperties(rtn, getClusterParents(domainSpec, clusterName), CLUSTER_PROPERTY_NAMES);
     return rtn;
@@ -245,5 +364,55 @@ public class LifeCycleHelper {
     } catch (Exception e) {
       throw new AssertionError(e);
     }
+  }
+
+  protected int getPercentage(double value, double percent) {
+    double percentage = value*(percent/100.0);
+    return (int)(Math.ceil(percentage)); // round up to the next integer
+  }
+
+  protected int getPercent(String context, String val) {
+    if (val == null) {
+      logWarning(context, "value must not be null, using 0");
+      return 0;
+    }
+    String percentSuffix = "%";
+    if (!val.endsWith(percentSuffix)) {
+      logWarning(context, "value must end with '%', using 0");
+      return 0;
+    }
+    String percentString = val.substring(0, val.length() - percentSuffix.length());
+    int percent = 0;
+    try {
+      percent = Integer.parseInt(percentString);
+    } catch (NumberFormatException e) {
+      logWarning(context, "percent must be an integer, using 0");
+      return 0;
+    }
+    if (percent < 0 || 100 < percent) {
+      logWarning(context, "percent must >= 0 and <= 100, using 0");
+      return 0;
+    }
+    return percent;
+  }
+
+  protected int getNonNegativeInt(String context, int val) {
+    if (val < 0) {
+      logWarning(context, ": " + val + ", must be >= 0, using 0");
+      return 0;
+    }
+    return val;
+  }
+
+  protected void logWarning(String context, String message) {
+    LOGGER.warning(context + ": " + message); // TBD - do we need to i18n this?
+  }
+
+  protected int toInt(Integer val) {
+    return (val != null) ? val.intValue() : 0;
+  }
+
+  protected boolean toBool(Boolean val) {
+    return (val != null) ? val.booleanValue() : false;
   }
 }

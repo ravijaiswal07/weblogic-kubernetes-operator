@@ -9,7 +9,9 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.meterware.simplestub.Memento;
 import io.kubernetes.client.custom.IntOrString;
+import oracle.kubernetes.TestUtils;
 import static oracle.kubernetes.operator.KubernetesConstants.*;
 import static oracle.kubernetes.operator.create.KubernetesArtifactUtils.*;
 import static oracle.kubernetes.operator.create.YamlUtils.*;
@@ -28,6 +30,8 @@ import org.junit.Test;
  */
 public class LifeCycleHelperTest extends LifeCycleHelper {
 
+// TBD - how do we hide the logged warnings so that the test output looks clean?
+
   private static final String PROPERTY_STARTED_SERVER_STATE = "startedServerState";
   private static final String PROPERTY_RESTARTED_LABEL = "restartedLabel";
   private static final String PROPERTY_NODE_PORT = "nodePort";
@@ -44,6 +48,239 @@ public class LifeCycleHelperTest extends LifeCycleHelper {
   private static final String PROPERTY_REPLICAS = "replicas";
   private static final String PROPERTY_MAX_SURGE = "maxSurge";
   private static final String PROPERTY_MAX_UNAVAILABLE = "maxUnavailable";
+
+  @Test 
+  public void getEffectiveNonClusteredServerConfig_returnsCorrectConfig() {
+    String serverName = "server1";
+    NonClusteredServer server = newNonClusteredServer().withImage("image1");
+    DomainSpec domainSpec = newDomainSpec().withServer(serverName, server);
+    NonClusteredServerConfig ncsc = getEffectiveNonClusteredServerConfig(domainSpec, serverName);
+    // Just spot check a few properties
+    NonClusteredServerConfig actual = (new NonClusteredServerConfig())
+      .withServerName(ncsc.getServerName())
+      .withImage(ncsc.getImage())
+      .withImagePullPolicy(ncsc.getImagePullPolicy())
+      .withNonClusteredServerStartPolicy(ncsc.getNonClusteredServerStartPolicy());
+    NonClusteredServerConfig want = (new NonClusteredServerConfig())
+      .withServerName(serverName)
+      .withImage(server.getImage())
+      .withImagePullPolicy(IFNOTPRESENT_IMAGEPULLPOLICY)
+      .withNonClusteredServerStartPolicy(NON_CLUSTERED_SERVER_START_POLICY_ALWAYS);
+    assertThat(actual, equalTo(want));
+  }
+
+  @Test 
+  public void getEffectiveClusteredServerConfig_returnsCorrectConfig() {
+    String clusterName = "cluster1";
+    String serverName = "server1";
+    ClusteredServer server = newClusteredServer().withImage("image1");
+    Cluster cluster = newCluster().withServer(serverName, server);
+    DomainSpec domainSpec = newDomainSpec().withCluster(clusterName, cluster);
+    ClusteredServerConfig csc = getEffectiveClusteredServerConfig(domainSpec, clusterName, serverName);
+    // Just spot check a few properties
+    ClusteredServerConfig actual = (new ClusteredServerConfig())
+      .withServerName(csc.getServerName())
+      .withClusterName(csc.getClusterName())
+      .withImage(csc.getImage())
+      .withImagePullPolicy(csc.getImagePullPolicy())
+      .withClusteredServerStartPolicy(csc.getClusteredServerStartPolicy());
+    ClusteredServerConfig want = (new ClusteredServerConfig())
+      .withServerName(serverName)
+      .withClusterName(clusterName)
+      .withImage(server.getImage())
+      .withImagePullPolicy(IFNOTPRESENT_IMAGEPULLPOLICY)
+      .withClusteredServerStartPolicy(CLUSTERED_SERVER_START_POLICY_IF_NEEDED);
+    assertThat(actual, equalTo(want));
+  }
+
+  @Test 
+  public void getEffectiveClusterConfig_returnsCorrectConfig() {
+    String clusterName = "cluster1";
+    Cluster cluster = newCluster().withReplicas(100).withMaxSurge(newIntOrString("30%"));
+    DomainSpec domainSpec = newDomainSpec().withCluster(clusterName, cluster);
+    ClusterConfig cc = getEffectiveClusterConfig(domainSpec, clusterName);
+    // Just spot check a few properties
+    ClusterConfig actual = (new ClusterConfig())
+      .withClusterName(cc.getClusterName())
+      .withReplicas(cc.getReplicas())
+      .withMinReplicas(cc.getMinReplicas())
+      .withMaxReplicas(cc.getMaxReplicas());
+    ClusterConfig want = (new ClusterConfig())
+      .withClusterName(clusterName)
+      .withReplicas(cluster.getReplicas())
+      .withMinReplicas(80) // 100 - 20%(100) since maxUnavailable defaults to 20%
+      .withMaxReplicas(130); // 100 + 30%(100)
+    assertThat(actual, equalTo(want));
+  }
+
+  @Test
+  public void toNonClusteredServerConfig_createsCorrectConfig() {
+    String serverName = "server1";
+    NonClusteredServer ncs = newNonClusteredServer()
+      .withNonClusteredServerStartPolicy(NON_CLUSTERED_SERVER_START_POLICY_NEVER)
+      .withRestartedLabel("label1");
+    NonClusteredServerConfig ncsc = toNonClusteredServerConfig(serverName, ncs);
+    // toNonClusteredServer calls copyServerProperties, which fills in the default values
+    // we've already tested this separately.
+    // just test that toNonClusteredServer filled in the server name,
+    // one property from the server level (restartedLabel) and
+    // nonClusteredServerStartPolicy (which copyServerProperties doesn't handle)
+    NonClusteredServerConfig actual = (new NonClusteredServerConfig())
+      .withServerName(ncsc.getServerName())
+      .withRestartedLabel(ncsc.getRestartedLabel())
+      .withNonClusteredServerStartPolicy(ncsc.getNonClusteredServerStartPolicy());
+    NonClusteredServerConfig want = (new NonClusteredServerConfig())
+      .withServerName(serverName)
+      .withRestartedLabel(ncs.getRestartedLabel())
+      .withNonClusteredServerStartPolicy(ncs.getNonClusteredServerStartPolicy());
+    assertThat(actual, equalTo(want));
+  }
+
+  @Test
+  public void toClusteredServerConfig_createsCorrectConfig() {
+    String clusterName = "cluster1";
+    String serverName = "server1";
+    ClusteredServer cs = newClusteredServer()
+      .withClusteredServerStartPolicy(CLUSTERED_SERVER_START_POLICY_NEVER)
+      .withRestartedLabel("label1");
+    ClusteredServerConfig csc = toClusteredServerConfig(clusterName, serverName, cs);
+    // toClusteredServer calls copyServerProperties, which fills in the default values
+    // we've already tested this separately.
+    // just test that toClusteredServer filled in the cluster name, server name,
+    // one property from the server level (restartedLabel) and
+    // clusteredServerStartPolicy (which copyServerProperties doesn't handle)
+    ClusteredServerConfig actual = (new ClusteredServerConfig())
+      .withClusterName(csc.getClusterName())
+      .withServerName(csc.getServerName())
+      .withRestartedLabel(csc.getRestartedLabel())
+      .withClusteredServerStartPolicy(csc.getClusteredServerStartPolicy());
+    ClusteredServerConfig want = (new ClusteredServerConfig())
+      .withClusterName(clusterName)
+      .withServerName(serverName)
+      .withRestartedLabel(cs.getRestartedLabel())
+      .withClusteredServerStartPolicy(cs.getClusteredServerStartPolicy());
+    assertThat(actual, equalTo(want));
+  }
+
+  @Test
+  public void toClusterConfig_createsCorrectConfig() {
+    String clusterName = "cluster1";
+    Cluster cluster = newCluster()
+      .withReplicas(10)
+      .withMaxSurge(newIntOrString("11%"))
+      .withMaxUnavailable(newIntOrString(3));
+    ClusterConfig actual = toClusterConfig(clusterName, cluster);
+    ClusterConfig want = (new ClusterConfig())
+      .withClusterName(clusterName)
+      .withReplicas(cluster.getReplicas())
+      .withMaxReplicas(12)
+      .withMinReplicas(7);
+    assertThat(actual, equalTo(want));
+  }
+
+  @Test
+  public void copyServerProperties_allPropertiesSet_copiesProperties() {
+    String serverName = "server1";
+    Server s = (new Server())
+      .withStartedServerState(STARTED_SERVER_STATE_ADMIN)
+      .withRestartedLabel("label1")
+      .withNodePort(30003)
+      .withEnv(newEnvVarList().addElement(newEnvVar().name("env1").value("val1")))
+      .withImage("image1")
+      .withImagePullPolicy(NEVER_IMAGEPULLPOLICY)
+      .withImagePullSecrets(newLocalObjectReferenceList().addElement(newLocalObjectReference().name("secret1")))
+      .withShutdownPolicy(SHUTDOWN_POLICY_GRACEFUL_SHUTDOWN)
+      .withGracefulShutdownTimeout(120)
+      .withGracefulShutdownIgnoreSessions(true)
+      .withGracefulShutdownWaitForSessions(true);
+    ServerConfig actual = new ServerConfig();
+    copyServerPropertiesToServerConfig(serverName, s, actual);
+    ServerConfig want = (new ServerConfig())
+      .withServerName(serverName)
+      .withStartedServerState(s.getStartedServerState())
+      .withRestartedLabel(s.getRestartedLabel())
+      .withNodePort(s.getNodePort())
+      .withEnv(s.getEnv())
+      .withImage(s.getImage())
+      .withImagePullPolicy(s.getImagePullPolicy())
+      .withImagePullSecrets(s.getImagePullSecrets())
+      .withShutdownPolicy(s.getShutdownPolicy())
+      .withGracefulShutdownTimeout(s.getGracefulShutdownTimeout())
+      .withGracefulShutdownIgnoreSessions(s.getGracefulShutdownIgnoreSessions())
+      .withGracefulShutdownWaitForSessions(s.getGracefulShutdownWaitForSessions());
+    assertThat(actual, equalTo(want));
+  }
+
+  @Test
+  public void copyServerProperties_noPropertiesSet_fillsInDefaultValues() {
+    ServerConfig actual = new ServerConfig();
+    copyServerPropertiesToServerConfig(null, newServer(), actual);
+    ServerConfig want = (new ServerConfig())
+      .withStartedServerState(STARTED_SERVER_STATE_RUNNING)
+      .withNodePort(0)
+      .withImage(DEFAULT_IMAGE)
+      .withImagePullPolicy(IFNOTPRESENT_IMAGEPULLPOLICY)
+      .withShutdownPolicy(SHUTDOWN_POLICY_FORCED_SHUTDOWN)
+      .withGracefulShutdownTimeout(0)
+      .withGracefulShutdownIgnoreSessions(false)
+      .withGracefulShutdownWaitForSessions(false);
+    assertThat(actual, equalTo(want));
+  }
+
+  @Test
+  public void getDefaultImagePullPolicy_nullImage_returns_ifNotPresent() {
+    assertThat(getDefaultImagePullPolicy(null), equalTo(IFNOTPRESENT_IMAGEPULLPOLICY));
+  }
+
+  @Test
+  public void getDefaultImagePullPolicy_imageDoesNotEndWithLatest_returns_ifNotPresent() {
+    assertThat(getDefaultImagePullPolicy("image1"), equalTo(IFNOTPRESENT_IMAGEPULLPOLICY));
+  }
+
+  @Test
+  public void getImagePullPolicy_imageEndsWithLatest_returns_always() {
+    assertThat(getDefaultImagePullPolicy("image1" + LATEST_IMAGE_SUFFIX), equalTo(ALWAYS_IMAGEPULLPOLICY));
+  }
+
+  @Test
+  public void getMaxReplicas_intMaxSurge_returns_replicasPlusMaxSurge() {
+    int replicas = 10;
+    int maxUnavailable = 2;
+    assertThat(getMaxReplicas(replicas, new IntOrString(maxUnavailable)), equalTo(replicas + maxUnavailable));
+  }
+
+  @Test
+  public void getMaxReplicas_percentMaxSurge_returns_replicasPlusPercentageOfReplica() {
+    assertThat(getMaxReplicas(10, new IntOrString("21%")), equalTo(13));
+  }
+
+  @Test
+  public void getMinReplicas_zeroReplicas_intMaxUnavailable_returns_0() {
+    assertThat(getMinReplicas(0, new IntOrString(2)), equalTo(0));
+  }
+
+  @Test
+  public void getMinReplicas_zeroReplicas_percentMaxUnavailable_returns_0() {
+    assertThat(getMinReplicas(0, new IntOrString("100%")), equalTo(0));
+  }
+
+  @Test
+  public void getMinReplicas_intMaxUnavailableLessThanReplicas_returns_replicasMinusMaxUnavailable() {
+    int replicas = 10;
+    int maxUnavailable = 2;
+    assertThat(getMinReplicas(replicas, new IntOrString(maxUnavailable)), equalTo(replicas - maxUnavailable));
+  }
+
+  @Test
+  public void getMinReplicas_intMaxUnavailableGreaterThanReplicas_returns_0() {
+    int replicas = 10;
+    assertThat(getMinReplicas(10, new IntOrString(11)), equalTo(0));
+  }
+
+  @Test
+  public void getMinReplicas_percentMaxUnavailable_returns_replicasMinusPercentageOfReplicas() {
+    assertThat(getMinReplicas(10, new IntOrString("22%")), equalTo(7));
+  }
 
   @Test 
   public void getEffectiveClusteredServer_haveServer_haveClusterHasServerDefaults_haveClusterDefaultsHasServerDefaults_haveClusteredServerDefaults_haveServerDefaults_returnsCorrectParents() {
@@ -457,6 +694,112 @@ public class LifeCycleHelperTest extends LifeCycleHelper {
     assertThat(bi.getBeanDescriptor().getBeanClass(), equalTo(Server.class));
   }
 
+  @Test
+  public void test_getPercent_nonFraction_doesntRoundUp() {
+    assertThat(getPercentage(10, 50), equalTo(5));
+  }
+
+  @Test
+  public void test_getPercent_fraction_roundsUp() {
+    assertThat(getPercentage(10, 11), equalTo(2));
+  }
+
+  @Test
+  public void test_getPercent_zero_returns_zero() {
+    assertThat(getPercentage(0, 100), equalTo(0));
+  }
+
+  @Test
+  public void test_getPercent_null_returns_0() {
+    assertThat(getPercent("reason", null), equalTo(0));
+  }
+
+  @Test
+  public void test_getPercent_noPercentSign_returns_0() {
+    assertThat(getPercent("reason", "123"), equalTo(0));
+  }
+
+  @Test
+  public void test_getPercent_nonInteger_returns_0() {
+    assertThat(getPercent("reason", "12.3%"), equalTo(0));
+  }
+
+  @Test
+  public void test_getPercent_negative_returns_0() {
+    assertThat(getPercent("reason", "-1%"), equalTo(0));
+  }
+
+  @Test
+  public void test_getPercent_zero_returns_0() {
+    int percent = 0;
+    assertThat(getPercent("reason", percent + "%"), equalTo(percent));
+  }
+
+  @Test
+  public void test_getPercent_100_returns_0() {
+    int percent = 100;
+    assertThat(getPercent("reason", percent + "%"), equalTo(percent));
+  }
+
+  @Test
+  public void test_getPercent_over100_returns_0() {
+    assertThat(getPercent("reason", "101%"), equalTo(0));
+  }
+
+  @Test
+  public void test_getPercent_between0And100_returns_percent() {
+    int percent = 54;
+    assertThat(getPercent("reason", percent + "%"), equalTo(percent));
+  }
+
+  @Test
+  public void test_getNonNegativeInt_positveValue_returns_value() {
+    int val = 5;
+    assertThat(getNonNegativeInt("reason", val), equalTo(val));
+  }
+
+  @Test
+  public void test_getNonNegativeInt_zero_returns_0() {
+    assertThat(getNonNegativeInt("reason", 0), equalTo(0));
+  }
+
+  @Test
+  public void test_getNonNegativeInt_negativeValue_returns_0() {
+    assertThat(getNonNegativeInt("reason", -1), equalTo(0));
+  }
+
+  @Test
+  public void toInt_int_returns_int() {
+    int val = 7;
+    assertThat(toInt(new Integer(val)), equalTo(val));
+  }
+
+  @Test
+  public void toInt_null_returns_0() {
+    assertThat(toInt(null), equalTo(0));
+  }
+
+  @Test
+  public void toBool_val_returns_val() {
+    boolean val = true;
+    assertThat(toBool(new Boolean(val)), equalTo(val));
+  }
+
+  @Test
+  public void toBool_null_returns_false() {
+    assertThat(toBool(null), equalTo(false));
+  }
+
+  @Override
+  protected void logWarning(String context, String message) {
+    Memento memento = TestUtils.silenceOperatorLogger();
+    try {
+      super.logWarning(context, message);
+    } finally {
+      memento.revert();
+    }
+  }
+
   private NonClusteredServer withNonClusteredServerDefaults(NonClusteredServer nonClusteredServer) {
     withServerDefaults(nonClusteredServer);
     return nonClusteredServer.withNonClusteredServerStartPolicy(NON_CLUSTERED_SERVER_START_POLICY_ALWAYS);
@@ -474,7 +817,7 @@ public class LifeCycleHelperTest extends LifeCycleHelper {
       // no nodePort value
       // no env value
       .withImage(DEFAULT_IMAGE)
-      .withImagePullPolicy(IFNOTPRESENT_IMAGEPULLPOLICY)
+      // no default image pull policy since it gets computed based on the image
       // no imagePullSecrets value
       .withShutdownPolicy(SHUTDOWN_POLICY_FORCED_SHUTDOWN)
       .withGracefulShutdownTimeout(new Integer(0))
