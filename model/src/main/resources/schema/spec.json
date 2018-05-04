@@ -68,6 +68,33 @@
       "description": "Replicas is the desired number of managed servers running in each WebLogic cluster that is not configured under clusterStartup.  Provided so that administrators can scale the Domain resource.  Ignored if startupControl is not AUTO.",
       "type": "integer",
       "format": "int32"
+     },
+     "serverDefaults": {
+       "description": "Default desired state of servers.",
+       "${ref}": "server.json"
+     },
+     "nonClusteredServerDefaults": {
+       "description": "Default desired state of non-clustered servers.",
+       "${ref}": "nonclustered-server.json"
+     },
+     "servers": {
+      "description": "Maps the name of a non-clustered server to its desired state.",
+      "type": "object",
+      "additionalProperties": {
+       "$ref": "nonclustered-server.json"
+      }
+     },
+     "clusterDefaults": {
+       "description": "Default desired state of clusters.",
+       "${ref}": "cluster-params.json"
+     },
+     "clusters": {
+      "description": "Maps the name of a cluster to its desired state.",
+      "type": "object",
+      "additionalProperties": {
+       "$ref": "cluster.json"
+      }
      }
     }
- }
+}
+

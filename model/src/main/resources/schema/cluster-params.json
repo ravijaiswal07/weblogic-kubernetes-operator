@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "javaType": "oracle.kubernetes.weblogic.domain.v1.ClusterParams",
+  "description": "ClusterParams describes the desired state of a cluster.",
+  "properties": {
+    "replicas": {
+      "description": "Replicas is the desired number of managed servers running in the WebLogic cluster.  Provided so that administrators can scale the Domain resource.",
+      "type": "integer",
+      "format": "int32"
+    },
+    "maxSurge": {
+      "description": "The maximum number of extra servers can be started when doing a rolling restart of the cluster. Value can be an absolute number (ex: 5) or a percentage of replicas (ex: 10%). This can not be 0 if MaxUnavailable is 0. Absolute number is calculated from percentage by rounding up.",
+      "type": "object",
+      "javaType": "io.kubernetes.client.custom.IntOrString"
+    },
+    "maxUnavailable": {
+      "description": "The maximum number of servers that can be unavailable when doing restart of the cluster. Value can be an absolute number (ex: 5) or a percentage of replicas (ex: 10%). Absolute number is calculated from percentage by rounding down. This can not be 0 if MaxSurge is 0.",
+      "type": "object",
+      "javaType": "io.kubernetes.client.custom.IntOrString"
+    },
+    "serverDefaults": {
+       "description": "Default desired state of servers in this cluster.",
+       "${ref}": "clustered-server.json"
+    }
+  }
+}

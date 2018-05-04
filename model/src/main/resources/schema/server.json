@@ -1,0 +1,60 @@
+{
+  "type": "object",
+  "javaType": "oracle.kubernetes.weblogic.domain.v1.Server",
+  "description": "Server describes the desired state of a server.",
+  "properties": {
+    "startedServerState": {
+      "description": "Desired startup state.  Legal values are RUNNING and ADMIN.",
+      "type": "string"
+    },
+    "restartedLabel": {
+      "description": "Indicates that a server has been restarted.  If a running server's pod does not have this label, then the operator needs to restart the server and attach this label to it.",
+      "type" : "string"
+    },
+    "nodePort": {
+      "description": "NodePort for the server.  The port on each node on which this managed server will be exposed.  If specified, this value must be an unused port.  By default, the server will not be exposed outside the Kubernetes cluster.",
+      "type": "integer"
+    },
+    "env": {
+      "description": "Environment variables to pass while starting this server.  If not specified, then the environment variables in config.xml will be used instead.",
+      "type": "array",
+      "items": {
+        "javaType": "io.kubernetes.client.models.V1EnvVar",
+        "type": "object"
+      }
+    },
+    "image": {
+      "description": "WebLogic Docker image.  Defaults to store/oracle/weblogic:12.2.1.3",
+      "type": "string"
+    },
+    "imagePullPolicy": {
+      "description": "Image pull policy. Legal values are Always, Never and IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
+      "type": "string"
+    },
+    "imagePullSecrets": {
+      "description": "An optional list of references to secrets in the same namespace to use for pulling the WebLogic Docker image.",
+      "type": "array",
+      "items": {
+         "javaType": "io.kubernetes.client.models.V1LocalObjectReference",
+         "type": "object"
+      }
+    },
+    "shutdownPolicy": {
+      "description": "Controls how the operator will stop this server.  Legal values are GRACEFUL_SHUTDOWN and FORCED_SHUTDOWN.",
+      "type": "string"
+    },
+    "gracefulShutdownTimeout": {
+      "description": "Number of seconds to wait before aborting inflight work and force shutting down the server.",
+      "type": "integer",
+      "format": "int32"
+    },
+    "gracefulShutdownIgnoreSessions": {
+      "description": "Set to <code>true</code> to ignore pending HTTP sessions during inflight work handling.",
+      "type": "boolean"
+    },
+    "gracefulShutdownWaitForSessions": {
+      "description": "Set to <code>true</code> to wait for all HTTP sessions during inflight work handling; <code>false</code> to wait for non-persisted.",
+      "type": "boolean"
+    }
+  }
+}

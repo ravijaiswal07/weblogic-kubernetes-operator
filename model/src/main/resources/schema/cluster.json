@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "javaType": "oracle.kubernetes.weblogic.domain.v1.Cluster",
+  "description": "Cluster describes the desired state of a cluster.",
+  "extends" : {
+    "$ref": "cluster-params.json"
+  },
+  "properties": {
+    "servers": {
+      "description": "Maps the name of a server in this cluster to its desired state.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "nonclustered-server.json"
+      }
+    }
+  }
+}

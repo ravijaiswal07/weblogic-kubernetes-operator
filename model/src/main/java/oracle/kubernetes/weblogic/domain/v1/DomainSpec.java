@@ -4,7 +4,9 @@
 package oracle.kubernetes.weblogic.domain.v1;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import com.google.gson.annotations.Expose;
@@ -112,6 +114,46 @@ public class DomainSpec {
     @Expose
     @Valid
     private List<ClusterStartup> clusterStartup = new ArrayList<ClusterStartup>();
+    /**
+     * Default desired state of servers.
+     * 
+     */
+    @SerializedName("serverDefaults")
+    @Expose
+    @Valid
+    private Server serverDefaults;
+    /**
+     * Default desired state of non-clustered servers.
+     * 
+     */
+    @SerializedName("nonClusteredServerDefaults")
+    @Expose
+    @Valid
+    private NonClusteredServer nonClusteredServerDefaults;
+    /**
+     * Maps the name of a non-clustered server to its desired state.
+     * 
+     */
+    @SerializedName("servers")
+    @Expose
+    @Valid
+    private Map<String, NonClusteredServer> servers = new HashMap<String, NonClusteredServer>();
+    /**
+     * Default desired state of clusters.
+     * 
+     */
+    @SerializedName("clusterDefaults")
+    @Expose
+    @Valid
+    private ClusterParams clusterDefaults;
+    /**
+     * Maps the name of a cluster to its desired state.
+     * 
+     */
+    @SerializedName("clusters")
+    @Expose
+    @Valid
+    private Map<String, Cluster> clusters = new HashMap<String, Cluster>();
     /**
      * Replicas is the desired number of managed servers running in each WebLogic cluster that is not configured under clusterStartup.  Provided so that administrators can scale the Domain resource.  Ignored if startupControl is not AUTO.
      * 
@@ -422,6 +464,174 @@ public class DomainSpec {
     }
 
     /**
+     * Default desired state of servers.
+     * @return server defaults
+     */
+    public Server getServerDefaults() {
+        return serverDefaults;
+    }
+
+    /**
+     * Default desired state of servers.
+     * @param serverDefaults server defaults
+     */
+    public void setServerDefaults(Server serverDefaults) {
+        this.serverDefaults = serverDefaults;
+    }
+
+    /**
+     * Default desired state of servers.
+     * @param serverDefaults server defaults
+     * @return this
+     */
+    public DomainSpec withServerDefaults(Server serverDefaults) {
+        this.serverDefaults = serverDefaults;
+        return this;
+    }
+
+    /**
+     * Default desired state of non-clustered servers.
+     * @return server defaults
+     */
+    public NonClusteredServer getNonClusteredServerDefaults() {
+        return nonClusteredServerDefaults;
+    }
+
+    /**
+     * Default desired state of non-clustered servers.
+     * @param nonClusteredServerDefaults non-clustered server defaults
+     */
+    public void setNonClusteredServerDefaults(NonClusteredServer nonClusteredServerDefaults) {
+        this.nonClusteredServerDefaults = nonClusteredServerDefaults;
+    }
+
+    /**
+     * Default desired state of non-clustered servers.
+     * @param nonClusteredServerDefaults non-clustered server defaults
+     * @return this
+     */
+    public DomainSpec withNonClusteredServerDefaults(NonClusteredServer nonClusteredServerDefaults) {
+        this.nonClusteredServerDefaults = nonClusteredServerDefaults;
+        return this;
+    }
+
+    /**
+     * Maps the name of a non-clustered server to its desired state.
+     * @return servers
+     */
+    public  Map<String, NonClusteredServer> getServers() {
+        return this.servers;
+    }
+
+    /**
+     * Maps the name of a non-clustered server to its desired state.
+     * @param clusters clusters
+     */
+    public void setServers(Map<String, NonClusteredServer> servers) {
+        this.servers = servers;
+    }
+    /**
+     * Maps the name of a non-clustered server to its desired state.
+     * @param clusters clusters
+     * @return this
+     */
+    public DomainSpec withServers(Map<String, NonClusteredServer> servers) {
+        this.servers = servers;
+        return this;
+    }
+
+    /**
+     * Maps the name of a non-clustered server to its desired state.
+     * @param name cluster name
+     * @param cluster cluster
+     */
+    public void setServer(String name, NonClusteredServer server) {
+        this.servers.put(name, server);
+    }
+
+    /**
+     * Maps the name of a non-clustered server to its desired state.
+     * @param name name
+     * @param cluster cluster
+     * @return this
+     */
+    public DomainSpec withServer(String name, NonClusteredServer server) {
+        this.servers.put(name, server);
+        return this;
+    }
+
+    /**
+     * Default desired state of clusters.
+     * @return cluster defaults
+     */
+    public ClusterParams getClusterDefaults() {
+        return clusterDefaults;
+    }
+
+    /**
+     * Default desired state of clusters.
+     * @param clusterDefaults cluster defaults
+     */
+    public void setClusterDefaults(ClusterParams clusterDefaults) {
+        this.clusterDefaults = clusterDefaults;
+    }
+
+    /**
+     * Default desired state of clusters.
+     * @param clusterDefaults cluster defaults
+     * @return this
+     */
+    public DomainSpec withClusterDefaults(ClusterParams clusterDefaults) {
+        this.clusterDefaults = clusterDefaults;
+        return this;
+    }
+
+    /**
+     * Maps the name of a cluster to its desired state.
+     * @return servers
+     */
+    public  Map<String, Cluster> getClusters() {
+        return this.clusters;
+    }
+
+    /**
+     * Maps the name of a cluster to its desired state.
+     * @param servers servers
+     */
+    public void setClusters(Map<String, Cluster> clusters) {
+        this.clusters = clusters;
+    }
+    /**
+     * Maps the name of a cluster to its desired state.
+     * @param servers servers
+     * @return this
+     */
+    public DomainSpec withClusters(Map<String, Cluster> clusters) {
+        this.clusters = clusters;
+        return this;
+    }
+
+    /**
+     * Maps the name of a cluster to its desired state.
+     * @param name server name
+     * @param server server
+     */
+    public void setCluster(String name, Cluster cluster) {
+        this.clusters.put(name, cluster);
+    }
+
+    /**
+     * Maps the name of a cluster to its desired state.
+     * @param name name
+     * @param server server
+     * @return this
+     */
+    public DomainSpec withCluster(String name, Cluster cluster) {
+        this.clusters.put(name, cluster);
+        return this;
+    }
+
+    /**
      * Replicas is the desired number of managed servers running in each WebLogic cluster that is not configured under clusterStartup.  Provided so that administrators can scale the Domain resource.  Ignored if startupControl is not AUTO.
      * @return replicas
      */
@@ -447,14 +657,48 @@ public class DomainSpec {
         return this;
     }
 
+/*
+ * Temp scaffolding attribute to tell the operator whether to use the old cluster/server start rules or the new ones
+ * This needs to be removed once the operator and all the tests have caught up to the new models.
+ * null implies use the old rules.
+ */
+@SerializedName("useNewLifeCycleConfig")
+@Expose
+private Boolean useNewLifeCycleConfig;
+
+/**
+ * Temp scaffolding attribute to tell the operator whether to use the old cluster/server start rules or the new ones
+ * This needs to be removed once the operator and all the tests have caught up to the new models.
+ * null implies use the old rules.
+ * @return use old lifecycle config
+ */
+public Boolean getUseNewLifeCycleConfig() { return useNewLifeCycleConfig; }
+
+/**
+ * Temp scaffolding attribute to tell the operator whether to use the old cluster/server start rules or the new ones
+ * This needs to be removed once the operator and all the tests have caught up to the new models.
+ * null implies use the old rules.
+ * @param useNewLifeCycleCOnfig use new lifecycle config
+ */
+public void setUseNewLifeCycleConfig(Boolean useNewLifeCycleConfig) { this.useNewLifeCycleConfig = useNewLifeCycleConfig; }
+
+/**
+ * Temp scaffolding attribute to tell the operator whether to use the old cluster/server start rules or the new ones
+ * This needs to be removed once the operator and all the tests have caught up to the new models.
+ * null implies use the old rules.
+ * @param useNewLifeCycleCOnfig use new lifecycle config
+ * @return this
+ */
+public DomainSpec withUseNewLifeCycleConfig(Boolean useNewLifeCycleConfig) { this.useNewLifeCycleConfig = useNewLifeCycleConfig; return this;}
+
     @Override
     public String toString() {
-        return new ToStringBuilder(this).append("domainUID", domainUID).append("domainName", domainName).append("image", image).append("imagePullPolicy", imagePullPolicy).append("adminSecret", adminSecret).append("asName", asName).append("asPort", asPort).append("exportT3Channels", exportT3Channels).append("startupControl", startupControl).append("serverStartup", serverStartup).append("clusterStartup", clusterStartup).append("replicas", replicas).toString();
+        return new ToStringBuilder(this).append(useNewLifeCycleConfig).append("domainUID", domainUID).append("domainName", domainName).append("image", image).append("imagePullPolicy", imagePullPolicy).append("adminSecret", adminSecret).append("asName", asName).append("asPort", asPort).append("exportT3Channels", exportT3Channels).append("startupControl", startupControl).append("serverStartup", serverStartup).append("clusterStartup", clusterStartup).append("replicas", replicas).append("serverDefaults", serverDefaults).append("nonClusteredServerDefaults", nonClusteredServerDefaults).append("servers", servers).append("clusterDefaults", clusterDefaults).append("clusters", clusters).toString();
     }
 
     @Override
     public int hashCode() {
-        return new HashCodeBuilder().append(image).append(imagePullPolicy).append(asName).append(replicas).append(startupControl).append(domainUID).append(clusterStartup).append(asPort).append(domainName).append(exportT3Channels).append(serverStartup).append(adminSecret).toHashCode();
+        return new HashCodeBuilder().append(useNewLifeCycleConfig).append(image).append(imagePullPolicy).append(asName).append(clusterDefaults).append(replicas).append(startupControl).append(domainUID).append(clusterStartup).append(asPort).append(servers).append(domainName).append(exportT3Channels).append(serverStartup).append(serverDefaults).append(adminSecret).append(nonClusteredServerDefaults).append(clusters).toHashCode();
     }
 
     @Override
@@ -466,7 +710,8 @@ public class DomainSpec {
             return false;
         }
         DomainSpec rhs = ((DomainSpec) other);
-        return new EqualsBuilder().append(image, rhs.image).append(imagePullPolicy, rhs.imagePullPolicy).append(asName, rhs.asName).append(replicas, rhs.replicas).append(startupControl, rhs.startupControl).append(domainUID, rhs.domainUID).append(clusterStartup, rhs.clusterStartup).append(asPort, rhs.asPort).append(domainName, rhs.domainName).append(exportT3Channels, rhs.exportT3Channels).append(serverStartup, rhs.serverStartup).append(adminSecret, rhs.adminSecret).isEquals();
+        return new EqualsBuilder().append(useNewLifeCycleConfig, rhs.useNewLifeCycleConfig).append(image, rhs.image).append(imagePullPolicy, rhs.imagePullPolicy).append(asName, rhs.asName).append(clusterDefaults, rhs.clusterDefaults).append(replicas, rhs.replicas).append(startupControl, rhs.startupControl).append(domainUID, rhs.domainUID).append(clusterStartup, rhs.clusterStartup).append(asPort, rhs.asPort).append(servers, rhs.servers).append(domainName, rhs.domainName).append(exportT3Channels, rhs.exportT3Channels).append(serverStartup, rhs.serverStartup).append(serverDefaults, rhs.serverDefaults).append(adminSecret, rhs.adminSecret).append(nonClusteredServerDefaults, rhs.nonClusteredServerDefaults).append(clusters, rhs.clusters).isEquals();
     }
 
 }
+
