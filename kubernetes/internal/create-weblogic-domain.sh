@@ -117,6 +117,16 @@ function initAndValidateOutputDir {
 }
 
 #
+# Function to validate the version of the inputs file
+#
+function validateVersion {
+  local requiredVersion='create-weblogic-domain-inputs-v1'
+  if [ "${version}" != "${requiredVersion}" ]; then
+    validationError "Invalid version: \"${version}\".  Must be ${requiredVersion}."
+  fi
+}
+
+#
 # Function to ensure the domain uid is lowercase
 #
 function validateDomainUid {
@@ -385,8 +395,10 @@ function initialize {
     weblogicCredentialsSecretName \
     namespace \
     javaOptions \
-    t3PublicAddress
+    t3PublicAddress \
+    version
 
+<<<<<<< HEAD
   if [ "${generateHelm}" = false ]; then
 
     validateIntegerInputParamsSpecified \
@@ -404,6 +416,7 @@ function initialize {
       exposeAdminT3Channel \
       exposeAdminNodePort
 
+    validateVersion
     validateDomainUid
     validateNamespace
     validateClusterName
@@ -622,6 +635,7 @@ function createYamlFiles {
     sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${voyagerOutput}
     sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${voyagerOutput}
     sed -i -e "s:%CLUSTER_NAME%:${clusterName}:g" ${voyagerOutput}
+    sed -i -e "s:%CLUSTER_NAME_LC%:${clusterNameLC}:g" ${voyagerOutput}
     sed -i -e "s:%MANAGED_SERVER_PORT%:${managedServerPort}:g" ${voyagerOutput}
     sed -i -e "s:%LOAD_BALANCER_WEB_PORT%:$loadBalancerWebPort:g" ${voyagerOutput}
     sed -i -e "s:%LOAD_BALANCER_DASHBOARD_PORT%:$loadBalancerDashboardPort:g" ${voyagerOutput}
@@ -739,38 +753,55 @@ function setupVoyagerLoadBalancer {
   # deploy Voyager Ingress resource
   kubectl apply -f ${voyagerOutput}
 
-    echo Checking Voyager Ingress resource
-    local maxwaitsecs=100
-    local mstart=`date +%s`
-    while : ; do
-      local mnow=`date +%s`
-      local vdep=`kubectl get ingresses.voyager.appscode.com -n ${namespace} | grep ${domainUID}-voyager | wc | awk ' { print $1; } '`
-      if [ "$vdep" = "1" ]; then
-        echo 'The Voyager Ingress resource ${domainUID}-voyager is created successfully.'
-        break
-      fi
-      if [ $((mnow - mstart)) -gt $((maxwaitsecs)) ]; then
-        fail "The Voyager Ingress resource ${domainUID}-voyager was not created."
-      fi
-      sleep 5
-    done
+  echo Checking Voyager Ingress resource
+  local maxwaitsecs=100
+  local mstart=`date +%s`
+  while : ; do
+    local mnow=`date +%s`
+    local vdep=`kubectl get ingresses.voyager.appscode.com -n ${namespace} | grep ${domainUID}-voyager | wc | awk ' { print $1; } '`
+    if [ "$vdep" = "1" ]; then
+      echo "The Voyager Ingress resource ${domainUID}-voyager is created successfully."
+      break
+    fi
+    if [ $((mnow - mstart)) -gt $((maxwaitsecs)) ]; then
+      fail "The Voyager Ingress resource ${domainUID}-voyager was not created."
+    fi
+    sleep 5
+  done
 
-    echo Checking Voyager service
-    local maxwaitsecs=100
-    local mstart=`date +%s`
-    while : ; do
-      local mnow=`date +%s`
-      local vscv=`kubectl get service ${domainUID}-voyager-stats -n ${namespace} | grep ${domainUID}-voyager-stats | wc | awk ' { print $1; } '`
-      if [ "$vscv" = "1" ]; then
-        echo 'The service ${domainUID}-voyager-stats is created successfully.'
-        break
-      fi
-      if [ $((mnow - mstart)) -gt $((maxwaitsecs)) ]; then
-        fail "The service ${domainUID}-voyager-stats was not created."
-      fi
-      sleep 5
-    done
+  echo Checking HAProxy pod is running
+  local maxwaitsecs=100
+  local mstart=`date +%s`
+  while : ; do
+    local mnow=`date +%s`
+    local st=`kubectl get pod -n ${namespace} | grep ^voyager-${domainUID}-voyager- | awk ' { print $3; } '`
+    if [ "$st" = "Running" ]; then
+      echo "The HAProxy pod for Voyaer Ingress ${domainUID}-voyager is created successfully."
+      break
+    fi
+    if [ $((mnow - mstart)) -gt $((maxwaitsecs)) ]; then
+      fail "The HAProxy pod for Voyaer Ingress ${domainUID}-voyager  was not created or running."
+    fi
+    sleep 5
+  done
+
+  echo Checking Voyager service
+  local maxwaitsecs=100
+  local mstart=`date +%s`
+  while : ; do
+    local mnow=`date +%s`
+    local vscv=`kubectl get service ${domainUID}-voyager-stats -n ${namespace} | grep ${domainUID}-voyager-stats | wc | awk ' { print $1; } '`
+    if [ "$vscv" = "1" ]; then
+      echo 'The service ${domainUID}-voyager-stats is created successfully.'
+      break
+    fi
+    if [ $((mnow - mstart)) -gt $((maxwaitsecs)) ]; then
+      fail "The service ${domainUID}-voyager-stats was not created."
+    fi
+    sleep 5
+  done
 }
+
 #
 # Deploy traefik load balancer
 #

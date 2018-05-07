@@ -24,6 +24,7 @@ import io.kubernetes.client.models.V1ConfigMap;
 import io.kubernetes.client.models.V1ObjectMeta;
 import oracle.kubernetes.operator.KubernetesConstants;
 import oracle.kubernetes.operator.LabelConstants;
+import oracle.kubernetes.operator.VersionConstants;
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
@@ -98,7 +99,8 @@ public class ConfigMapHelper {
               }
             });
             return doNext(create, packet);
-          } else if (AnnotationHelper.checkFormatAnnotation(result.getMetadata()) && result.getData().entrySet().containsAll(cm.getData().entrySet())) {
+          } else if (VersionHelper.matchesResourceVersion(result.getMetadata(), VersionConstants.DOMAIN_V1) &&
+                     result.getData().entrySet().containsAll(cm.getData().entrySet())) {
             // existing config map has correct data
             LOGGER.fine(MessageKeys.CM_EXISTS, domainNamespace);
             packet.put(ProcessingConstants.SCRIPT_CONFIG_MAP, result);
@@ -141,36 +143,34 @@ public class ConfigMapHelper {
       V1ObjectMeta metadata = new V1ObjectMeta();
       metadata.setName(name);
       metadata.setNamespace(domainNamespace);
-      
-      AnnotationHelper.annotateWithFormat(metadata);
-      
+
       Map<String, String> labels = new HashMap<>();
+      labels.put(LabelConstants.RESOURCE_VERSION_LABEL, VersionConstants.DOMAIN_V1);
       labels.put(LabelConstants.OPERATORNAME_LABEL, operatorNamespace);
       labels.put(LabelConstants.CREATEDBYOPERATOR_LABEL, "true");
       metadata.setLabels(labels);
 
       cm.setMetadata(metadata);
-      cm.setData(loadScripts());
+      cm.setData(loadScripts(domainNamespace));
 
       return cm;
     }
 
-    private synchronized Map<String, String> loadScripts() {
+    private static synchronized Map<String, String> loadScripts(String domainNamespace) {
       URI uri = null;
       try {
-        uri = getClass().getResource(SCRIPT_LOCATION).toURI();
+        uri = ScriptConfigMapStep.class.getResource(SCRIPT_LOCATION).toURI();
       } catch (URISyntaxException e) {
         LOGGER.warning(MessageKeys.EXCEPTION, e);
         throw new RuntimeException(e);
       }
-      
       try {
         if ("jar".equals(uri.getScheme())) {
           try (FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.<String, Object>emptyMap())) {
-            return walkScriptsPath(fileSystem.getPath(SCRIPTS));
+            return walkScriptsPath(fileSystem.getPath(SCRIPTS), domainNamespace);
           }
         } else {
-          return walkScriptsPath(Paths.get(uri));
+          return walkScriptsPath(Paths.get(uri), domainNamespace);
         }
       } catch (IOException e) {
         LOGGER.warning(MessageKeys.EXCEPTION, e);
@@ -178,7 +178,7 @@ public class ConfigMapHelper {
       }
     }
     
-    private Map<String, String> walkScriptsPath(Path scriptsDir) throws IOException {
+    private static Map<String, String> walkScriptsPath(Path scriptsDir, String domainNamespace) throws IOException {
       try (Stream<Path> walk = Files.walk(scriptsDir, 1)) {
         Map<String, String> data = walk.filter(i -> !Files.isDirectory(i)).collect(Collectors.toMap(
             i -> i.getFileName().toString(), 
@@ -188,7 +188,7 @@ public class ConfigMapHelper {
       }
     }
     
-    private byte[] read(Path path) {
+    private static byte[] read(Path path) {
       try {
         return Files.readAllBytes(path);
       } catch (IOException io) {

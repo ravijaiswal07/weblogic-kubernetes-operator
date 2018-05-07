@@ -122,11 +122,13 @@ function initialize {
   # Parse the common inputs file
   parseCommonInputs
 
-  validateInputParamsSpecified serviceAccount namespace targetNamespaces weblogicOperatorImage
+  validateInputParamsSpecified version serviceAccount namespace targetNamespaces weblogicOperatorImage
 
   validateBooleanInputParamsSpecified elkIntegrationEnabled
 
   if [ "${generateHelm}" = false ]; then
+
+    validateVersion
 
     validateServiceAccount
 
@@ -213,6 +215,16 @@ function validateImagePullPolicy {
        [ $weblogicOperatorImagePullPolicy != $NEVER           ]; then
       validationError "Invalid weblogicOperatorImagePullPolicy: \"${weblogicOperatorImagePullPolicy}\". Valid values are $IF_NOT_PRESENT, $ALWAYS and $NEVER."
     fi
+  fi
+}
+
+#
+# Function to validate the version of the inputs file
+#
+function validateVersion {
+  local requiredVersion='create-weblogic-operator-inputs-v1'
+  if [ "${version}" != "${requiredVersion}" ]; then
+    validationError "Invalid version: \"${version}\".  Must be ${requiredVersion}."
   fi
 }
 

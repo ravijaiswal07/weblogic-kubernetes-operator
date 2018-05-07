@@ -73,6 +73,7 @@ kind: Namespace
 metadata:
   name: ${NAMESPACE}
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 ---
 EOF
@@ -88,6 +89,7 @@ metadata:
   namespace: ${NAMESPACE}
   name: ${ACCOUNT_NAME}
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 ---
 EOF
@@ -101,6 +103,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: weblogic-operator-cluster-role
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 rules:
 - apiGroups: [""]
@@ -133,6 +136,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: weblogic-operator-cluster-role-nonresource
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 rules:
 - nonResourceURLs: ["/version/*"]
@@ -146,6 +150,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: ${NAMESPACE}-operator-rolebinding
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 subjects:
 - kind: ServiceAccount
@@ -162,6 +167,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: ${NAMESPACE}-operator-rolebinding-nonresource
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 subjects:
 - kind: ServiceAccount
@@ -178,6 +184,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: ${NAMESPACE}-operator-rolebinding-discovery
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 subjects:
 - kind: ServiceAccount
@@ -194,6 +201,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: ${NAMESPACE}-operator-rolebinding-auth-delegator
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 subjects:
 - kind: ServiceAccount
@@ -213,6 +221,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: weblogic-operator-namespace-role
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 rules:
 - apiGroups: [""]
@@ -256,6 +265,7 @@ metadata:
   name: weblogic-operator-rolebinding
   namespace: ${i}
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: ${NAMESPACE}
 subjects:
 - kind: ServiceAccount
