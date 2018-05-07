@@ -7,7 +7,7 @@
 usage()
 {
         echo "Usage: $1 {account-name} {namespace} {targetNamespaces} [OPTIONS]"
-        echo "OPTIONS: -o <output_file> | --output=<output_file>"
+        echo "OPTIONS: -o <output_file> | --output=<output_file> -m"
         echo "for example:"
         echo "$1 weblogic-operator-account weblogic-operator-namespace default -o /home/kubernetes/security_example.yaml"
 }
@@ -44,6 +44,11 @@ else
     shift
 fi
 
+if [ "$1" = "-m" ] ; then
+        shift
+        FOR_HELM="true"
+fi
+
 if [ "$1" = "-o" ] ; then
         shift
         SCRIPT="$1"
@@ -58,6 +63,7 @@ fi
 #
 echo "..."
 echo "Generating YAML script ${SCRIPT} to create WebLogic Operator security configuration..."
+if [ -z ${FOR_HELM} ] ; then
 cat > ${SCRIPT}  <<EOF
 #
 # Namespace for WebLogic Operator
@@ -69,6 +75,10 @@ metadata:
   labels:
     weblogic.operatorName: ${NAMESPACE}
 ---
+EOF
+
+fi
+cat >> ${SCRIPT}  <<EOF
 #
 # Service Account for WebLogic Operator
 #
@@ -232,6 +242,7 @@ rules:
 ---
 EOF
 
+if [ -z ${FOR_HELM} ] ; then
   # Generate a RoleBinding for each target namespace
   for i in ${TARGET_NAMESPACES//,/ }
   do
@@ -258,6 +269,37 @@ roleRef:
 ---
 EOF
   done
+
+else
+
+cat >> ${SCRIPT} <<EOF
+#
+# creating role-bindings helm template
+#
+{{- \$relname := .Release.Namespace -}}
+{{- \$serviceaccount := .Values.serviceAccount -}}
+{{- range .Values.targetNamespaces }}
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: weblogic-operator-rolebinding
+  namespace: {{ . }}
+  labels:
+    weblogic.operatorName: {{ \$relname }}
+subjects:
+- kind: ServiceAccount
+  name: {{ \$serviceaccount }}
+  namespace: {{ \$relname }}
+  apiGroup: ""
+roleRef:
+  kind: ClusterRole
+  name: weblogic-operator-namespace-role
+  apiGroup: ""
+---
+{{- end }}
+EOF
+
+fi
 
 
 #

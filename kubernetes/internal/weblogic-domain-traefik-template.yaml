@@ -1,3 +1,4 @@
+%IF_LOADBALANCER_TRAEFIK%
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -138,3 +139,4 @@ spec:
     targetPort: dash
     nodePort: %LOAD_BALANCER_DASHBOARD_PORT%
   type: NodePort
+%END_IF%

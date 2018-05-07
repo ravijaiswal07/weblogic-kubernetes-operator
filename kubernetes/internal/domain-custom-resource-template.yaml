@@ -51,7 +51,9 @@ spec:
     # the name of the server to apply these rules to
     serverName: "%ADMIN_SERVER_NAME%"
     # The Admin Server's NodePort
+    %IF_EXPOSE_ADMIN_NODEPORT%
     %EXPOSE_ADMIN_PORT_PREFIX%nodePort: %ADMIN_NODE_PORT%
+    %END_IF%
     # an (optional) list of environment variable to be set on the server
     env:
     - name: JAVA_OPTIONS
@@ -74,5 +76,7 @@ spec:
   # replicas: 1
 
   # Uncomment to export the T3Channel as a service
+  %IF_EXPOSE_ADMIN_T3_CHANNEL%
   %EXPOSE_T3_CHANNEL_PREFIX%exportT3Channels:
   %EXPOSE_T3_CHANNEL_PREFIX%- T3Channel
+  %END_IF%

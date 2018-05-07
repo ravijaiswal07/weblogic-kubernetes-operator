@@ -16,7 +16,11 @@ spec:
     - ReadWriteMany
   # Valid values are Retain, Delete or Recycle
   persistentVolumeReclaimPolicy: %WEBLOGIC_DOMAIN_STORAGE_RECLAIM_POLICY%
+  %IF_STORAGE_TYPE_NOT_NFS%
   %HOST_PATH_PREFIX%hostPath:
+  %END_IF%
+  %IF_STORAGE_TYPE_NFS%
   %NFS_PREFIX%nfs:
     %NFS_PREFIX%server: %WEBLOGIC_DOMAIN_STORAGE_NFS_SERVER%
+  %END_IF%
     path: "%WEBLOGIC_DOMAIN_STORAGE_PATH%"

@@ -45,10 +45,11 @@ scriptDir="$( cd "$( dirname "${script}" )" && pwd )"
 source ${scriptDir}/utility.sh
 
 function usage {
-  echo usage: ${createScript} -o dir -i file [-g] [-h]
+  echo usage: ${createScript} -o dir -i file [-g] [-m] [-h]
   echo "  -o Ouput directory for the generated yaml files, must be specified."
   echo "  -i Parameter input file, must be specified."
   echo "  -g Only generate the files to create the domain, do not execute them"
+  echo "  -m Only generate the helm chart templates for creating the domain"
   echo "  -h Help"
   exit $1
 }
@@ -57,9 +58,14 @@ function usage {
 # Parse the command line options
 #
 generateOnly=false
-while getopts "ghi:o:" opt; do
+generateHelm=false
+while getopts "gmhi:o:" opt; do
   case $opt in
     g) generateOnly=true
+    ;;
+    m) generateHelm=true
+    generateOnly=true
+    valuesInputFile="${scriptDir}/helm-generate-domain-inputs.yaml"
     ;;
     i) valuesInputFile="${OPTARG}"
     ;;
@@ -72,7 +78,7 @@ while getopts "ghi:o:" opt; do
   esac
 done
 
-if [ -z ${valuesInputFile} ]; then
+if [ -z ${valuesInputFile} ] && [ "${generateOnly}" = "false" ]; then
   echo "${script}: -i must be specified."
   missingRequiredOption="true"
 fi
@@ -92,6 +98,9 @@ fi
 #
 function initAndValidateOutputDir {
   domainOutputDir="${outputDir}/weblogic-domains/${domainUID}"
+  if [ "${generateHelm}" = true ]; then
+    domainOutputDir="${outputDir}/helm-charts/weblogic-domain/templates"
+  fi
 
   validateOutputDir \
     ${domainOutputDir} \
@@ -378,32 +387,35 @@ function initialize {
     javaOptions \
     t3PublicAddress
 
-  validateIntegerInputParamsSpecified \
-    adminPort \
-    configuredManagedServerCount \
-    initialManagedServerReplicas \
-    managedServerPort \
-    t3ChannelPort \
-    adminNodePort \
-    loadBalancerWebPort \
-    loadBalancerDashboardPort
+  if [ "${generateHelm}" = false ]; then
 
-  validateBooleanInputParamsSpecified \
-    productionModeEnabled \
-    exposeAdminT3Channel \
-    exposeAdminNodePort
+    validateIntegerInputParamsSpecified \
+      adminPort \
+      configuredManagedServerCount \
+      initialManagedServerReplicas \
+      managedServerPort \
+      t3ChannelPort \
+      adminNodePort \
+      loadBalancerWebPort \
+      loadBalancerDashboardPort
 
-  validateDomainUid
-  validateNamespace
-  validateClusterName
-  validateWeblogicDomainStorageType
-  validateWeblogicDomainStorageReclaimPolicy
-  validateWeblogicCredentialsSecretName
-  validateWeblogicImagePullSecretName
-  validateLoadBalancer
+    validateBooleanInputParamsSpecified \
+      productionModeEnabled \
+      exposeAdminT3Channel \
+      exposeAdminNodePort
+
+    validateDomainUid
+    validateNamespace
+    validateClusterName
+    validateWeblogicDomainStorageType
+    validateWeblogicDomainStorageReclaimPolicy
+    validateWeblogicCredentialsSecretName
+    validateWeblogicImagePullSecretName
+    validateLoadBalancer
+    validateStartupControl
+    validateClusterType
+  fi
   initAndValidateOutputDir
-  validateStartupControl
-  validateClusterType
   failIfValidationErrors
 }
 
@@ -421,7 +433,9 @@ function createYamlFiles {
   # file there, and create the domain from it, or the user can put the
   # inputs file some place else and let this script create the output directory
   # (if needed) and copy the inputs file there.
-  copyInputsFileToOutputDirectory ${valuesInputFile} "${domainOutputDir}/create-weblogic-domain-inputs.yaml"
+  if [ "${generateHelm}" = false ]; then
+    copyInputsFileToOutputDirectory ${valuesInputFile} "${domainOutputDir}/create-weblogic-domain-inputs.yaml"
+  fi
 
   domainPVOutput="${domainOutputDir}/weblogic-domain-pv.yaml"
   domainPVCOutput="${domainOutputDir}/weblogic-domain-pvc.yaml"
@@ -449,6 +463,17 @@ function createYamlFiles {
     nfsPrefix="${disabledPrefix}"
   fi
 
+  # Processing specific when generating helm chart templates
+  if [ "${generateHelm}" = true ]; then
+    traefikSecurityOutput="${domainOutputDir}/weblogic-domain-traefik-security.yaml"
+    traefikOutput="${domainOutputDir}/weblogic-domain-traefik.yaml"
+    exposeAdminNodePort=true
+    exposeAdminT3Channel=true
+    hostPathPrefix="${enabledPrefix}"
+    nfsPrefix="${enabledPrefix}"
+    sed -i -e "s:%WEBLOGIC_DOMAIN_STORAGE_NFS_SERVER%:${weblogicDomainStorageNFSServer}:g" ${domainPVOutput}
+  fi
+
   sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${domainPVOutput}
   sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${domainPVOutput}
   sed -i -e "s:%NAMESPACE%:$namespace:g" ${domainPVOutput}
@@ -456,7 +481,12 @@ function createYamlFiles {
   sed -i -e "s:%WEBLOGIC_DOMAIN_STORAGE_RECLAIM_POLICY%:${weblogicDomainStorageReclaimPolicy}:g" ${domainPVOutput}
   sed -i -e "s:%WEBLOGIC_DOMAIN_STORAGE_SIZE%:${weblogicDomainStorageSize}:g" ${domainPVOutput}
   sed -i -e "s:%HOST_PATH_PREFIX%:${hostPathPrefix}:g" ${domainPVOutput}
+
   sed -i -e "s:%NFS_PREFIX%:${nfsPrefix}:g" ${domainPVOutput}
+
+  sed -i -e "s|%IF_STORAGE_TYPE_NFS%|${helmIfStorageTypeNfs}|g" ${domainPVOutput}
+  sed -i -e "s|%IF_STORAGE_TYPE_NOT_NFS%|${helmIfStorageTypeNotNfs}|g" ${domainPVOutput}
+  sed -i -e "s|%END_IF%|${helmEndIf}|g" ${domainPVOutput}
 
   # Generate the yaml to create the persistent volume claim
   echo Generating ${domainPVCOutput}
@@ -488,6 +518,10 @@ function createYamlFiles {
   sed -i -e "s:%CLUSTER_NAME%:${clusterName}:g" ${jobOutput}
   sed -i -e "s:%CLUSTER_TYPE%:${clusterType}:g" ${jobOutput}
 
+  sed -i -e "s|%IF_WEBLOGIC_IMAGE_PULL_SECRETS_NAME%|${helmIfWeblogicImagePullSecretsName}|g" ${jobOutput}
+  sed -i -e "s|%IF_CREATE_WEBLOGIC_DOMAIN%|${helmIfCreateWeblogicDomain}|g" ${jobOutput}
+  sed -i -e "s|%END_IF%|${helmEndIf}|g" ${jobOutput}
+
   # Generate the yaml to create the domain custom resource
   echo Generating ${dcrOutput}
 
@@ -517,6 +551,9 @@ function createYamlFiles {
   sed -i -e "s:%ADMIN_NODE_PORT%:${adminNodePort}:g" ${dcrOutput}
   sed -i -e "s:%JAVA_OPTIONS%:${javaOptions}:g" ${dcrOutput}
   sed -i -e "s:%STARTUP_CONTROL%:${startupControl}:g" ${dcrOutput}
+  sed -i -e "s:%IF_EXPOSE_ADMIN_NODEPORT%:${helmIfExposeAdminNodePort}:g" ${dcrOutput}
+  sed -i -e "s:%IF_EXPOSE_ADMIN_T3_CHANNEL%:${helmIfExposeAdminT3Channel}:g" ${dcrOutput}
+  sed -i -e "s:%END_IF%:${helmEndIf}:g" ${dcrOutput}
 
   if [ "${loadBalancer}" = "TRAEFIK" ]; then
     # Traefik file
@@ -529,6 +566,8 @@ function createYamlFiles {
     sed -i -e "s:%CLUSTER_NAME_LC%:${clusterNameLC}:g" ${traefikOutput}
     sed -i -e "s:%LOAD_BALANCER_WEB_PORT%:$loadBalancerWebPort:g" ${traefikOutput}
     sed -i -e "s:%LOAD_BALANCER_DASHBOARD_PORT%:$loadBalancerDashboardPort:g" ${traefikOutput}
+    sed -i -e "s:%IF_LOADBALANCER_TRAEFIK%:${helmIfLoadbalancerTraefik}:g" ${traefikOutput}
+    sed -i -e "s:%END_IF%:${helmEndIf}:g" ${traefikOutput}
 
     # Traefik security file
     cp ${traefikSecurityInput} ${traefikSecurityOutput}
@@ -538,6 +577,8 @@ function createYamlFiles {
     sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${traefikSecurityOutput}
     sed -i -e "s:%CLUSTER_NAME%:${clusterName}:g" ${traefikSecurityOutput}
     sed -i -e "s:%CLUSTER_NAME_LC%:${clusterNameLC}:g" ${traefikSecurityOutput}
+    sed -i -e "s:%IF_LOADBALANCER_TRAEFIK%:${helmIfLoadbalancerTraefik}:g" ${traefikSecurityOutput}
+    sed -i -e "s:%END_IF%:${helmEndIf}:g" ${traefikSecurityOutput}
   fi
 
   if [ "${loadBalancer}" = "APACHE" ]; then

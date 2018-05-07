@@ -43,7 +43,7 @@ function validateInputParamsSpecified {
   for p in $*; do
     local name=$p
     local val=${!name}
-    if [ -z $val ]; then
+    if [ -z "$val" ]; then
       validationError "The ${name} parameter in ${valuesInputFile} is missing, null or empty"
     fi
   done

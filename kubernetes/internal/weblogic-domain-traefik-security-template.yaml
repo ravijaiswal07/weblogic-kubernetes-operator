@@ -1,3 +1,4 @@
+%IF_LOADBALANCER_TRAEFIK%
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -44,3 +45,4 @@ subjects:
 - kind: ServiceAccount
   name: %DOMAIN_UID%-%CLUSTER_NAME_LC%-traefik
   namespace: %NAMESPACE%
+%END_IF%

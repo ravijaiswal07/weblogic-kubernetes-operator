@@ -1,0 +1,113 @@
+# Copyright 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
+# Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+
+# Port number for admin server
+adminPort: "{{ .Values.adminPort }}"
+
+# Name of the Admin Server
+adminServerName: "{{ .Values.adminServerName }}"
+
+# Name of the WebLogic domain to create
+domainName: "{{ .Values.domainName }}"
+
+# Unique id identifying a domain.
+# This id must be lowercase and unique across all domains in a Kubernetes cluster.
+domainUID: "{{ .Values.domainUid }}"
+
+# Determines which WebLogic Servers the Operator will start up
+# Legal values are "NONE", "ALL", "ADMIN", "SPECIFIED", or "AUTO"
+startupControl: AUTO
+
+# Type of WebLogic Cluster
+# Legal values are "CONFIGURED" or "DYNAMIC"
+clusterType: "{{ .Values.clusterType }}"
+
+# Cluster name
+clusterName: "{{ .Values.clusterName }}"
+
+# Number of managed servers to generate for the domain
+configuredManagedServerCount: "{{ .Values.configuredManagedServerCount }}"
+
+# Number of managed servers to initially start for the domain
+initialManagedServerReplicas: "{{ .Values.initialManagedServerReplicas }}"
+
+# Base string used to generate managed server names
+managedServerNameBase: "{{ .Values.managedServerNameBase }}"
+
+# Port number for each managed server
+managedServerPort: "{{ .Values.managedServerPort }}"
+
+# Persistent volume type for the domain's storage.
+# The value must be 'HOST_PATH' or 'NFS'. 
+# If using 'NFS', weblogicDomainStorageNFSServer must be specified.
+weblogicDomainStorageType: HOST_PATH
+
+# The server name or ip address of the NFS server to use for the domain's storage.
+# The following line must be uncomment and customized if weblogicDomainStorateType is NFS:
+weblogicDomainStorageNFSServer: "{{ .Values.weblogicDomainStorageNFSServer }}"
+
+# Physical path of the domain's persistent storage.
+# The following line must be uncomment and customized:
+weblogicDomainStoragePath: "{{ .Values.weblogicDomainStoragePath }}"
+
+# Reclaim policy of the domain's persistent storage
+# The valid values are: 'Retain', 'Delete', and 'Recycle'
+weblogicDomainStorageReclaimPolicy: "{{ .Values.weblogicDomainStorageReclaimPolicy }}"
+
+# Total storage allocated to the domain's persistent storage.
+weblogicDomainStorageSize: "{{ .Values.weblogicDomainStorageSize }}"
+
+# Boolean indicating if production mode is enabled for the domain
+productionModeEnabled: "{{ .Values.productionModeEnabled }}"
+
+# Name of the Kubernetes secret for the Admin Server's username and password
+# The name must be lowercase
+weblogicCredentialsSecretName: "{{ .Values.weblogicCredentialsSecretName }}"
+
+# Name of the Kubernetes secret to access the Docker Store to pull the WebLogic Server Docker image
+# The presence of the secret will be validated when this parameter is enabled.
+weblogicImagePullSecretName: "{{ .Values.weblogicImagePullSecretName }}"
+
+# Port for the T3Channel of the NetworkAccessPoint
+t3ChannelPort: "{{ .Values.t3ChannelPort }}"
+
+# Public address for T3Channel of the NetworkAccessPoint.  This value should be set to the
+# kubernetes server address, which you can get by running "kubectl cluster-info".  If this
+# value is not set to that address, WLST will not be able to connect from outside the
+# kubernetes cluster.
+t3PublicAddress: kubernetes
+
+# Boolean to indicate if the channel should be exposed as a service
+exposeAdminT3Channel: false
+
+# NodePort to expose for the admin server
+adminNodePort: "{{ .Values.adminNodePort }}"
+
+# Boolean to indicate if the adminNodePort will be exposed
+exposeAdminNodePort: false
+
+# Name of the domain namespace
+namespace: "{{ .Release.Namespace }}"
+
+# Load balancer to deploy.  Supported values are:TRAEFIK, NONE
+loadBalancer: TRAEFIK
+
+# Load balancer web port
+loadBalancerWebPort: "{{ .Values.loadBalancerWebPort }}"
+
+# Load balancer dashboard port
+loadBalancerDashboardPort: "{{ .Values.loadBalancerDashboardPort }}"
+
+#Java Option for Weblogic Server
+javaOptions: -Dweblogic.StdoutDebugEnabled=false
+
+# Values specific to helm template generation
+helmIfStorageTypeNfs: "{{- if eq .Values.weblogicDomainStorageType \"NFS\" }}"
+helmIfStorageTypeNotNfs: "{{- if ne .Values.weblogicDomainStorageType \"NFS\" }}"
+helmIfLoadbalancerTraefik: "{{- if eq .Values.loadBalancer \"TRAEFIK\" }}"
+helmIfExposeAdminNodePort: "{{- if .Values.exposeAdminNodePort }}"
+helmIfExposeAdminT3Channel: "{{- if .Values.exposeAdminT3Channel }}"
+helmIfWeblogicImagePullSecretsName: "{{- if .Values.weblogicImagePullSecretName }}"
+helmIfCreateWeblogicDomain: "{{- if .Values.createWeblogicDomain }}"
+helmEndIf: "{{- end }}"
+

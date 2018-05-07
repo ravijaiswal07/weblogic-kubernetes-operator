@@ -257,6 +257,7 @@ data:
     exit()
 
 ---
+%IF_CREATE_WEBLOGIC_DOMAIN%
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -299,5 +300,8 @@ spec:
         - name: weblogic-credentials-volume
           secret:
             secretName: %WEBLOGIC_CREDENTIALS_SECRET_NAME%
+      %IF_WEBLOGIC_IMAGE_PULL_SECRETS_NAME%
       %WEBLOGIC_IMAGE_PULL_SECRET_PREFIX%imagePullSecrets:
       %WEBLOGIC_IMAGE_PULL_SECRET_PREFIX%- name: %WEBLOGIC_IMAGE_PULL_SECRET_NAME%
+      %END_IF%
+%END_IF%
