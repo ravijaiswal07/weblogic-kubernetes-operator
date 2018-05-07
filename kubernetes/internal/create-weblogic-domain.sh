@@ -398,7 +398,6 @@ function initialize {
     t3PublicAddress \
     version
 
-<<<<<<< HEAD
   if [ "${generateHelm}" = false ]; then
 
     validateIntegerInputParamsSpecified \
