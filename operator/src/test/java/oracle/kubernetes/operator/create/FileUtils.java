@@ -1,9 +1,9 @@
 // Copyright 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
-// Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+// Licensed under the Universal Permissive License v 1.0 as shown at
+// http://oss.oracle.com/licenses/upl.
 package oracle.kubernetes.operator.create;
 
-import org.hamcrest.Description;
-import org.hamcrest.TypeSafeDiagnosingMatcher;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -11,8 +11,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Path;
-
-import static org.hamcrest.MatcherAssert.assertThat;
+import org.hamcrest.Description;
+import org.hamcrest.TypeSafeDiagnosingMatcher;
 
 public class FileUtils {
 
@@ -25,16 +25,16 @@ public class FileUtils {
 
   public static void assertSameFileContents(Path generated, Path expected) throws Exception {
     assertThat(
-      getAssertionReason(generated, expected),
-      generated.toFile(),
-      fileEqualsTo(expected.toFile()));
+        getAssertionReason(generated, expected),
+        generated.toFile(),
+        fileEqualsTo(expected.toFile()));
   }
 
   private static String getAssertionReason(Path actualPath, Path expectedPath) {
     return " Contents in actual file "
-      + actualPath.toAbsolutePath()
-      + " is different from expected file "
-      + expectedPath.toAbsolutePath();
+        + actualPath.toAbsolutePath()
+        + " is different from expected file "
+        + expectedPath.toAbsolutePath();
   }
 
   private static class FileMatcher extends TypeSafeDiagnosingMatcher<File> {
@@ -49,8 +49,8 @@ public class FileUtils {
 
     @Override
     protected boolean matchesSafely(File actualFile, Description description) {
-      if (!fileExists(actualFile, "actual file ", description) ||
-          !fileExists(expectedFile, "expected file ", description) ) {
+      if (!fileExists(actualFile, "actual file ", description)
+          || !fileExists(expectedFile, "expected file ", description)) {
         return false;
       }
       BufferedReader generatedFileReader = null;
@@ -64,8 +64,7 @@ public class FileUtils {
         while ((actualFileLine = generatedFileReader.readLine()) != null) {
           lineNum++;
           expectedFileLine = expectedFileReader.readLine();
-          if (expectedFileLine == null ||
-            !expectedFileLine.trim().equals(actualFileLine.trim())) {
+          if (expectedFileLine == null || !expectedFileLine.trim().equals(actualFileLine.trim())) {
             description.appendText(actualFileLine);
             return false;
           }
@@ -97,6 +96,7 @@ public class FileUtils {
         }
       }
     }
+
     private boolean fileExists(File file, String fileDesc, Description description) {
       if (!file.exists()) {
         description.appendText(fileDesc + " " + file.getPath() + " does not exist");
@@ -105,5 +105,4 @@ public class FileUtils {
       return true;
     }
   }
-
 }
