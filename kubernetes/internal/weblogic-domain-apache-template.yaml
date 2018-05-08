@@ -1,3 +1,4 @@
+%IF_LOADBALANCER_APACHE%
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -37,17 +38,21 @@ spec:
     spec:
       serviceAccountName: %DOMAIN_UID%-apache-webtier
       terminationGracePeriodSeconds: 60
+      %IF_LOAD_BALANCER_VOLUME_PATH%
       # volumes:
       # - name: "%DOMAIN_UID%-apache-webtier"
       #   hostPath:
       #     path: %LOAD_BALANCER_VOLUME_PATH%
+      %END_IF%
       containers:
       - name: %DOMAIN_UID%-apache-webtier
         image: store/oracle/apache:12.2.1.3
         imagePullPolicy: Never
+        %IF_LOAD_BALANCER_VOLUME_PATH%
         # volumeMounts:
         # - name: "%DOMAIN_UID%-apache-webtier"
         #   mountPath: "/config"
+        %END_IF%
         env:
           - name: WEBLOGIC_CLUSTER
             value: '%DOMAIN_UID%-cluster-%CLUSTER_NAME_LC%:%MANAGED_SERVER_PORT%'
@@ -94,4 +99,4 @@ spec:
     - port: 80
       nodePort: %LOAD_BALANCER_WEB_PORT%
       name: rest-https
-
+%END_IF%

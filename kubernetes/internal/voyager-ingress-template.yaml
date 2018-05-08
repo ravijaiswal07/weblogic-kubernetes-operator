@@ -1,3 +1,4 @@
+%IF_LOADBALANCER_VOYAGER%
 apiVersion: voyager.appscode.com/v1beta1
 kind: Ingress
 metadata:
@@ -43,3 +44,4 @@ spec:
   selector:
     origin: voyager
     origin-name: %DOMAIN_UID%-voyager
+%END_IF%

@@ -1,14 +1,13 @@
-{{- if eq .Values.loadBalancer "TRAEFIK" }}
+{{- if eq .Values.loadBalancer "APACHE" }}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Values.domainUid }}-{{ .Values.clusterName | lower }}-traefik
+  name: {{ .Values.domainUid }}-apache-webtier
   labels:
-    weblogic.resourceVersion: traefik-load-balancer-v1
+    weblogic.resourceVersion: apache-load-balancer-v1
     weblogic.domainUID: {{ .Values.domainUid }}
     weblogic.domainName: {{ .Values.domainName }}
-    weblogic.clusterName: {{ .Values.clusterName }}
 rules:
   - apiGroups:
       - ""
@@ -33,18 +32,17 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Values.domainUid }}-{{ .Values.clusterName | lower }}-traefik
+  name: {{ .Values.domainUid }}-apache-webtier
   labels:
-    weblogic.resourceVersion: traefik-load-balancer-v1
+    weblogic.resourceVersion: apache-load-balancer-v1
     weblogic.domainUID: {{ .Values.domainUid }}
     weblogic.domainName: {{ .Values.domainName }}
-    weblogic.clusterName: {{ .Values.clusterName }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Values.domainUid }}-{{ .Values.clusterName | lower }}-traefik
+  name: {{ .Values.domainUid }}-apache-webtier
 subjects:
 - kind: ServiceAccount
-  name: {{ .Values.domainUid }}-{{ .Values.clusterName | lower }}-traefik
+  name: {{ .Values.domainUid }}-apache-webtier
   namespace: {{ .Release.Namespace }}
 {{- end }}

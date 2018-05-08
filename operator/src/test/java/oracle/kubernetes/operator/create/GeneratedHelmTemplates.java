@@ -1,5 +1,6 @@
 // Copyright 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
-// Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+// Licensed under the Universal Permissive License v 1.0 as shown at
+// http://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.create;
 
@@ -8,8 +9,7 @@ import static oracle.kubernetes.operator.create.UserProjects.createUserProjectsD
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
- * Generates the helm chart templates yaml files
- * Creates and managed the user projects directory that the files are stored in.
+ * Generates and manages the helm chart templates yaml files
  */
 public class GeneratedHelmTemplates {
 
@@ -24,8 +24,11 @@ public class GeneratedHelmTemplates {
     userProjects = createUserProjectsDirectory();
     boolean ok = false;
     try {
-      domainHelmTemplates = new DomainHelmTemplates(userProjects.getPath());
-      assertThat(ExecGenerateHelmTemplates.execGenerateDomainTemplates(userProjects.getPath()), succeedsAndPrints("Completed"));
+      domainHelmTemplates = DomainHelmTemplates.getDomainHelmTemplates(userProjects.getPath());
+      assertThat(
+          ExecGenerateHelmTemplates.execGenerateDomainTemplates(userProjects.getPath()),
+          succeedsAndPrints("Completed"));
+      ok = true;
     } finally {
       if (!ok) {
         remove();
@@ -33,7 +36,13 @@ public class GeneratedHelmTemplates {
     }
   }
 
-  public DomainHelmTemplates getDomainHelmTemplates() { return domainHelmTemplates; }
+  public DomainHelmTemplates getDomainHelmTemplates() {
+    return domainHelmTemplates;
+  }
+
+  public UserProjects getUserProjects() {
+    return userProjects;
+  }
 
   public void remove() throws Exception {
     userProjects.remove();

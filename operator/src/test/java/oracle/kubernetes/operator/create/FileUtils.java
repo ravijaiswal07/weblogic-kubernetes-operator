@@ -2,51 +2,107 @@
 // Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
 package oracle.kubernetes.operator.create;
 
-import org.hamcrest.CoreMatchers;
 import org.hamcrest.Description;
-import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeDiagnosingMatcher;
 
-import java.util.Objects;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.file.Path;
 
-/**
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
- */
+import static org.hamcrest.MatcherAssert.assertThat;
+
 public class FileUtils {
 
   // Note: don't name it 'equalTo' since it conflicts with static importing
   // all the standard matchers, which would force callers to individually import
   // the standard matchers.
-  public static FileMatcher fileEqualTo(Object expectedObject) {
-    return new FileMatcher(expectedObject);
+  public static FileMatcher fileEqualsTo(File expectedFile) {
+    return new FileMatcher(expectedFile);
   }
 
-  // Most k8s objects have an 'equals' implementation that works well across instances.
-  // A few of the, e.g. V1 Secrets which prints out secrets as byte array addresses, don't.
-  // For there kinds of objects, you can to convert them to yaml strings then comare those.
-  // Anyway, it doesn't hurt to always just convert to yaml and compare the strings so that
-  // we don't have to write type-dependent code.
-  private static class FileMatcher extends TypeSafeDiagnosingMatcher<Object> {
-    private Object expectedObject;
+  public static void assertSameFileContents(Path generated, Path expected) throws Exception {
+    assertThat(
+      getAssertionReason(generated, expected),
+      generated.toFile(),
+      fileEqualsTo(expected.toFile()));
+  }
 
-    private FileMatcher(Object expectedObject) {
-      this.expectedObject = expectedObject;
+  private static String getAssertionReason(Path actualPath, Path expectedPath) {
+    return " Contents in actual file "
+      + actualPath.toAbsolutePath()
+      + " is different from expected file "
+      + expectedPath.toAbsolutePath();
+  }
+
+  private static class FileMatcher extends TypeSafeDiagnosingMatcher<File> {
+    private File expectedFile;
+
+    private FileMatcher(File expectedFile) {
+      this.expectedFile = expectedFile;
     }
 
+    String expectedFileLine = null;
+    int lineNum = 0;
+
     @Override
-    protected boolean matchesSafely(Object returnedObject, Description description) {
-      String line;
-      // TODO - implements this
+    protected boolean matchesSafely(File actualFile, Description description) {
+      if (!fileExists(actualFile, "actual file ", description) ||
+          !fileExists(expectedFile, "expected file ", description) ) {
+        return false;
+      }
+      BufferedReader generatedFileReader = null;
+      BufferedReader expectedFileReader = null;
+      try {
+        generatedFileReader = new BufferedReader(new FileReader(actualFile));
+        expectedFileReader = new BufferedReader(new FileReader(expectedFile));
+        String actualFileLine = null;
+        expectedFileLine = null;
+        lineNum = 0;
+        while ((actualFileLine = generatedFileReader.readLine()) != null) {
+          lineNum++;
+          expectedFileLine = expectedFileReader.readLine();
+          if (expectedFileLine == null ||
+            !expectedFileLine.trim().equals(actualFileLine.trim())) {
+            description.appendText(actualFileLine);
+            return false;
+          }
+        }
+        if ((expectedFileLine = expectedFileReader.readLine()) != null) {
+          description.appendText("expecting more line(s) from actual file after line " + lineNum);
+          return false;
+        }
+      } catch (IOException e) {
+        description.appendText(e.toString());
+      } finally {
+        close(generatedFileReader);
+        close(expectedFileReader);
+      }
       return true;
     }
 
     @Override
     public void describeTo(Description description) {
-      description.appendText("\n").appendText(objectToYaml(expectedObject));
+      description.appendText("\n").appendText("Line " + lineNum + "\n" + expectedFileLine);
     }
 
-    private String objectToYaml(Object object) {
-      return YamlUtils.newYaml().dump(object);
+    private void close(Reader reader) {
+      if (reader != null) {
+        try {
+          reader.close();
+        } catch (IOException e) {
+          // ignore
+        }
+      }
+    }
+    private boolean fileExists(File file, String fileDesc, Description description) {
+      if (!file.exists()) {
+        description.appendText(fileDesc + " " + file.getPath() + " does not exist");
+        return false;
+      }
+      return true;
     }
   }
 

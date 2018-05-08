@@ -27,6 +27,7 @@ clusterType: "{{ .Values.clusterType }}"
 
 # Cluster name
 clusterName: "{{ .Values.clusterName }}"
+clusterNameLC: "{{ .Values.clusterName | lower }}"
 
 # Number of managed servers to generate for the domain
 configuredManagedServerCount: "{{ .Values.configuredManagedServerCount }}"
@@ -81,19 +82,26 @@ t3ChannelPort: "{{ .Values.t3ChannelPort }}"
 t3PublicAddress: kubernetes
 
 # Boolean to indicate if the channel should be exposed as a service
-exposeAdminT3Channel: false
+exposeAdminT3Channel: true
 
 # NodePort to expose for the admin server
 adminNodePort: "{{ .Values.adminNodePort }}"
 
 # Boolean to indicate if the adminNodePort will be exposed
-exposeAdminNodePort: false
+exposeAdminNodePort: true
 
 # Name of the domain namespace
 namespace: "{{ .Release.Namespace }}"
 
-# Load balancer to deploy.  Supported values are:TRAEFIK, NONE
-loadBalancer: TRAEFIK
+# Load balancer app prepath used for APACHE load balancer
+# This defines the /location in the built-in Apache plugin configuration module for WebLogic
+loadBalancerAppPrepath: "{{ .Values.loadBalancerAppPrepath }}"
+
+# Docker volume path for APACHE. By default, it is empty, which causes the volume mount be
+# disabled and, thereforem the built-in Apache plugin config be used.
+# Use this to provide your own Apache plugin configuration as needed; simply define this
+# path and put your own custom_mod_wl_apache.conf file under this path.
+loadBalancerVolumePath: "{{ .Values.loadBalancerVolumePath }}"
 
 # Load balancer web port
 loadBalancerWebPort: "{{ .Values.loadBalancerWebPort }}"
@@ -102,12 +110,15 @@ loadBalancerWebPort: "{{ .Values.loadBalancerWebPort }}"
 loadBalancerDashboardPort: "{{ .Values.loadBalancerDashboardPort }}"
 
 #Java Option for Weblogic Server
-javaOptions: -Dweblogic.StdoutDebugEnabled=false
+javaOptions: "{{ .Values.javaOptions }}"
 
 # Values specific to helm template generation
 helmIfStorageTypeNfs: "{{- if eq .Values.weblogicDomainStorageType \"NFS\" }}"
 helmIfStorageTypeNotNfs: "{{- if ne .Values.weblogicDomainStorageType \"NFS\" }}"
 helmIfLoadbalancerTraefik: "{{- if eq .Values.loadBalancer \"TRAEFIK\" }}"
+helmIfLoadbalancerApache: "{{- if eq .Values.loadBalancer \"APACHE\" }}"
+helmIfLoadbalancerVoyager: "{{- if eq .Values.loadBalancer \"VOYAGER\" }}"
+helmIfLoadbalancerVolumePath: "{{- if .Values.loadBalancerVolumePath }}"
 helmIfExposeAdminNodePort: "{{- if .Values.exposeAdminNodePort }}"
 helmIfExposeAdminT3Channel: "{{- if .Values.exposeAdminT3Channel }}"
 helmIfWeblogicImagePullSecretsName: "{{- if .Values.weblogicImagePullSecretName }}"

@@ -144,7 +144,9 @@ function validateNamespace {
 # Create an instance of clusterName to be used in cases where lowercase is required.
 #
 function validateClusterName {
-  clusterNameLC=$(toLower $clusterName)
+  if [ "${generateHelm}" = false ]; then
+    clusterNameLC=$(toLower $clusterName)
+  fi
 }
 
 #
@@ -418,7 +420,6 @@ function initialize {
     validateVersion
     validateDomainUid
     validateNamespace
-    validateClusterName
     validateWeblogicDomainStorageType
     validateWeblogicDomainStorageReclaimPolicy
     validateWeblogicCredentialsSecretName
@@ -427,6 +428,7 @@ function initialize {
     validateStartupControl
     validateClusterType
   fi
+  validateClusterName
   initAndValidateOutputDir
   failIfValidationErrors
 }
@@ -479,8 +481,6 @@ function createYamlFiles {
   if [ "${generateHelm}" = true ]; then
     traefikSecurityOutput="${domainOutputDir}/weblogic-domain-traefik-security.yaml"
     traefikOutput="${domainOutputDir}/weblogic-domain-traefik.yaml"
-    exposeAdminNodePort=true
-    exposeAdminT3Channel=true
     hostPathPrefix="${enabledPrefix}"
     nfsPrefix="${enabledPrefix}"
     sed -i -e "s:%WEBLOGIC_DOMAIN_STORAGE_NFS_SERVER%:${weblogicDomainStorageNFSServer}:g" ${domainPVOutput}
@@ -567,7 +567,7 @@ function createYamlFiles {
   sed -i -e "s:%IF_EXPOSE_ADMIN_T3_CHANNEL%:${helmIfExposeAdminT3Channel}:g" ${dcrOutput}
   sed -i -e "s:%END_IF%:${helmEndIf}:g" ${dcrOutput}
 
-  if [ "${loadBalancer}" = "TRAEFIK" ]; then
+  if [ "${loadBalancer}" = "TRAEFIK" ] || [ "${generateHelm}" = true ] ; then
     # Traefik file
     cp ${traefikInput} ${traefikOutput}
     echo Generating ${traefikOutput}
@@ -593,7 +593,7 @@ function createYamlFiles {
     sed -i -e "s:%END_IF%:${helmEndIf}:g" ${traefikSecurityOutput}
   fi
 
-  if [ "${loadBalancer}" = "APACHE" ]; then
+  if [ "${loadBalancer}" = "APACHE" ] || [ "${generateHelm}" = true ] ; then
     # Apache file
     cp ${apacheInput} ${apacheOutput}
     echo Generating ${apacheOutput}
@@ -606,6 +606,9 @@ function createYamlFiles {
     sed -i -e "s:%MANAGED_SERVER_PORT%:${managedServerPort}:g" ${apacheOutput}
     sed -i -e "s:%LOAD_BALANCER_WEB_PORT%:$loadBalancerWebPort:g" ${apacheOutput}
     sed -i -e "s:%WEB_APP_PREPATH%:$loadBalancerAppPrepath:g" ${apacheOutput}
+    sed -i -e "s:%IF_LOADBALANCER_APACHE%:${helmIfLoadbalancerApache}:g" ${apacheOutput}
+    sed -i -e "s:%IF_LOAD_BALANCER_VOLUME_PATH%:${helmIfLoadbalancerVolumePath}:g" ${apacheOutput}
+    sed -i -e "s:%END_IF%:${helmEndIf}:g" ${apacheOutput}
 
     if [ ! -z "${loadBalancerVolumePath}" ]; then
       sed -i -e "s:%LOAD_BALANCER_VOLUME_PATH%:${loadBalancerVolumePath}:g" ${apacheOutput}
@@ -624,9 +627,11 @@ function createYamlFiles {
     sed -i -e "s:%NAMESPACE%:$namespace:g" ${apacheSecurityOutput}
     sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${apacheSecurityOutput}
     sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${apacheSecurityOutput}
+    sed -i -e "s:%IF_LOADBALANCER_APACHE%:${helmIfLoadbalancerApache}:g" ${apacheSecurityOutput}
+    sed -i -e "s:%END_IF%:${helmEndIf}:g" ${apacheSecurityOutput}
   fi
 
-  if [ "${loadBalancer}" = "VOYAGER" ]; then
+  if [ "${loadBalancer}" = "VOYAGER" ] || [ "${generateHelm}" = true ] ; then
     # Voyager Ingress file
     cp ${voyagerInput} ${voyagerOutput}
     echo Generating ${voyagerOutput}
@@ -638,6 +643,8 @@ function createYamlFiles {
     sed -i -e "s:%MANAGED_SERVER_PORT%:${managedServerPort}:g" ${voyagerOutput}
     sed -i -e "s:%LOAD_BALANCER_WEB_PORT%:$loadBalancerWebPort:g" ${voyagerOutput}
     sed -i -e "s:%LOAD_BALANCER_DASHBOARD_PORT%:$loadBalancerDashboardPort:g" ${voyagerOutput}
+    sed -i -e "s:%IF_LOADBALANCER_VOYAGER%:${helmIfLoadbalancerVoyager}:g" ${voyagerOutput}
+    sed -i -e "s:%END_IF%:${helmEndIf}:g" ${voyagerOutput}
   fi
 
   # Remove any "...yaml-e" files left over from running sed
