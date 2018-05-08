@@ -1,0 +1,7 @@
+This branch:
+
+  1) Modifies WLS pods to use image store/oracle/weblogic:12.2.1.3-strace
+
+  2) Requires manually running build.sh in this directory to build this image, and additional manual commands to push this image to public repos as needed...
+
+  3) Modifies the WLS pod's 'startServer.sh' script to 'strace' WLS processes to file '/tmp/trace.<instance>.<pid>.out'.  (instance increments each time NM restarts WLS)

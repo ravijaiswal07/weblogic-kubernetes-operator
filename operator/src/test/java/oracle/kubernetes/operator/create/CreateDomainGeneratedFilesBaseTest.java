@@ -383,7 +383,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
             newDomainSpec()
                 .withDomainUID(getInputs().getDomainUID())
                 .withDomainName(getInputs().getDomainName())
-                .withImage("store/oracle/weblogic:12.2.1.3")
+                .withImage("store/oracle/weblogic:12.2.1.3-strace")
                 .withImagePullPolicy("IfNotPresent")
                 .withAdminSecret(
                     newSecretReference().name(getInputs().getWeblogicCredentialsSecretName()))

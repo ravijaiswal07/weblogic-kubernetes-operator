@@ -41,6 +41,15 @@ function createServerScriptsProperties() {
   # Edit the start nodemanager script to use the home for the server
   sed -i -e "s:/shared/domain/$3/nodemanager:/u01/nodemanager:g" ${srvr_nmdir}/startNodeManager.sh
 
+  # Edit the main nodemanager script to use strace
+  # FOUND_HOME="`grep 'WL_HOME=' ${srvr_nmdir}/startNodeManager.sh | sed 's/WL_HOME..//' | sed 's/"//'`"
+  # sed -i -e "s:^\( *\)\(...JAVA_HOME..bin.java\):\1/usr/bin/strace -fF -o /tmp/trace.out \2:g" ${FOUND_HOME}/server/bin/startNodeManager.sh
+  # RESULT:  Only added tracing to the NM :-(
+
+  # Edit the main start WL script to use strace (the node manager calls this script)
+  # sed -i -e "s:^\(\s*\)\(..JAVA_HOME..bin.java\):\1/usr/bin/strace -fF -o /tmp/trace.out \2:g" $DOMAIN_HOME/bin/startWebLogic.sh
+  # RESULT:  It looks like NM does not call this script :-(
+
   # Create startup.properties file
   datadir=${DOMAIN_HOME}/servers/$2/data/nodemanager
   nmdir=${DOMAIN_HOME}/nodemgr_home
@@ -116,9 +125,32 @@ if [ -n "$4" ]; then
   admin_server_t3_url=t3://$domain_uid-$as_name:$as_port
 fi
 
+function strace_wl {
+  instance=1
+  while [ 1 -eq 1 ]; do
+    echo "strace:  Waiting for a WL server process to show up. Next instance=${instance}."
+    WPID=""
+    while [ "$WPID" = "" ]; do
+      WPID="`jps -l | grep weblogic.Server | awk '{ print $1 }'`"
+      sleep 1
+    done
+
+    # We now have a WLS pid, lets strace!
+
+    tracefile="/tmp/trace.${instance}.${WPID}.out"
+    echo "strace:  Putting a trace on WL server pid $WPID, trace file is '$tracefile'."
+    /usr/bin/strace -fF -o $tracefile -p $WPID
+
+    # Look for a new pid if we get this far (strace blocks until process goes away)
+    instance=$((instance + 1))
+  done
+}
+
+strace_wl &
+
+echo "Wait indefinitely so that the Kubernetes pod does not exit and try to restart"
 echo "Start the server"
 wlst.sh -skipWLSModuleScanning /weblogic-operator/scripts/start-server.py $domain_uid $server_name $domain_name $admin_server_t3_url
 
-echo "Wait indefinitely so that the Kubernetes pod does not exit and try to restart"
 while true; do sleep 60; done
 
