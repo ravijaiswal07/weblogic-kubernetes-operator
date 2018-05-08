@@ -58,7 +58,7 @@ public class FileUtils {
       try {
         generatedFileReader = new BufferedReader(new FileReader(actualFile));
         expectedFileReader = new BufferedReader(new FileReader(expectedFile));
-        String actualFileLine = null;
+        String actualFileLine;
         expectedFileLine = null;
         lineNum = 0;
         while ((actualFileLine = generatedFileReader.readLine()) != null) {
@@ -84,7 +84,7 @@ public class FileUtils {
 
     @Override
     public void describeTo(Description description) {
-      description.appendText("\n").appendText("Line " + lineNum + "\n" + expectedFileLine);
+      description.appendText("\n").appendText("Line " + lineNum + ": " + expectedFileLine);
     }
 
     private void close(Reader reader) {

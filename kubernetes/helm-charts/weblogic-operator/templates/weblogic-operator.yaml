@@ -14,6 +14,7 @@ metadata:
   name: weblogic-operator-cm
   namespace: {{ .Release.Namespace }}
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: {{ .Release.Namespace }}
 data:
   serviceaccount: {{ .Values.serviceAccount }}
@@ -28,6 +29,7 @@ metadata:
   name: weblogic-operator-secrets
   namespace: {{ .Release.Namespace }}
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: {{ .Release.Namespace }}
 type: Opaque
 data:
@@ -42,12 +44,14 @@ metadata:
   # set the namespace that you want the operator deployed in here
   namespace: {{ .Release.Namespace }}
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: {{ .Release.Namespace }}
 spec:
   replicas: 1
   template:
     metadata:
      labels:
+        weblogic.resourceVersion: operator-v1
         weblogic.operatorName: {{ .Release.Namespace }}
         app: weblogic-operator
     spec:
@@ -138,6 +142,7 @@ metadata:
   name: external-weblogic-operator-svc
   namespace: {{ .Release.Namespace }}
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: {{ .Release.Namespace }}
 spec:
   type: NodePort
@@ -165,6 +170,7 @@ metadata:
   name: internal-weblogic-operator-svc
   namespace: {{ .Release.Namespace }}
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: {{ .Release.Namespace }}
 spec:
   type: ClusterIP
@@ -173,4 +179,3 @@ spec:
   ports:
     - port: 8082
       name: rest
-
