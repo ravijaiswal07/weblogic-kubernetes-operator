@@ -110,6 +110,10 @@ else
   createServerScriptsProperties $domain_uid $server_name $domain_name
 fi
 
+echo "Force NIO.  WARNING:  do not merge into develop branch!"
+export PATCH_LIBPATH="/shared"
+touch /shared/libwlfileio3.so
+
 echo "Start the nodemanager"
 . ${NODEMGR_HOME}/startNodeManager.sh &
 
