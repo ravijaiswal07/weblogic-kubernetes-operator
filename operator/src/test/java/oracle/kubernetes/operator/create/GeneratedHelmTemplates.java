@@ -8,9 +8,7 @@ import static oracle.kubernetes.operator.create.ExecResultMatcher.succeedsAndPri
 import static oracle.kubernetes.operator.create.UserProjects.createUserProjectsDirectory;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-/**
- * Generates and manages the helm chart templates yaml files
- */
+/** Generates and manages the helm chart templates yaml files */
 public class GeneratedHelmTemplates {
 
   private UserProjects userProjects;

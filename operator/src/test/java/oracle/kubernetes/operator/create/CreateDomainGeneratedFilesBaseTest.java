@@ -19,8 +19,6 @@ import oracle.kubernetes.weblogic.domain.v1.Domain;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-import java.io.File;
-
 /**
  * Tests that the all artifacts in the yaml files that create-weblogic-domain.sh creates are correct
  * when the admin node port is disabled, the t3 channel is disabled, there is no weblogic domain

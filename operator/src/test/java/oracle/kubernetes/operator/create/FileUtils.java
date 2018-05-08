@@ -3,8 +3,7 @@
 // http://oss.oracle.com/licenses/upl.
 package oracle.kubernetes.operator.create;
 
-import org.hamcrest.Description;
-import org.hamcrest.TypeSafeDiagnosingMatcher;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -12,8 +11,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Path;
-
-import static org.hamcrest.MatcherAssert.assertThat;
+import org.hamcrest.Description;
+import org.hamcrest.TypeSafeDiagnosingMatcher;
 
 public class FileUtils {
 
