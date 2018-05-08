@@ -525,6 +525,9 @@ function setup_jenkins {
     docker pull wlsldi-v2.docker.oraclecorp.com/store-serverjre-8:latest
     docker tag wlsldi-v2.docker.oraclecorp.com/store-serverjre-8:latest store/oracle/serverjre:8
 
+    docker pull wlsldi-v2.docker.oraclecorp.com/weblogic-webtier-apache-12.2.1.3.0:latest
+    docker tag wlsldi-v2.docker.oraclecorp.com/weblogic-webtier-apache-12.2.1.3.0:latest store/oracle/apache:12.2.1.3
+
     # create a docker image for the operator code being tested
     docker build -t "${IMAGE_NAME_OPERATOR}:${IMAGE_TAG_OPERATOR}" --no-cache=true .
 
@@ -541,6 +544,9 @@ function setup_local {
   docker pull wlsldi-v2.docker.oraclecorp.com/store-serverjre-8:latest
   docker tag wlsldi-v2.docker.oraclecorp.com/store-serverjre-8:latest store/oracle/serverjre:8
 
+  docker pull wlsldi-v2.docker.oraclecorp.com/weblogic-webtier-apache-12.2.1.3.0:latest
+  docker tag wlsldi-v2.docker.oraclecorp.com/weblogic-webtier-apache-12.2.1.3.0:latest store/oracle/apache:12.2.1.3
+
 }
 
 function create_image_pull_secret_jenkins {
@@ -556,6 +562,35 @@ function create_image_pull_secret_jenkins {
     local SECRET="`kubectl get secret wlsldi-secret | grep wlsldi | wc | awk ' { print $1; }'`"
     if [ "$SECRET" != "1" ]; then
         fail 'secret wlsldi-secret was not created successfully'
+    fi
+
+}
+
+function create_image_pull_secret_wercker {
+
+    trace "Creating Docker Secret"
+    kubectl create secret docker-registry $IMAGE_PULL_SECRET_WEBLOGIC  \
+    --docker-server=index.docker.io/v1/ \
+    --docker-username=$DOCKER_USERNAME \
+    --docker-password=$DOCKER_PASSWORD \
+    --docker-email=$DOCKER_EMAIL 2>&1 | sed 's/^/+' 2>&1
+
+    trace "Checking Secret"
+    local SECRET="`kubectl get secret $IMAGE_PULL_SECRET_WEBLOGIC | grep $IMAGE_PULL_SECRET_WEBLOGIC | wc | awk ' { print $1; }'`"
+    if [ "$SECRET" != "1" ]; then
+        fail 'secret $IMAGE_PULL_SECRET_WEBLOGIC was not created successfully'
+    fi
+
+    trace "Creating Registry Secret"
+    kubectl create secret docker-registry $IMAGE_PULL_SECRET_OPERATOR  \
+    --docker-server=$REPO_REGISTRY \
+    --docker-username=$REPO_USERNAME \
+    --docker-password=$REPO_PASSWORD 2>&1 | sed 's/^/+' 2>&1
+
+    trace "Checking Secret"
+    local SECRET="`kubectl get secret $IMAGE_PULL_SECRET_OPERATOR | grep $IMAGE_PULL_SECRET_OPERATOR | wc | awk ' { print $1; }'`"
+    if [ "$SECRET" != "1" ]; then
+        fail 'secret $IMAGE_PULL_SECRET_OPERATOR was not created successfully'
     fi
 
 }
@@ -1126,12 +1161,12 @@ function verify_webapp_load_balancing {
     local max_count=30
     local wait_time=6
     local count=0
-    local vheader="host: $DOMAIN_UID.$WL_CLUSTER_NAME" # this is only needed for voyager but it does no harm to traefik etc
+    local vheader="host: $DOMAIN_UID.$WL_CLUSTER_NAME"
 
     while [ "${HTTP_RESPONSE}" != "200" -a $count -lt $max_count ] ; do
       local count=`expr $count + 1`
       echo "NO_DATA" > $CURL_RESPONSE_BODY
-      local HTTP_RESPONSE=$(eval "curl --silent --show-error -H '${vheader}' --noproxy ${NODEPORT_HOST} ${TEST_APP_URL} \
+      local HTTP_RESPONSE=$(eval "curl --silent --show-error --noproxy ${NODEPORT_HOST} ${TEST_APP_URL} \
         --write-out '%{http_code}' \
         -o ${CURL_RESPONSE_BODY}" \
       )
@@ -1357,7 +1392,7 @@ function call_operator_rest {
 
     trace "Calling some operator REST APIs via ${REST_ADDR}/${URL_TAIL}"
 
-    #pod=`kubectl get pod -n $OPERATOR_NS | grep $OPERATOR_NS | awk '{ print $1 }'`
+    #pod=`kubectl get pod -n $OPERATOR_NS --show-labels=true | grep $OPERATOR_NS | awk '{ print $1 }'`
     #kubectl logs $pod -n $OPERATOR_NS > "${OPERATOR_TMP_DIR}/operator.pre.rest.log"
 
     # turn off all of the https proxying so that curl will work
@@ -1915,7 +1950,7 @@ function verify_service_and_pod_created {
     done
 
     if [ "${srv_count:=Error}" != "1" ]; then
-      local pod=`kubectl get pod -n $OPERATOR_NS | grep $OPERATOR_NS | awk '{ print $1 }'`
+      local pod=`kubectl get pod -n $OPERATOR_NS --show-labels=true | grep $OPERATOR_NS | awk '{ print $1 }'`
       local debuglog="${OPERATOR_TMP_DIR}/verify_domain_debugging.log"
       kubectl logs $pod -n $OPERATOR_NS > "${debuglog}"
       if [ -f ${debuglog} ] ; then
@@ -1940,7 +1975,7 @@ function verify_service_and_pod_created {
     fi
 
     if [ "${srv_count:=Error}" != "1" ]; then
-      local pod=`kubectl get pod -n $OPERATOR_NS | grep $OPERATOR_NS | awk '{ print $1 }'`
+      local pod=`kubectl get pod -n $OPERATOR_NS --show-labels=true | grep $OPERATOR_NS | awk '{ print $1 }'`
       local debuglog="${OPERATOR_TMP_DIR}/verify_domain_debugging.log"
       kubectl logs $pod -n $OPERATOR_NS > "${debuglog}"
       if [ -f ${debuglog} ] ; then
@@ -2571,6 +2606,8 @@ function test_suite_init {
 
       mkdir -p $RESULT_ROOT/acceptance_test_tmp || fail "Could not mkdir -p RESULT_ROOT/acceptance_test_tmp (RESULT_ROOT=$RESULT_ROOT)"
 
+      create_image_pull_secret_wercker
+      
     elif [ "$JENKINS" = "true" ]; then
     
       trace "Test Suite is running on Jenkins and k8s is running locally on the same node."

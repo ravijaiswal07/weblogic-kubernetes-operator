@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.*;
 
 public class HealthCheckHelperTest {
@@ -66,6 +67,9 @@ public class HealthCheckHelperTest {
   private List<Handler> savedHandlers = new ArrayList<>();
   
   private UserProjects userProjects;
+  
+  private ApiClient apiClient;
+  private CoreV1Api core;
 
   @Before
   public void setUp() throws Exception {
@@ -83,6 +87,13 @@ public class HealthCheckHelperTest {
     unitHealthCheckHelper = new HealthCheckHelper(UNIT_NAMESPACE, Collections.singleton(UNIT_NAMESPACE));
 
     userProjects = UserProjects.createUserProjectsDirectory();
+    
+    apiClient = Config.defaultClient();
+    core = new CoreV1Api(apiClient);
+
+    // Ensure that client doesn't time out before call or watch
+    apiClient.getHttpClient().setReadTimeout(5, TimeUnit.MINUTES);
+
   }
 
   @After
@@ -101,8 +112,6 @@ public class HealthCheckHelperTest {
     Assume.assumeTrue(TestUtils.isKubernetesAvailable());
     
     // Create service account
-    ApiClient apiClient= Config.defaultClient();
-    CoreV1Api core = new CoreV1Api(apiClient);
     V1ServiceAccount alice = new V1ServiceAccount();
     alice.setMetadata(new V1ObjectMeta().name("alice"));
     try {
@@ -139,7 +148,7 @@ public class HealthCheckHelperTest {
                 }
               }
             },
-            new CallBuilderFactory(null)));
+            new CallBuilderFactory()));
     
     ClientPool.getInstance().drain();
     
@@ -158,8 +167,6 @@ public class HealthCheckHelperTest {
     Assume.assumeTrue(TestUtils.isKubernetesAvailable());
     
     // Create service account
-    ApiClient apiClient= Config.defaultClient();
-    CoreV1Api core = new CoreV1Api(apiClient);
     V1ServiceAccount theo = new V1ServiceAccount();
     theo.setMetadata(new V1ObjectMeta().name("theo"));
     try {
@@ -190,7 +197,7 @@ public class HealthCheckHelperTest {
                 }
               }
             },
-            new CallBuilderFactory(null)));
+            new CallBuilderFactory()));
     
     ClientPool.getInstance().drain();
     
@@ -340,7 +347,7 @@ public class HealthCheckHelperTest {
 
   // Create a named namespace
   private V1Namespace createNamespace(String name) throws Exception {
-    CallBuilderFactory factory = new CallBuilderFactory(null);
+    CallBuilderFactory factory = new CallBuilderFactory();
     try {
       V1Namespace existing = factory.create().readNamespace(name);
       if (existing != null)

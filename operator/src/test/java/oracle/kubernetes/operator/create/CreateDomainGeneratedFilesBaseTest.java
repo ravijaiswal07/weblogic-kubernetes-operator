@@ -9,6 +9,7 @@ import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.models.*;
 
 import static oracle.kubernetes.operator.LabelConstants.*;
+import static oracle.kubernetes.operator.VersionConstants.*;
 import static oracle.kubernetes.operator.create.CreateDomainInputs.readInputsYamlFile;
 import static oracle.kubernetes.operator.create.KubernetesArtifactUtils.*;
 import static oracle.kubernetes.operator.create.YamlUtils.yamlEqualTo;
@@ -17,6 +18,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import org.junit.AfterClass;
 import org.junit.Test;
+
+import java.io.File;
 
 /**
  * Tests that the all artifacts in the yaml files that create-weblogic-domain.sh
@@ -156,6 +159,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .spec(newJobSpec()
           .template(newPodTemplateSpec()
             .metadata(newObjectMeta()
+          .putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1)
               .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
               .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
               .putLabelsItem(APP_LABEL, getInputs().getDomainUID() + "-create-weblogic-domain-job"))
@@ -236,6 +240,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getInputs().getDomainUID() + "-create-weblogic-domain-job-cm")
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName()))
         .putDataItem(PROPERTY_UTILITY_SH, "")
@@ -355,6 +360,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
           newObjectMeta()
             .name(getInputs().getDomainUID())
             .namespace(getInputs().getNamespace())
+            .putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1)
             .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
             .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName()))
         .withSpec(newDomainSpec()
@@ -409,6 +415,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getApacheName())
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, APACHE_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
           .putLabelsItem(APP_LABEL, getApacheAppName()));
@@ -425,6 +432,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getTraefikScope())
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, TRAEFIK_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
           .putLabelsItem(CLUSTERNAME_LABEL, getInputs().getClusterName()));
@@ -448,6 +456,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getApacheName())
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, APACHE_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
           .putLabelsItem(APP_LABEL, getApacheAppName()))
@@ -459,6 +468,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
             .putMatchLabelsItem(APP_LABEL, getApacheAppName()))
           .template(newPodTemplateSpec()
             .metadata(newObjectMeta()
+              .putLabelsItem(RESOURCE_VERSION_LABEL, APACHE_LOAD_BALANCER_V1)
               .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
               .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
               .putLabelsItem(APP_LABEL, getApacheAppName()))
@@ -467,7 +477,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
               .terminationGracePeriodSeconds(60L)
               .addContainersItem(newContainer()
                 .name(getApacheName())
-                .image("12213-apache:latest")
+                .image("store/oracle/apache:12.2.1.3")
                 .imagePullPolicy("Never")
                 .addEnvItem(newEnvVar()
                   .name("WEBLOGIC_CLUSTER")
@@ -475,12 +485,12 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
                 .addEnvItem(newEnvVar()
                   .name("LOCATION")
                   .value(getInputs().getLoadBalancerAppPrepath()))
-                .addEnvItem(newEnvVar()
-                  .name("WEBLOGIC_HOST")
-                  .value(getInputs().getDomainUID() + "-" + getInputs().getAdminServerName()))
-                .addEnvItem(newEnvVar()
-                  .name("WEBLOGIC_PORT")
-                  .value(getInputs().getAdminPort()))
+                // .addEnvItem(newEnvVar()
+                //  .name("WEBLOGIC_HOST")
+                //  .value(getInputs().getDomainUID() + "-" + getInputs().getAdminServerName()))
+                // .addEnvItem(newEnvVar()
+                //  .name("WEBLOGIC_PORT")
+                //  .value(getInputs().getAdminPort()))
                 .readinessProbe(newProbe()
                   .tcpSocket(newTCPSocketAction()
                     .port(newIntOrString(80)))
@@ -514,6 +524,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getTraefikScope())
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, TRAEFIK_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
           .putLabelsItem(CLUSTERNAME_LABEL, getInputs().getClusterName()))
@@ -524,6 +535,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
             .putMatchLabelsItem(CLUSTERNAME_LABEL, getInputs().getClusterName()))
           .template(newPodTemplateSpec()
             .metadata(newObjectMeta()
+              .putLabelsItem(RESOURCE_VERSION_LABEL, TRAEFIK_LOAD_BALANCER_V1)
               .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
               .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
               .putLabelsItem(CLUSTERNAME_LABEL, getInputs().getClusterName()))
@@ -599,6 +611,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getTraefikScope() + "-cm")
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, TRAEFIK_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
           .putLabelsItem(CLUSTERNAME_LABEL, getInputs().getClusterName()))
@@ -628,6 +641,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getApacheName())
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, APACHE_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName()))
         .spec(newServiceSpec()
@@ -651,6 +665,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getTraefikScope())
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, TRAEFIK_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
           .putLabelsItem(CLUSTERNAME_LABEL, getInputs().getClusterName()))
@@ -682,6 +697,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getTraefikScope() + "-dashboard")
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, TRAEFIK_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
           .putLabelsItem(CLUSTERNAME_LABEL, getInputs().getClusterName()))
@@ -712,6 +728,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
       newClusterRole()
         .metadata(newObjectMeta()
           .name(getApacheName())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, APACHE_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName()))
         .addRulesItem(newPolicyRule()
@@ -733,6 +750,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
       newClusterRole()
         .metadata(newObjectMeta()
           .name(getTraefikScope())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, TRAEFIK_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
           .putLabelsItem(CLUSTERNAME_LABEL, getInputs().getClusterName()))
@@ -762,6 +780,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
       newClusterRoleBinding()
         .metadata(newObjectMeta()
           .name(getApacheName())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, APACHE_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName()))
         .addSubjectsItem(newSubject()
@@ -782,6 +801,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
       newClusterRoleBinding()
         .metadata(newObjectMeta()
           .name(getTraefikScope())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, TRAEFIK_LOAD_BALANCER_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName())
           .putLabelsItem(CLUSTERNAME_LABEL, getInputs().getClusterName()))
@@ -807,16 +827,17 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
 
   protected V1PersistentVolume getExpectedWeblogicDomainPersistentVolume() {
     return
-        newPersistentVolume()
-          .metadata(newObjectMeta()
-            .name(getInputs().getWeblogicDomainPersistentVolumeName())
-            .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
-            .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName()))
-          .spec(newPersistentVolumeSpec()
-            .storageClassName(getInputs().getWeblogicDomainStorageClass())
-            .putCapacityItem("storage", Quantity.fromString(getInputs().getWeblogicDomainStorageSize()))
-            .addAccessModesItem("ReadWriteMany")
-            .persistentVolumeReclaimPolicy("Retain"));
+      newPersistentVolume()
+        .metadata(newObjectMeta()
+          .name(getInputs().getWeblogicDomainPersistentVolumeName())
+        .putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1)
+          .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
+          .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName()))
+        .spec(newPersistentVolumeSpec()
+          .storageClassName(getInputs().getWeblogicDomainStorageClass())
+          .putCapacityItem("storage", Quantity.fromString(getInputs().getWeblogicDomainStorageSize()))
+          .addAccessModesItem("ReadWriteMany")
+          .persistentVolumeReclaimPolicy("Retain"));
   }
 
   @Test
@@ -836,6 +857,7 @@ public abstract class CreateDomainGeneratedFilesBaseTest {
         .metadata(newObjectMeta()
           .name(getInputs().getWeblogicDomainPersistentVolumeClaimName())
           .namespace(getInputs().getNamespace())
+          .putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1)
           .putLabelsItem(DOMAINUID_LABEL, getInputs().getDomainUID())
           .putLabelsItem(DOMAINNAME_LABEL, getInputs().getDomainName()))
         .spec(newPersistentVolumeClaimSpec()

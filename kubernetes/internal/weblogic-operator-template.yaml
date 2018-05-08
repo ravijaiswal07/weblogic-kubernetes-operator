@@ -14,6 +14,7 @@ metadata:
   name: weblogic-operator-cm
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: %NAMESPACE%
 data:
   serviceaccount: %ACCOUNT_NAME%
@@ -28,6 +29,7 @@ metadata:
   name: weblogic-operator-secrets
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: %NAMESPACE%
 type: Opaque
 data:
@@ -42,12 +44,14 @@ metadata:
   # set the namespace that you want the operator deployed in here
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: %NAMESPACE%
 spec:
   replicas: 1
   template:
     metadata:
      labels:
+        weblogic.resourceVersion: operator-v1
         weblogic.operatorName: %NAMESPACE%
         app: weblogic-operator
     spec:
@@ -77,8 +81,10 @@ spec:
         #### If you wish to enable remote debugging, uncomment the following lines and set
         #### the value to the port number you want to use - note that you will also need to
         #### update the Service definition to expose this port
+        %IF_REMOTE_DEBUG_NODEPORT_ENABLED%
         %REMOTE_DEBUG_NODE_PORT_PREFIX%- name: REMOTE_DEBUG_PORT
         %REMOTE_DEBUG_NODE_PORT_PREFIX%  value: "%INTERNAL_DEBUG_HTTP_PORT%"
+        %END_IF%
         volumeMounts:
         - name: weblogic-operator-cm-volume
           mountPath: /operator/config
@@ -86,9 +92,11 @@ spec:
           mountPath: /operator/secrets
           readOnly: true
         # uncomment this mount if using the ELK integration:
+        %IF_ELK_INTEGRATION_ENABLED%
         %ELK_INTEGRATION_PREFIX%- mountPath: /logs
         %ELK_INTEGRATION_PREFIX%  name: log-dir
         %ELK_INTEGRATION_PREFIX%  readOnly: false
+        %END_IF%
         livenessProbe:
           exec:
             command:
@@ -97,6 +105,7 @@ spec:
           initialDelaySeconds: 120
           periodSeconds: 5
       # Uncomment this container if using ELK integration:
+      %IF_ELK_INTEGRATION_ENABLED%
       %ELK_INTEGRATION_PREFIX%- name: logstash
       %ELK_INTEGRATION_PREFIX%  image: logstash:5
       %ELK_INTEGRATION_PREFIX%  args: ["-f", "/logs/logstash.conf"]
@@ -108,6 +117,7 @@ spec:
       %ELK_INTEGRATION_PREFIX%    value: "elasticsearch.default.svc.cluster.local"
       %ELK_INTEGRATION_PREFIX%  - name: ELASTICSEARCH_PORT
       %ELK_INTEGRATION_PREFIX%    value: "9200"
+      %END_IF%
       volumes:
       - name: weblogic-operator-cm-volume
         configMap:
@@ -116,33 +126,42 @@ spec:
         secret:
           secretName: weblogic-operator-secrets
       # Uncomment this volume if using ELK integration:
+      %IF_ELK_INTEGRATION_ENABLED%
       %ELK_INTEGRATION_PREFIX%- name: log-dir
       %ELK_INTEGRATION_PREFIX%  emptyDir:
       %ELK_INTEGRATION_PREFIX%    medium: Memory
+      %END_IF%
       %IMAGE_PULL_SECRET_PREFIX%imagePullSecrets:
       %IMAGE_PULL_SECRET_PREFIX%- name: %DOCKER_REGISTRY_SECRET%
 
 ---
+%IF_EXTERNAL_SERVICE_ENABLED%
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%apiVersion: v1
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%kind: Service
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%metadata:
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%  name: external-weblogic-operator-svc
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%  namespace: %NAMESPACE%
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%  labels:
+%EXTERNAL_OPERATOR_SERVICE_PREFIX%    weblogic.resourceVersion: operator-v1
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    weblogic.operatorName: %NAMESPACE%
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%spec:
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%  type: NodePort
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%  selector:
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    app: weblogic-operator
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%  ports:
+    %IF_EXTERNAL_OPERATOR_CERT%
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    %EXTERNAL_REST_NODE_PORT_PREFIX%- port: 8081
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    %EXTERNAL_REST_NODE_PORT_PREFIX%  nodePort: %EXTERNAL_REST_HTTPS_PORT%
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    %EXTERNAL_REST_NODE_PORT_PREFIX%  name: rest
+    %END_IF%
+    %IF_REMOTE_DEBUG_NODEPORT_ENABLED%
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    #### uncomment this port if you enable remote debugging, and make sure the value matches
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    #### the one you defined above
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    %REMOTE_DEBUG_NODE_PORT_PREFIX%- port: %INTERNAL_DEBUG_HTTP_PORT%
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    %REMOTE_DEBUG_NODE_PORT_PREFIX%  nodePort: %EXTERNAL_DEBUG_HTTP_PORT%
 %EXTERNAL_OPERATOR_SERVICE_PREFIX%    %REMOTE_DEBUG_NODE_PORT_PREFIX%  name: debug
+    %END_IF%
+%END_IF%
 
 ---
 apiVersion: v1
@@ -151,6 +170,7 @@ metadata:
   name: internal-weblogic-operator-svc
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: %NAMESPACE%
 spec:
   type: ClusterIP
@@ -159,4 +179,3 @@ spec:
   ports:
     - port: 8082
       name: rest
-

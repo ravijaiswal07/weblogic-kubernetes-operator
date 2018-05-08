@@ -82,7 +82,6 @@ public class MessageKeys {
   public static final String DOMAIN_REPLICAS_IGNORED = "WLSKO-0072";
   public static final String K8S_MIN_VERSION_CHECK_FAILED = "WLSKO-0073";
   public static final String VERIFY_K8S_MIN_VERSION = "WLSKO-0074";
-  public static final String DOMAIN_IMAGE_FAILED = "WLSKO-0075";
   public static final String DOMAIN_UID_UNIQUENESS_FAILED = "WLSKO-0076";
   public static final String PV_NOT_FOUND_FOR_DOMAIN_UID = "WLSKO-0077";
   public static final String PV_ACCESS_MODE_FAILED = "WLSKO-0078";
@@ -119,9 +118,6 @@ public class MessageKeys {
   public static final String NULL_TOKEN_REVIEW_STATUS = "WLSKO-0109";
   public static final String NULL_USER_INFO = "WLSKO-0110";
   public static final String RESOURCE_BUNDLE_NOT_FOUND = "WLSKO-0111";
-  public static final String RESTART_ADMIN_COMPLETE = "WLSKO-0112";
-  public static final String RESTART_SERVERS_COMPLETE = "WLSKO-0113";
-  public static final String ROLLING_CLUSTERS_COMPLETE = "WLSKO-0114";
   public static final String RESTART_ADMIN_STARTING = "WLSKO-0115";
   public static final String RESTART_SERVERS_STARTING = "WLSKO-0116";
   public static final String ROLLING_CLUSTERS_STARTING = "WLSKO-0117";

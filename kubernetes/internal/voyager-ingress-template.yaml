@@ -1,22 +1,25 @@
+%IF_LOADBALANCER_VOYAGER%
 apiVersion: voyager.appscode.com/v1beta1
 kind: Ingress
 metadata:
   name: %DOMAIN_UID%-voyager
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: voyager-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
   annotations:
     ingress.appscode.com/type: 'NodePort'
     ingress.appscode.com/stats: 'true'
+    ingress.appscode.com/affinity: 'cookie'
 spec:
   rules:
-  - host: %DOMAIN_UID%.%CLUSTER_NAME%
+  - host: '*' 
     http:
       nodePort: '%LOAD_BALANCER_WEB_PORT%'
       paths:
       - backend:
-          serviceName: %DOMAIN_UID%-cluster-%CLUSTER_NAME%
+          serviceName: %DOMAIN_UID%-cluster-%CLUSTER_NAME_LC%
           servicePort: '%MANAGED_SERVER_PORT%'
 
 ---
@@ -27,6 +30,7 @@ metadata:
   namespace: %NAMESPACE%
   labels:
     app: %DOMAIN_UID%-voyager-stats
+    weblogic.resourceVersion: voyager-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
 spec:
@@ -40,3 +44,4 @@ spec:
   selector:
     origin: voyager
     origin-name: %DOMAIN_UID%-voyager
+%END_IF%

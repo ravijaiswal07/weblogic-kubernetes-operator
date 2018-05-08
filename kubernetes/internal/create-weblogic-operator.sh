@@ -38,10 +38,11 @@ scriptDir="$( cd "$( dirname "${script}" )" && pwd )"
 source ${scriptDir}/utility.sh
 
 function usage {
-  echo usage: ${createScript} -o dir [-i file] [-g] [-h]
+  echo usage: ${createScript} -o dir [-i file] [-g] [-m] [-h] 
   echo "  -o Ouput directory for the generated yaml files, must be specified."
   echo "  -i Parameter input file, defaults to kubernetes/create-weblogic-operator-inputs.yaml"
   echo "  -g Only generate the files to create the operator, do not execute them"
+  echo "  -m Only generate the helm chart templates for creating the operator"
   echo "  -h Help"
   exit $1
 }
@@ -51,9 +52,13 @@ function usage {
 #
 valuesInputFile="${defaultOperatorInputsFile}"
 generateOnly=false
-while getopts "ghi:o:" opt; do
+generateHelm=false
+while getopts "gmhi:o:" opt; do
   case $opt in
     g) generateOnly=true
+    ;;
+    m) generateHelm=true
+    generateOnly=true
     ;;
     i) valuesInputFile="${OPTARG}"
     ;;
@@ -117,25 +122,31 @@ function initialize {
   # Parse the common inputs file
   parseCommonInputs
 
-  validateInputParamsSpecified serviceAccount namespace targetNamespaces weblogicOperatorImage
+  validateInputParamsSpecified version serviceAccount namespace targetNamespaces weblogicOperatorImage
 
   validateBooleanInputParamsSpecified elkIntegrationEnabled
 
-  validateServiceAccount
+  if [ "${generateHelm}" = false ]; then
 
-  validateNamespace
+    validateVersion
 
-  validateTargetNamespaces
+    validateServiceAccount
 
-  validateRemoteDebugNodePort
+    validateNamespace
 
-  validateJavaLoggingLevel
+    validateTargetNamespaces
 
-  validateExternalRest
+    validateRemoteDebugNodePort
+
+    validateJavaLoggingLevel
+
+    validateExternalRest
   
-  validateImagePullPolicy
+    validateImagePullPolicy
 
-  validateImagePullSecretName
+    validateImagePullSecretName
+
+  fi
 
   initAndValidateOutputDir
 
@@ -148,6 +159,10 @@ function initialize {
 #
 function initAndValidateOutputDir {
   oprOutputDir="${outputDir}/weblogic-operators/${namespace}"
+  if [ "${generateHelm}" = true ]; then
+    oprOutputDir="${outputDir}/helm-charts/weblogic-operator/templates"
+  fi
+
   domainOutputDir="${outputDir}/weblogic-domains/${domainUid}"
   validateOutputDir \
     ${oprOutputDir} \
@@ -200,6 +215,16 @@ function validateImagePullPolicy {
        [ $weblogicOperatorImagePullPolicy != $NEVER           ]; then
       validationError "Invalid weblogicOperatorImagePullPolicy: \"${weblogicOperatorImagePullPolicy}\". Valid values are $IF_NOT_PRESENT, $ALWAYS and $NEVER."
     fi
+  fi
+}
+
+#
+# Function to validate the version of the inputs file
+#
+function validateVersion {
+  local requiredVersion='create-weblogic-operator-inputs-v1'
+  if [ "${version}" != "${requiredVersion}" ]; then
+    validationError "Invalid version: \"${version}\".  Must be ${requiredVersion}."
   fi
 }
 
@@ -354,8 +379,31 @@ function createYamlFiles {
   # file there, and create the operator from it, or the user can put the
   # inputs file some place else and let this script create the output directory
   # (if needed) and copy the inputs file there.
-  copyInputsFileToOutputDirectory ${valuesInputFile} "${oprOutputDir}/create-weblogic-operator-inputs.yaml"
+  if [ "${generateHelm}" = false ]; then
+    copyInputsFileToOutputDirectory ${valuesInputFile} "${oprOutputDir}/create-weblogic-operator-inputs.yaml"
+  fi
 
+  # Processing specific when generating helm chart templates
+  if [ "${generateHelm}" = true ]; then
+    # Generate the kibana.yaml and elasticsearch.yaml files
+    # These files are optional based on the value of elkIntegrationOption
+    kibanaOutput="${oprOutputDir}/kibana.yaml"
+    echo ${helmIfElkIntegrationEnabled} >> ${kibanaOutput}
+    cat ${scriptDir}/kibana.yaml >> ${kibanaOutput}
+    echo ${helmEndIf} >> ${kibanaOutput}
+
+    esOutput="${oprOutputDir}/elasticsearch.yaml"
+    echo ${helmIfElkIntegrationEnabled} >> ${esOutput}
+    cat ${scriptDir}/elasticsearch.yaml >> ${esOutput}
+    echo ${helmEndIf} >> ${esOutput}
+
+    # set all optional feature to true to include them in 
+    # the generated helm template
+    remoteDebugNodePortEnabled=true
+    elkIntegrationEnabled=true
+    externalRestOption=true
+  fi
+  
   # Generate the yaml to create the WebLogic operator
   oprOutput="${oprOutputDir}/weblogic-operator.yaml"
   echo Generating ${oprOutput}
@@ -410,6 +458,12 @@ function createYamlFiles {
   sed -i -e "s|%INTERNAL_CERT_DATA%|$internal_cert_data|g" ${oprOutput}
   sed -i -e "s|%INTERNAL_KEY_DATA%|$internal_key_data|g" ${oprOutput}
 
+  sed -i -e "s|%IF_ELK_INTEGRATION_ENABLED%|${helmIfElkIntegrationEnabled}|g" ${oprOutput}
+  sed -i -e "s|%IF_EXTERNAL_SERVICE_ENABLED%|${helmIfExternalServiceEnabled}|g" ${oprOutput}
+  sed -i -e "s|%IF_EXTERNAL_OPERATOR_CERT%|${helmIfExternalOperatorCert}|g" ${oprOutput}
+  sed -i -e "s|%IF_REMOTE_DEBUG_NODEPORT_ENABLED%|${helmIfRemoteDebugNodePortEnabled}|g" ${oprOutput}
+  sed -i -e "s|%END_IF%|${helmEndIf}|g" ${oprOutput}
+
   # Create the weblogic-operator-security.yaml file
   oprSecurityFile="${oprOutputDir}/weblogic-operator-security.yaml"
   roleName="weblogic-operator-namespace-role"
@@ -418,7 +472,11 @@ function createYamlFiles {
   clusterRoleBinding="${namespace}-operator-rolebinding"
 
   echo Running the weblogic operator security customization script
-  ${genSecPolicyScript} ${serviceAccount} ${namespace} "${targetNamespaces}" -o ${oprSecurityFile}
+  if [ "${generateHelm}" = true ]; then
+    ${genSecPolicyScript} "${serviceAccount}" "${namespace}" "${targetNamespaces}" -m -o ${oprSecurityFile}
+  else
+    ${genSecPolicyScript} "${serviceAccount}" "${namespace}" "${targetNamespaces}" -o ${oprSecurityFile}
+  fi
 
   # Remove any "...yaml-e" files left over from running sed
   rm -f ${oprOutputDir}/*.yaml-e
@@ -619,7 +677,16 @@ function outputJobSummary {
 initialize
 
 # Create certificates
-createCertificates
+# or simply replace template with helm template expression if 
+# generating helm templates
+if [ "${generateHelm}" = false ]; then
+  createCertificates
+else
+  external_cert_data="${externalOperatorCert}"
+  external_key_data="${externalOperatorKey}"
+  internal_cert_data="${internalOperatorCert}"
+  internal_key_data="${internalOperatorKey}"
+fi
 
 # Generate the yaml files for creating the operator
 createYamlFiles

@@ -1,3 +1,4 @@
+%IF_LOADBALANCER_TRAEFIK%
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -5,6 +6,7 @@ metadata:
   name: %DOMAIN_UID%-%CLUSTER_NAME_LC%-traefik
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: traefik-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
     weblogic.clusterName: %CLUSTER_NAME%
@@ -15,6 +17,7 @@ metadata:
   name: %DOMAIN_UID%-%CLUSTER_NAME_LC%-traefik
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: traefik-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
     weblogic.clusterName: %CLUSTER_NAME%
@@ -27,6 +30,7 @@ spec:
   template:
     metadata:
       labels:
+        weblogic.resourceVersion: traefik-load-balancer-v1
         weblogic.domainUID: %DOMAIN_UID%
         weblogic.domainName: %DOMAIN_NAME%
         weblogic.clusterName: %CLUSTER_NAME%
@@ -82,6 +86,7 @@ metadata:
   name: %DOMAIN_UID%-%CLUSTER_NAME_LC%-traefik-cm
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: traefik-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
     weblogic.clusterName: %CLUSTER_NAME%
@@ -105,6 +110,7 @@ metadata:
   name: %DOMAIN_UID%-%CLUSTER_NAME_LC%-traefik
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: traefik-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
     weblogic.clusterName: %CLUSTER_NAME%
@@ -125,6 +131,7 @@ metadata:
   name: %DOMAIN_UID%-%CLUSTER_NAME_LC%-traefik-dashboard
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: traefik-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
     weblogic.clusterName: %CLUSTER_NAME%
@@ -138,3 +145,4 @@ spec:
     targetPort: dash
     nodePort: %LOAD_BALANCER_DASHBOARD_PORT%
   type: NodePort
+%END_IF%

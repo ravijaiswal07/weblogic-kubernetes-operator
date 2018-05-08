@@ -1,3 +1,4 @@
+%IF_LOADBALANCER_APACHE%
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -5,6 +6,7 @@ metadata:
   name: %DOMAIN_UID%-apache-webtier
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: apache-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
     app: apache-webtier
@@ -15,6 +17,7 @@ metadata:
   name: %DOMAIN_UID%-apache-webtier
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: apache-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
     app: apache-webtier
@@ -28,32 +31,37 @@ spec:
   template:
     metadata:
       labels:
+        weblogic.resourceVersion: apache-load-balancer-v1
         weblogic.domainUID: %DOMAIN_UID%
         weblogic.domainName: %DOMAIN_NAME%
         app: apache-webtier
     spec:
       serviceAccountName: %DOMAIN_UID%-apache-webtier
       terminationGracePeriodSeconds: 60
+      %IF_LOAD_BALANCER_VOLUME_PATH%
       # volumes:
       # - name: "%DOMAIN_UID%-apache-webtier"
       #   hostPath:
       #     path: %LOAD_BALANCER_VOLUME_PATH%
+      %END_IF%
       containers:
       - name: %DOMAIN_UID%-apache-webtier
-        image: 12213-apache:latest
+        image: store/oracle/apache:12.2.1.3
         imagePullPolicy: Never
+        %IF_LOAD_BALANCER_VOLUME_PATH%
         # volumeMounts:
         # - name: "%DOMAIN_UID%-apache-webtier"
         #   mountPath: "/config"
+        %END_IF%
         env:
           - name: WEBLOGIC_CLUSTER
             value: '%DOMAIN_UID%-cluster-%CLUSTER_NAME_LC%:%MANAGED_SERVER_PORT%'
           - name: LOCATION
             value: '%WEB_APP_PREPATH%'
-          - name: WEBLOGIC_HOST
-            value: '%DOMAIN_UID%-%ADMIN_SERVER_NAME%'
-          - name: WEBLOGIC_PORT
-            value: '%ADMIN_PORT%'
+          #- name: WEBLOGIC_HOST
+          #  value: '%DOMAIN_UID%-%ADMIN_SERVER_NAME%'
+          #- name: WEBLOGIC_PORT
+          #  value: '%ADMIN_PORT%'
         readinessProbe:
           tcpSocket:
             port: 80
@@ -78,6 +86,7 @@ metadata:
   name: %DOMAIN_UID%-apache-webtier
   namespace: %NAMESPACE%
   labels:
+    weblogic.resourceVersion: apache-load-balancer-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
 spec:
@@ -90,4 +99,4 @@ spec:
     - port: 80
       nodePort: %LOAD_BALANCER_WEB_PORT%
       name: rest-https
-
+%END_IF%

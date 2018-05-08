@@ -6,6 +6,7 @@ metadata:
   name: {{ .Values.domainUid }}-create-weblogic-domain-job-cm
   namespace: {{ .Release.Namespace }}
   labels:
+    weblogic.resourceVersion: domain-v1
     weblogic.domainUID: {{ .Values.domainUid }}
     weblogic.domainName: {{ .Values.domainName }}
 data:
@@ -267,6 +268,7 @@ spec:
   template:
     metadata:
       labels:
+        weblogic.resourceVersion: domain-v1
         weblogic.domainUID: {{ .Values.domainUid }}
         weblogic.domainName: {{ .Values.domainName }}
         app: {{ .Values.domainUid }}-create-weblogic-domain-job
