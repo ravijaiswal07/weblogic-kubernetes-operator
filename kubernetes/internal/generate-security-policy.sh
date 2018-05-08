@@ -295,6 +295,7 @@ metadata:
   name: weblogic-operator-rolebinding
   namespace: {{ . }}
   labels:
+    weblogic.resourceVersion: operator-v1
     weblogic.operatorName: {{ \$relname }}
 subjects:
 - kind: ServiceAccount

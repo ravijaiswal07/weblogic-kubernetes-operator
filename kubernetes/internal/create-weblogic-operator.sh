@@ -59,6 +59,7 @@ while getopts "gmhi:o:" opt; do
     ;;
     m) generateHelm=true
     generateOnly=true
+    valuesInputFile="${scriptDir}/helm-generate-operator-inputs.yaml"
     ;;
     i) valuesInputFile="${OPTARG}"
     ;;
