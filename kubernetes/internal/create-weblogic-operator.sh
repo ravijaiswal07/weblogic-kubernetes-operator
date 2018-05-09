@@ -462,6 +462,7 @@ function createYamlFiles {
   sed -i -e "s|%IF_ELK_INTEGRATION_ENABLED%|${helmIfElkIntegrationEnabled}|g" ${oprOutput}
   sed -i -e "s|%IF_EXTERNAL_SERVICE_ENABLED%|${helmIfExternalServiceEnabled}|g" ${oprOutput}
   sed -i -e "s|%IF_EXTERNAL_OPERATOR_CERT%|${helmIfExternalOperatorCert}|g" ${oprOutput}
+  sed -i -e "s|%IF_IMAGE_PULL_SECRET_NAME%|${helmIfImagePullSecretName}|g" ${oprOutput}
   sed -i -e "s|%IF_REMOTE_DEBUG_NODEPORT_ENABLED%|${helmIfRemoteDebugNodePortEnabled}|g" ${oprOutput}
   sed -i -e "s|%END_IF%|${helmEndIf}|g" ${oprOutput}
 

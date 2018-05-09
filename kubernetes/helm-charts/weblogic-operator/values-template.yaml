@@ -10,10 +10,14 @@ targetNamespaces:
  - "default"
 
 # The docker image containing the operator code.
-image: container-registry.oracle.com/middleware/weblogic-kubernetes-operator:latest
+weblogicOperatorImage: container-registry.oracle.com/middleware/weblogic-kubernetes-operator:latest
 
 # The image pull policy for the operator docker image.
-imagePullPolicy: IfNotPresent
+weblogicOperatorImagePullPolicy: IfNotPresent
+
+# Name of the Kubernetes secret to access the registry containing the operator Docker image
+# The presence of the secret will be validated when this parameter is enabled.
+#weblogicOperatorImagePullSecretName:
 
 # The node port that should be allocated for the external operator REST https interface.
 # This value is required if the 'externalOperatorCert' and 'externalOperatorKey' values are set.

@@ -78,10 +78,10 @@ spec:
           value: "false"
         - name: JAVA_LOGGING_LEVEL
           value: "{{ .Values.javaLoggingLevel }}"
+        {{- if .Values.remoteDebugNodePortEnabled }}
         #### If you wish to enable remote debugging, uncomment the following lines and set
         #### the value to the port number you want to use - note that you will also need to
         #### update the Service definition to expose this port
-        {{- if .Values.remoteDebugNodePortEnabled }}
         - name: REMOTE_DEBUG_PORT
           value: "{{ .Values.internalDebugHttpPort }}"
         {{- end }}
@@ -91,8 +91,8 @@ spec:
         - name: weblogic-operator-secrets-volume
           mountPath: /operator/secrets
           readOnly: true
-        # uncomment this mount if using the ELK integration:
         {{- if .Values.elkIntegrationEnabled }}
+        # uncomment this mount if using the ELK integration:
         - mountPath: /logs
           name: log-dir
           readOnly: false
@@ -104,8 +104,8 @@ spec:
               - '/operator/livenessProbe.sh'
           initialDelaySeconds: 120
           periodSeconds: 5
-      # Uncomment this container if using ELK integration:
       {{- if .Values.elkIntegrationEnabled }}
+      # Uncomment this container if using ELK integration:
       - name: logstash
         image: logstash:5
         args: ["-f", "/logs/logstash.conf"]
@@ -125,14 +125,16 @@ spec:
       - name: weblogic-operator-secrets-volume
         secret:
           secretName: weblogic-operator-secrets
-      # Uncomment this volume if using ELK integration:
       {{- if .Values.elkIntegrationEnabled }}
+      # Uncomment this volume if using ELK integration:
       - name: log-dir
         emptyDir:
           medium: Memory
       {{- end }}
+      {{- if .Values.weblogicOperatorImagePullSecretName }}
       imagePullSecrets:
-      - name: 
+      - name: {{ .Values.weblogicOperatorImagePullSecretName }}
+      {{- end }}
 
 ---
 {{- if or (.Values.remoteDebugNodePortEnabled) (.Values.externalOperatorCert) }}

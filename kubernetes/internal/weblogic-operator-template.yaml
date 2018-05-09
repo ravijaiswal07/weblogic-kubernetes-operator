@@ -78,10 +78,10 @@ spec:
           value: "false"
         - name: JAVA_LOGGING_LEVEL
           value: "%JAVA_LOGGING_LEVEL%"
+        %IF_REMOTE_DEBUG_NODEPORT_ENABLED%
         #### If you wish to enable remote debugging, uncomment the following lines and set
         #### the value to the port number you want to use - note that you will also need to
         #### update the Service definition to expose this port
-        %IF_REMOTE_DEBUG_NODEPORT_ENABLED%
         %REMOTE_DEBUG_NODE_PORT_PREFIX%- name: REMOTE_DEBUG_PORT
         %REMOTE_DEBUG_NODE_PORT_PREFIX%  value: "%INTERNAL_DEBUG_HTTP_PORT%"
         %END_IF%
@@ -91,8 +91,8 @@ spec:
         - name: weblogic-operator-secrets-volume
           mountPath: /operator/secrets
           readOnly: true
-        # uncomment this mount if using the ELK integration:
         %IF_ELK_INTEGRATION_ENABLED%
+        # uncomment this mount if using the ELK integration:
         %ELK_INTEGRATION_PREFIX%- mountPath: /logs
         %ELK_INTEGRATION_PREFIX%  name: log-dir
         %ELK_INTEGRATION_PREFIX%  readOnly: false
@@ -104,8 +104,8 @@ spec:
               - '/operator/livenessProbe.sh'
           initialDelaySeconds: 120
           periodSeconds: 5
-      # Uncomment this container if using ELK integration:
       %IF_ELK_INTEGRATION_ENABLED%
+      # Uncomment this container if using ELK integration:
       %ELK_INTEGRATION_PREFIX%- name: logstash
       %ELK_INTEGRATION_PREFIX%  image: logstash:5
       %ELK_INTEGRATION_PREFIX%  args: ["-f", "/logs/logstash.conf"]
@@ -125,14 +125,16 @@ spec:
       - name: weblogic-operator-secrets-volume
         secret:
           secretName: weblogic-operator-secrets
-      # Uncomment this volume if using ELK integration:
       %IF_ELK_INTEGRATION_ENABLED%
+      # Uncomment this volume if using ELK integration:
       %ELK_INTEGRATION_PREFIX%- name: log-dir
       %ELK_INTEGRATION_PREFIX%  emptyDir:
       %ELK_INTEGRATION_PREFIX%    medium: Memory
       %END_IF%
+      %IF_IMAGE_PULL_SECRET_NAME%
       %IMAGE_PULL_SECRET_PREFIX%imagePullSecrets:
       %IMAGE_PULL_SECRET_PREFIX%- name: %DOCKER_REGISTRY_SECRET%
+      %END_IF%
 
 ---
 %IF_EXTERNAL_SERVICE_ENABLED%
