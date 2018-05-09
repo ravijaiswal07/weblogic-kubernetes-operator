@@ -56,6 +56,7 @@ import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
 import oracle.kubernetes.operator.rest.RestConfigImpl;
 import oracle.kubernetes.operator.rest.RestServer;
+import oracle.kubernetes.operator.steps.BeforeAdminPodStep;
 import oracle.kubernetes.operator.steps.BeforeAdminServiceStep;
 import oracle.kubernetes.operator.steps.ConfigMapAfterStep;
 import oracle.kubernetes.operator.steps.DeleteDomainStep;
@@ -622,8 +623,9 @@ public class Main {
   // "principal"
   private static Step bringAdminServerUp(Step next) {
     return new ListPersistentVolumeClaimStep(
-        PodHelper.createAdminPodStep(
-            new BeforeAdminServiceStep(ServiceHelper.createForServerStep(next))));
+        new BeforeAdminPodStep(
+            PodHelper.createAdminPodStep(
+                new BeforeAdminServiceStep(ServiceHelper.createForServerStep(next)))));
   }
 
   private static Step connectToAdminAndInspectDomain(Step next) {

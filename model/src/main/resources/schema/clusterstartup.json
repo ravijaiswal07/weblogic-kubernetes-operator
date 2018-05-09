@@ -14,6 +14,10 @@
       "description": "Name of specific cluster to start.  Managed servers in the cluster will be started beginning with replicas instances.",
       "type": "string"
      },
+     "podTemplate": {
+      "description": "Name of pod template.  If specified, operator will use this pod template as basis for generating the pods for server instances in this cluster.  More info: https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md",
+      "type": "string"
+     },
      "replicas": {
       "description": "Replicas is the desired number of managed servers running for this cluster.",
       "type": "integer",

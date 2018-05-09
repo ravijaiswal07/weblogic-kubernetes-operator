@@ -408,6 +408,35 @@ public class CallBuilder {
         REPLACE_CONFIGMAP);
   }
 
+  /* Pod Templates */
+
+  private com.squareup.okhttp.Call readPodTemplateAsync(
+      ApiClient client, String name, String namespace, ApiCallback<V1PodTemplate> callback)
+      throws ApiException {
+    return new CoreV1Api(client)
+        .readNamespacedPodTemplateAsync(name, namespace, pretty, exact, export, callback);
+  }
+
+  private final CallFactory<V1PodTemplate> READ_POD_TEMPLATE =
+      (requestParams, usage, cont, callback) ->
+          wrap(readPodTemplateAsync(usage, requestParams.name, requestParams.namespace, callback));
+
+  /**
+   * Asynchronous step for reading pod template
+   *
+   * @param name Name
+   * @param namespace Namespace
+   * @param responseStep Response step for when call completes
+   * @return Asynchronous step
+   */
+  public Step readPodTemplateAsync(
+      String name, String namespace, ResponseStep<V1PodTemplate> responseStep) {
+    return createRequestAsync(
+        responseStep,
+        new RequestParams("readPodTemplate", namespace, name, null),
+        READ_POD_TEMPLATE);
+  }
+
   /* Pods */
 
   private com.squareup.okhttp.Call listPodAsync(

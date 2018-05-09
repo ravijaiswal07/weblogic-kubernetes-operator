@@ -36,6 +36,15 @@ public class ClusterStartup {
   @Expose
   @NotNull
   private String clusterName;
+  /**
+   * Name of pod template. If specified, operator will use this pod template as basis for generating
+   * pods for server instances in this cluster. More info:
+   * https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md
+   */
+  @SerializedName("podTemplate")
+  @Expose
+  @NotNull
+  private String podTemplate;
   /** Replicas is the desired number of managed servers running for this cluster. */
   @SerializedName("replicas")
   @Expose
@@ -111,6 +120,41 @@ public class ClusterStartup {
   }
 
   /**
+   * Name of pod template. If specified, operator will use this pod template as basis for generating
+   * pods for server instances in this cluster. More info:
+   * https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md
+   *
+   * @return pod template
+   */
+  public String getPodTemplate() {
+    return podTemplate;
+  }
+
+  /**
+   * Name of pod template. If specified, operator will use this pod template as basis for generating
+   * pods for server instances in this cluster. More info:
+   * https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md
+   *
+   * @param podTemplate pod template
+   */
+  public void setPodTemplate(String podTemplate) {
+    this.podTemplate = podTemplate;
+  }
+
+  /**
+   * Name of pod template. If specified, operator will use this pod template as basis for generating
+   * pods for server instances in this cluster. More info:
+   * https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md
+   *
+   * @param pod template pod template
+   * @return this
+   */
+  public ClusterStartup withPodTemplate(String podTemplate) {
+    this.podTemplate = podTemplate;
+    return this;
+  }
+
+  /**
    * Replicas is the desired number of managed servers running for this cluster.
    *
    * @return Replicas
@@ -173,6 +217,7 @@ public class ClusterStartup {
     return new ToStringBuilder(this)
         .append("desiredState", desiredState)
         .append("clusterName", clusterName)
+        .append("podTemplate", podTemplate)
         .append("replicas", replicas)
         .append("env", env)
         .toString();
@@ -185,6 +230,7 @@ public class ClusterStartup {
         .append(env)
         .append(replicas)
         .append(clusterName)
+        .append(podTemplate)
         .toHashCode();
   }
 
@@ -202,6 +248,7 @@ public class ClusterStartup {
         .append(env, rhs.env)
         .append(replicas, rhs.replicas)
         .append(clusterName, rhs.clusterName)
+        .append(podTemplate, rhs.podTemplate)
         .isEquals();
   }
 }

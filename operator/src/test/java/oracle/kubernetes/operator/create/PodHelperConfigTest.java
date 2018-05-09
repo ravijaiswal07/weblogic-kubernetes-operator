@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.TuningParameters;
-import oracle.kubernetes.operator.TuningParameters.PodTuning;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
 import oracle.kubernetes.operator.helpers.PodHelper;
 import oracle.kubernetes.operator.wlsconfig.WlsClusterConfig;

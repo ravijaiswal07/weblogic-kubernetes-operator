@@ -17,6 +17,7 @@ import io.kubernetes.client.models.V1ObjectMeta;
 import io.kubernetes.client.models.V1PersistentVolumeClaimVolumeSource;
 import io.kubernetes.client.models.V1Pod;
 import io.kubernetes.client.models.V1PodSpec;
+import io.kubernetes.client.models.V1PodTemplate;
 import io.kubernetes.client.models.V1Probe;
 import io.kubernetes.client.models.V1SecretVolumeSource;
 import io.kubernetes.client.models.V1Status;
@@ -237,16 +238,23 @@ public class PodHelper {
       labels.put(LabelConstants.CREATEDBYOPERATOR_LABEL, "true");
       metadata.setLabels(labels);
 
-      V1PodSpec podSpec = new V1PodSpec();
+      V1PodTemplate template = null;
+      String podTemplateName = (String) packet.get(ProcessingConstants.POD_TEMPLATE_NAME);
+      if (podTemplateName != null) {
+        @SuppressWarnings("unchecked")
+        Map<String, V1PodTemplate> podTemplates =
+            (Map<String, V1PodTemplate>) packet.get(ProcessingConstants.POD_TEMPLATES);
+        template = podTemplates.get(podTemplateName);
+      }
+
+      V1PodSpec podSpec = template != null ? template.getTemplate().getSpec() : new V1PodSpec();
       adminPod.setSpec(podSpec);
 
       podSpec.setHostname(podName);
 
-      List<V1Container> containers = new ArrayList<>();
       V1Container container = new V1Container();
       container.setName(KubernetesConstants.CONTAINER_NAME);
-      containers.add(container);
-      podSpec.setContainers(containers);
+      podSpec.addContainersItem(container);
 
       container.setImage(imageName);
       container.setImagePullPolicy(imagePullPolicy);
@@ -768,14 +776,21 @@ public class PodHelper {
       }
       metadata.setLabels(labels);
 
-      V1PodSpec podSpec = new V1PodSpec();
+      V1PodTemplate template = null;
+      String podTemplateName = (String) packet.get(ProcessingConstants.POD_TEMPLATE_NAME);
+      if (podTemplateName != null) {
+        @SuppressWarnings("unchecked")
+        Map<String, V1PodTemplate> podTemplates =
+            (Map<String, V1PodTemplate>) packet.get(ProcessingConstants.POD_TEMPLATES);
+        template = podTemplates.get(podTemplateName);
+      }
+
+      V1PodSpec podSpec = template != null ? template.getTemplate().getSpec() : new V1PodSpec();
       pod.setSpec(podSpec);
 
-      List<V1Container> containers = new ArrayList<>();
       V1Container container = new V1Container();
       container.setName(KubernetesConstants.CONTAINER_NAME);
-      containers.add(container);
-      podSpec.setContainers(containers);
+      podSpec.addContainersItem(container);
 
       container.setImage(imageName);
       container.setImagePullPolicy(imagePullPolicy);

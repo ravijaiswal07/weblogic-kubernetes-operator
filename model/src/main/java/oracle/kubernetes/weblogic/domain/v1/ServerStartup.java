@@ -31,6 +31,15 @@ public class ServerStartup {
   @NotNull
   private String serverName;
   /**
+   * Name of pod template. If specified, operator will use this pod template as basis for generating
+   * the pod for this server instance. More info:
+   * https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md
+   */
+  @SerializedName("podTemplate")
+  @Expose
+  @NotNull
+  private String podTemplate;
+  /**
    * Managed server NodePort port. The port on each node on which this managed server will be
    * exposed. If specified, this value must be an unused port. By default, the server will not be
    * exposed outside the Kubernetes cluster.
@@ -103,6 +112,41 @@ public class ServerStartup {
   }
 
   /**
+   * Name of pod template. If specified, operator will use this pod template as basis for generating
+   * the pod for this server instance. More info:
+   * https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md
+   *
+   * @return pod template
+   */
+  public String getPodTemplate() {
+    return podTemplate;
+  }
+
+  /**
+   * Name of pod template. If specified, operator will use this pod template as basis for generating
+   * the pod for this server instance. More info:
+   * https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md
+   *
+   * @param podTemplate pod template
+   */
+  public void setPodTemplate(String podTemplate) {
+    this.podTemplate = podTemplate;
+  }
+
+  /**
+   * Name of pod template. If specified, operator will use this pod template as basis for generating
+   * the pod for this server instance. More info:
+   * https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md
+   *
+   * @param pod template pod template
+   * @return this
+   */
+  public ServerStartup withPodTemplate(String podTemplate) {
+    this.podTemplate = podTemplate;
+    return this;
+  }
+
+  /**
    * Managed server NodePort port. The port on each node on which this managed server will be
    * exposed. If specified, this value must be an unused port. By default, the server will not be
    * exposed outside the Kubernetes cluster.
@@ -171,6 +215,7 @@ public class ServerStartup {
     return new ToStringBuilder(this)
         .append("desiredState", desiredState)
         .append("serverName", serverName)
+        .append("podTemplate", podTemplate)
         .append("nodePort", nodePort)
         .append("env", env)
         .toString();
@@ -181,6 +226,7 @@ public class ServerStartup {
     return new HashCodeBuilder()
         .append(desiredState)
         .append(serverName)
+        .append(podTemplate)
         .append(env)
         .append(nodePort)
         .toHashCode();
@@ -198,6 +244,7 @@ public class ServerStartup {
     return new EqualsBuilder()
         .append(desiredState, rhs.desiredState)
         .append(serverName, rhs.serverName)
+        .append(podTemplate, rhs.podTemplate)
         .append(env, rhs.env)
         .append(nodePort, rhs.nodePort)
         .isEquals();

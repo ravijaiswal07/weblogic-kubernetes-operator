@@ -14,6 +14,10 @@
       "description": "Managed server name of instance to start.",
       "type": "string"
      },
+     "podTemplate": {
+      "description": "Name of pod template.  If specified, operator will use this pod template as basis for generating the pod for this server instance.  More info: https://github.com/oracle/weblogic-kubernetes-operator/blob/develop/site/developer.md",
+      "type": "string"
+     },
      "nodePort": {
       "description": "Managed server NodePort port.  The port on each node on which this managed server will be exposed.  If specified, this value must be an unused port.  By default, the server will not be exposed outside the Kubernetes cluster.",
       "type": "integer"

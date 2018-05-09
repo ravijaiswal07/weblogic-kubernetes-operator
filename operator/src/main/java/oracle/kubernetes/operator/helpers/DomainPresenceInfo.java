@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import oracle.kubernetes.operator.wlsconfig.WlsClusterConfig;
 import oracle.kubernetes.operator.wlsconfig.WlsDomainConfig;
 import oracle.kubernetes.operator.wlsconfig.WlsServerConfig;
+import oracle.kubernetes.weblogic.domain.v1.ClusterStartup;
 import oracle.kubernetes.weblogic.domain.v1.Domain;
 import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
 import oracle.kubernetes.weblogic.domain.v1.ServerStartup;
@@ -256,6 +257,7 @@ public class DomainPresenceInfo {
     public final WlsServerConfig serverConfig;
     public final WlsClusterConfig clusterConfig;
     public final List<V1EnvVar> envVars;
+    public final ClusterStartup clusterStartup;
     public final ServerStartup serverStartup;
 
     /**
@@ -270,10 +272,12 @@ public class DomainPresenceInfo {
         WlsServerConfig serverConfig,
         WlsClusterConfig clusterConfig,
         List<V1EnvVar> envVars,
+        ClusterStartup clusterStartup,
         ServerStartup serverStartup) {
       this.serverConfig = serverConfig;
       this.clusterConfig = clusterConfig;
       this.envVars = envVars;
+      this.clusterStartup = clusterStartup;
       this.serverStartup = serverStartup;
     }
   }

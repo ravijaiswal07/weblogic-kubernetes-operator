@@ -116,7 +116,19 @@ public class ManagedServersUpStep extends Step {
               if (WebLogicConstants.ADMIN_STATE.equals(ss.getDesiredState())) {
                 env = startInAdminMode(env);
               }
-              ssic.add(new ServerStartupInfo(wlsServerConfig, cc, env, ss));
+              ClusterStartup cs = null;
+              if (cc != null) {
+                List<ClusterStartup> lcs = spec.getClusterStartup();
+                if (lcs != null) {
+                  for (ClusterStartup csi : lcs) {
+                    if (cc.getClusterName().equals(csi.getClusterName())) {
+                      cs = csi;
+                      break;
+                    }
+                  }
+                }
+              }
+              ssic.add(new ServerStartupInfo(wlsServerConfig, cc, env, cs, ss));
             }
           }
         }
@@ -154,7 +166,7 @@ public class ManagedServersUpStep extends Step {
                   if (WebLogicConstants.ADMIN_STATE.equals(cs.getDesiredState())) {
                     env = startInAdminMode(env);
                   }
-                  ssic.add(new ServerStartupInfo(wlsServerConfig, wlsClusterConfig, env, ssi));
+                  ssic.add(new ServerStartupInfo(wlsServerConfig, wlsClusterConfig, env, cs, ssi));
                   startedCount++;
                 }
               }
@@ -170,7 +182,8 @@ public class ManagedServersUpStep extends Step {
               if (!serverName.equals(asName) && !servers.contains(serverName)) {
                 // start server
                 servers.add(serverName);
-                ssic.add(new ServerStartupInfo(wlsServerConfig, wlsClusterConfig, null, null));
+                ssic.add(
+                    new ServerStartupInfo(wlsServerConfig, wlsClusterConfig, null, null, null));
               }
             }
           }
@@ -181,7 +194,7 @@ public class ManagedServersUpStep extends Step {
             if (!serverName.equals(asName) && !servers.contains(serverName)) {
               // start server
               servers.add(serverName);
-              ssic.add(new ServerStartupInfo(wlsServerConfig.getValue(), null, null, null));
+              ssic.add(new ServerStartupInfo(wlsServerConfig.getValue(), null, null, null, null));
             }
           }
         } else if (StartupControlConstants.AUTO_STARTUPCONTROL.equals(sc)) {
@@ -196,7 +209,7 @@ public class ManagedServersUpStep extends Step {
                 if (!serverName.equals(asName) && !servers.contains(serverName)) {
                   // start server
                   servers.add(serverName);
-                  ssic.add(new ServerStartupInfo(wlsServerConfig, config, null, null));
+                  ssic.add(new ServerStartupInfo(wlsServerConfig, config, null, null, null));
                   startedCount++;
                 }
               }
