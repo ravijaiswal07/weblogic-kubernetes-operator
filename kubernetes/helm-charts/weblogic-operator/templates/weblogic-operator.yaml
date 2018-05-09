@@ -61,7 +61,7 @@ spec:
         #### this will change after publishing externally ####
         #### if you are using a manually built image, probably from a personal branch, you should
         #### use a tag other that "latest" to identify it, and update the tag on this line
-        image: {{ .Values.image }}
+        image: {{ .Values.weblogicOperatorImage }}
         #### won't need 'always' after publishing externally - that is just needed during
         #### development to make sure we pick up the latest build
         #### If you are using an image that you manually deployed, set this to "Never"

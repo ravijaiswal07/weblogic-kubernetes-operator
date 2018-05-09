@@ -20,7 +20,7 @@ namespace: "{{ .Release.Namespace }}"
 targetNamespaces: "{{- range \$index, \$targetnamespace := .Values.targetNamespaces }} {{- if \$index }},{{ end }}{{- \$targetnamespace }} {{- end }}"
 
 # The docker image containing the operator code.
-weblogicOperatorImage: "{{ .Values.image }}"
+weblogicOperatorImage: "{{ .Values.weblogicOperatorImage }}"
 
 # The image pull policy for the operator docker image.
 weblogicOperatorImagePullPolicy: "{{ .Values.imagePullPolicy }}"
