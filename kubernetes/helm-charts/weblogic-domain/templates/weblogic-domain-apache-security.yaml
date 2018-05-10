@@ -3,10 +3,10 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Values.domainUid }}-apache-webtier
+  name: {{ .Values.domainUID }}-apache-webtier
   labels:
     weblogic.resourceVersion: apache-load-balancer-v1
-    weblogic.domainUID: {{ .Values.domainUid }}
+    weblogic.domainUID: {{ .Values.domainUID }}
     weblogic.domainName: {{ .Values.domainName }}
 rules:
   - apiGroups:
@@ -32,17 +32,17 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
-  name: {{ .Values.domainUid }}-apache-webtier
+  name: {{ .Values.domainUID }}-apache-webtier
   labels:
     weblogic.resourceVersion: apache-load-balancer-v1
-    weblogic.domainUID: {{ .Values.domainUid }}
+    weblogic.domainUID: {{ .Values.domainUID }}
     weblogic.domainName: {{ .Values.domainName }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Values.domainUid }}-apache-webtier
+  name: {{ .Values.domainUID }}-apache-webtier
 subjects:
 - kind: ServiceAccount
-  name: {{ .Values.domainUid }}-apache-webtier
+  name: {{ .Values.domainUID }}-apache-webtier
   namespace: {{ .Release.Namespace }}
 {{- end }}

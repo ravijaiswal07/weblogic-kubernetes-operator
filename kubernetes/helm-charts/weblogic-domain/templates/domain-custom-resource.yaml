@@ -6,18 +6,18 @@
 apiVersion: "weblogic.oracle/v1"
 kind: Domain
 metadata:
-  name: {{ .Values.domainUid }}
+  name: {{ .Values.domainUID }}
   namespace: {{ .Release.Namespace }}
   labels:
     weblogic.resourceVersion: domain-v1
-    weblogic.domainUID: {{ .Values.domainUid }}
+    weblogic.domainUID: {{ .Values.domainUID }}
     weblogic.domainName: {{ .Values.domainName }}
 spec:
   # The domainUID must be unique across the entire Kubernetes Cluster.   Each WebLogic Domain must
   # have its own unique domainUID.  This does not have to be the same as the Domain Name.  It is allowed
   # to have multiple Domains with the same Domain Name, but they MUST have different domainUID's.
   # The domainUID is also used to identify the Persistent Volume that belongs to/with this Domain.
-  domainUID: {{ .Values.domainUid }}
+  domainUID: {{ .Values.domainUID }}
   # The WebLogic Domain Name
   domainName: {{ .Values.domainName }}
   # The Operator currently does not support other images
@@ -40,7 +40,7 @@ spec:
   #   "clusterStartup" entries below to work out which servers to start
   # - "AUTO" will start the servers as with "SPECIFIED", but then also start servers from
   #   other clusters up to the replicas count
-  startupControl: "AUTO"
+  startupControl: "{{ .Values.startupControl }}"
   # serverStartup is used to list the desired behavior for starting servers.  The Operator will
   # use this field only if startupControl is set to "SPECIFIED" or "AUTO".  You may provide a list of 
   # entries, each entry should contain the keys should below:

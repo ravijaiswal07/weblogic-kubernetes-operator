@@ -4,13 +4,13 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ .Values.domainUid }}-weblogic-domain-pv
+  name: {{ .Values.domainUID }}-weblogic-domain-pv
   labels:
     weblogic.resourceVersion: domain-v1
-    weblogic.domainUID: {{ .Values.domainUid }}
+    weblogic.domainUID: {{ .Values.domainUID }}
     weblogic.domainName: {{ .Values.domainName }}
 spec:
-  storageClassName: {{ .Values.domainUid }}-weblogic-domain-storage-class
+  storageClassName: {{ .Values.domainUID }}-weblogic-domain-storage-class
   capacity:
     storage: {{ .Values.weblogicDomainStorageSize }}
   accessModes:

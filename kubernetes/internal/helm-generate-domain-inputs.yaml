@@ -15,11 +15,11 @@ domainName: "{{ .Values.domainName }}"
 
 # Unique id identifying a domain.
 # This id must be lowercase and unique across all domains in a Kubernetes cluster.
-domainUID: "{{ .Values.domainUid }}"
+domainUID: "{{ .Values.domainUID }}"
 
 # Determines which WebLogic Servers the Operator will start up
 # Legal values are "NONE", "ALL", "ADMIN", "SPECIFIED", or "AUTO"
-startupControl: AUTO
+startupControl: "{{ .Values.startupControl }}"
 
 # Type of WebLogic Cluster
 # Legal values are "CONFIGURED" or "DYNAMIC"
