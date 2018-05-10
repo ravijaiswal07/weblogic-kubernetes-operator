@@ -23,7 +23,7 @@ targetNamespaces: "{{- range \$index, \$targetnamespace := .Values.targetNamespa
 weblogicOperatorImage: "{{ .Values.weblogicOperatorImage }}"
 
 # The image pull policy for the operator docker image.
-weblogicOperatorImagePullPolicy: "{{ .Values.imagePullPolicy }}"
+weblogicOperatorImagePullPolicy: "{{ .Values.weblogicOperatorImagePullPolicy }}"
 
 # Name of the Kubernetes secret to access the registry containing the operator Docker image
 # The presence of the secret will be validated when this parameter is enabled.

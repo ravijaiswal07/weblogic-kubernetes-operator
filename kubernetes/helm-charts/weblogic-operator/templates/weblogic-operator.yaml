@@ -65,7 +65,7 @@ spec:
         #### won't need 'always' after publishing externally - that is just needed during
         #### development to make sure we pick up the latest build
         #### If you are using an image that you manually deployed, set this to "Never"
-        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        imagePullPolicy: {{ .Values.weblogicOperatorImagePullPolicy }}
         command: ["bash"]
         args: ["/operator/operator.sh"]
         #### these variables are hang overs from the oow demo, may remove them
