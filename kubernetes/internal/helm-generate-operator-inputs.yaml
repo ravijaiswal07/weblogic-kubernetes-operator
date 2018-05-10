@@ -48,7 +48,7 @@ weblogicOperatorImagePullSecretName: "{{ .Values.weblogicOperatorImagePullSecret
 #    The customer supplied certificate and private key are used for the REST
 #    interface.  They are specified by the 'externalOperatorCert' and
 #    'eternalOperatorKey' properties.
-externalRestOption: NONE
+externalRestOption: "{{ .Values.externalRestOption }}"
 
 # The node port that should be allocated for the external operator REST https interface.
 # This parameter is required if 'externalRestOption' is not 'NONE'.
@@ -83,7 +83,7 @@ internalOperatorKey: "{{ required \"internalOperatorKey is required\" .Values.in
 # The 'internalDebugHttpPort' property controls the port number inside the Kubernetes
 # cluster and the 'externalDebugHttpPort' property controls the port number outside
 # the Kubernetes cluster.
-remoteDebugNodePortEnabled: false
+remoteDebugNodePortEnabled: "{{ .Values.remoteDebugNodePortEnabled }}"
 
 # The port number inside the Kubernetes cluster for the operator's Java
 # remote debug server.
@@ -110,7 +110,7 @@ helmEndIf: "{{- end }}"
 
 helmIfRemoteDebugNodePortEnabled: "{{- if .Values.remoteDebugNodePortEnabled }}"
 
-helmIfExternalServiceEnabled: "{{- if or (.Values.remoteDebugNodePortEnabled) (.Values.externalOperatorCert) }}"
+helmIfExternalServiceEnabled: "{{- if or (.Values.remoteDebugNodePortEnabled) ( ne .Values.externalRestOption \"NONE\") }}"
 
 helmIfExternalOperatorCert: "{{- if .Values.externalOperatorCert }}"
 helmIfImagePullSecretName: "{{- if .Values.weblogicOperatorImagePullSecretName }}"

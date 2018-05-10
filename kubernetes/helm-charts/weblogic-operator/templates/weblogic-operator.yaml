@@ -137,7 +137,7 @@ spec:
       {{- end }}
 
 ---
-{{- if or (.Values.remoteDebugNodePortEnabled) (.Values.externalOperatorCert) }}
+{{- if or (.Values.remoteDebugNodePortEnabled) ( ne .Values.externalRestOption "NONE") }}
 apiVersion: v1
 kind: Service
 metadata:
