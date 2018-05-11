@@ -431,6 +431,7 @@ public class PodHelperConfigTest {
     V1Pod pod =
         getDesiredBaseServerPodConfigForDefaults(
             image, imagePullPolicy, MANAGED_SERVER_NAME, MANAGED_SERVER_PORT);
+    pod.getSpec().hostname(DOMAIN_UID + "-" + MANAGED_SERVER_NAME.toLowerCase());
     pod.getSpec()
         .getContainers()
         .get(0)

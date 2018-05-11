@@ -57,6 +57,250 @@ public class PodHelper {
 
   private PodHelper() {}
 
+  protected abstract static class BasePodStep extends Step {
+
+    public BasePodStep(Step next) {
+      super(next);
+    }
+
+    protected V1Pod computePodConfig(
+        String weblogicServerName,
+        Integer serverPort,
+        String weblogicClusterName,
+        List<V1EnvVar> envVars,
+        boolean isAdmin,
+        TuningParameters configMapHelper,
+        Packet packet) {
+      DomainPresenceInfo info = packet.getSPI(DomainPresenceInfo.class);
+
+      Domain dom = info.getDomain();
+      V1ObjectMeta meta = dom.getMetadata();
+      DomainSpec spec = dom.getSpec();
+      String namespace = meta.getNamespace();
+
+      String weblogicDomainUID = spec.getDomainUID();
+      String weblogicDomainName = spec.getDomainName();
+
+      // Create server instance Pod object
+      String podName = CallBuilder.toDNS1123LegalName(weblogicDomainUID + "-" + weblogicServerName);
+
+      String imageName = spec.getImage();
+      if (imageName == null || imageName.length() == 0) {
+        imageName = KubernetesConstants.DEFAULT_IMAGE;
+      }
+      String imagePullPolicy = spec.getImagePullPolicy();
+      if (imagePullPolicy == null || imagePullPolicy.length() == 0) {
+        imagePullPolicy =
+            (imageName.endsWith(KubernetesConstants.LATEST_IMAGE_SUFFIX))
+                ? KubernetesConstants.ALWAYS_IMAGEPULLPOLICY
+                : KubernetesConstants.IFNOTPRESENT_IMAGEPULLPOLICY;
+      }
+
+      V1Pod pod = new V1Pod();
+
+      V1ObjectMeta metadata = new V1ObjectMeta();
+      metadata.setName(podName);
+      metadata.setNamespace(namespace);
+      pod.setMetadata(metadata);
+
+      AnnotationHelper.annotateForPrometheus(metadata, serverPort);
+
+      Map<String, String> labels = new HashMap<>();
+      labels.put(LabelConstants.RESOURCE_VERSION_LABEL, VersionConstants.DOMAIN_V1);
+      labels.put(LabelConstants.DOMAINUID_LABEL, weblogicDomainUID);
+      labels.put(LabelConstants.DOMAINNAME_LABEL, weblogicDomainName);
+      labels.put(LabelConstants.SERVERNAME_LABEL, weblogicServerName);
+      labels.put(LabelConstants.CREATEDBYOPERATOR_LABEL, "true");
+      if (weblogicClusterName != null) {
+        labels.put(LabelConstants.CLUSTERNAME_LABEL, weblogicClusterName);
+      }
+      metadata.setLabels(labels);
+
+      V1PodTemplate template = null;
+      String podTemplateName = (String) packet.get(ProcessingConstants.POD_TEMPLATE_NAME);
+      if (podTemplateName != null) {
+        @SuppressWarnings("unchecked")
+        Map<String, V1PodTemplate> podTemplates =
+            (Map<String, V1PodTemplate>) packet.get(ProcessingConstants.POD_TEMPLATES);
+        template = podTemplates.get(podTemplateName);
+      }
+
+      V1PodSpec podSpec = template != null ? template.getTemplate().getSpec() : new V1PodSpec();
+      pod.setSpec(podSpec);
+
+      podSpec.setHostname(podName);
+
+      V1Container container = getOrCreateContainer(podSpec, KubernetesConstants.CONTAINER_NAME);
+      
+      container.setImage(imageName);
+      container.setImagePullPolicy(imagePullPolicy);
+
+      V1ContainerPort containerPort = getOrCreateContainerPort(container, KubernetesConstants.CONTAINER_PORT_NAME);
+      containerPort.setContainerPort(serverPort);
+      containerPort.setProtocol("TCP");
+
+      container.addCommandItem("/weblogic-operator/scripts/startServer.sh");
+      container.addCommandItem(weblogicDomainUID);
+      container.addCommandItem(weblogicServerName);
+      container.addCommandItem(weblogicDomainName);
+      if (!isAdmin) {
+        container.addCommandItem(spec.getAsName());
+        container.addCommandItem(String.valueOf(spec.getAsPort()));
+      }
+
+      V1Lifecycle lifecycle = getOrCreateLifecycle(container);
+      V1Handler preStop = new V1Handler();
+      V1ExecAction exec = new V1ExecAction();
+      exec.addCommandItem("/weblogic-operator/scripts/stopServer.sh");
+      exec.addCommandItem(weblogicDomainUID);
+      exec.addCommandItem(weblogicServerName);
+      exec.addCommandItem(weblogicDomainName);
+      preStop.setExec(exec);
+      lifecycle.setPreStop(preStop);
+
+      V1VolumeMount volumeMount = new V1VolumeMount();
+      volumeMount.setName("weblogic-domain-storage-volume");
+      volumeMount.setMountPath("/shared");
+      container.addVolumeMountsItem(volumeMount);
+
+      V1VolumeMount volumeMountSecret = new V1VolumeMount();
+      volumeMountSecret.setName("weblogic-credentials-volume");
+      volumeMountSecret.setMountPath("/weblogic-operator/secrets");
+      volumeMountSecret.setReadOnly(true);
+      container.addVolumeMountsItem(volumeMountSecret);
+
+      V1VolumeMount volumeMountScripts = new V1VolumeMount();
+      volumeMountScripts.setName("weblogic-domain-cm-volume");
+      volumeMountScripts.setMountPath("/weblogic-operator/scripts");
+      volumeMountScripts.setReadOnly(true);
+      container.addVolumeMountsItem(volumeMountScripts);
+
+      PodTuning tuning = configMapHelper.getPodTuning();
+
+      V1Probe readinessProbe = new V1Probe();
+      V1ExecAction readinessAction = new V1ExecAction();
+      readinessAction.addCommandItem("/weblogic-operator/scripts/readinessProbe.sh");
+      readinessAction.addCommandItem(weblogicDomainName);
+      readinessAction.addCommandItem(weblogicServerName);
+      readinessProbe.exec(readinessAction);
+      readinessProbe.setInitialDelaySeconds(tuning.readinessProbeInitialDelaySeconds);
+      readinessProbe.setTimeoutSeconds(tuning.readinessProbeTimeoutSeconds);
+      readinessProbe.setPeriodSeconds(tuning.readinessProbePeriodSeconds);
+      readinessProbe.setFailureThreshold(1); // must be 1
+      container.readinessProbe(readinessProbe);
+
+      V1Probe livenessProbe = new V1Probe();
+      V1ExecAction livenessAction = new V1ExecAction();
+      livenessAction.addCommandItem("/weblogic-operator/scripts/livenessProbe.sh");
+      livenessAction.addCommandItem(weblogicDomainName);
+      livenessAction.addCommandItem(weblogicServerName);
+      livenessProbe.exec(livenessAction);
+      livenessProbe.setInitialDelaySeconds(tuning.livenessProbeInitialDelaySeconds);
+      livenessProbe.setTimeoutSeconds(tuning.livenessProbeTimeoutSeconds);
+      livenessProbe.setPeriodSeconds(tuning.livenessProbePeriodSeconds);
+      livenessProbe.setFailureThreshold(1); // must be 1
+      container.livenessProbe(livenessProbe);
+
+      if (!info.getClaims().getItems().isEmpty()) {
+        V1Volume volume = new V1Volume();
+        volume.setName("weblogic-domain-storage-volume");
+        V1PersistentVolumeClaimVolumeSource pvClaimSource =
+            new V1PersistentVolumeClaimVolumeSource();
+        pvClaimSource.setClaimName(
+            info.getClaims().getItems().iterator().next().getMetadata().getName());
+        volume.setPersistentVolumeClaim(pvClaimSource);
+        podSpec.addVolumesItem(volume);
+      }
+
+      V1Volume volumeSecret = new V1Volume();
+      volumeSecret.setName("weblogic-credentials-volume");
+      V1SecretVolumeSource secret = new V1SecretVolumeSource();
+      secret.setSecretName(spec.getAdminSecret().getName());
+      volumeSecret.setSecret(secret);
+      podSpec.addVolumesItem(volumeSecret);
+
+      V1Volume volumeDomainConfigMap = new V1Volume();
+      volumeDomainConfigMap.setName("weblogic-domain-cm-volume");
+      V1ConfigMapVolumeSource cm = new V1ConfigMapVolumeSource();
+      cm.setName(KubernetesConstants.DOMAIN_CONFIG_MAP_NAME);
+      cm.setDefaultMode(0555); // read and execute
+      volumeDomainConfigMap.setConfigMap(cm);
+      podSpec.addVolumesItem(volumeDomainConfigMap);
+
+      if (envVars != null) {
+        for (V1EnvVar ev : envVars) {
+          container.addEnvItem(ev);
+        }
+      }
+
+      if (isAdmin) {
+        // Add internal-weblogic-operator-service certificate to Admin Server pod
+        String internalOperatorCert = getInternalOperatorCertFile(configMapHelper, packet);
+        addEnvVar(container, INTERNAL_OPERATOR_CERT_ENV, internalOperatorCert);
+      }
+
+      // Override the weblogic domain and admin server related environment variables that
+      // come for free with the WLS docker container with the correct values.
+      overrideContainerWeblogicEnvVars(spec, weblogicServerName, container);
+
+      return pod;
+    }
+    
+    private static V1Container getOrCreateContainer(V1PodSpec podSpec, String name) {
+      V1Container container = null;
+      List<V1Container> containers = podSpec.getContainers();
+      if (containers != null) {
+        for (V1Container c : containers) {
+          if (name.equals(c.getName())) {
+            container = c;
+            break;
+          }
+        }
+      }
+      
+      if (container == null) {
+        container = new V1Container().name(name);
+        podSpec.addContainersItem(container);
+      }
+      
+      return container;
+    }
+    
+    private static V1ContainerPort getOrCreateContainerPort(V1Container container, String name) {
+      V1ContainerPort containerPort = null;
+      List<V1ContainerPort> containerPorts = container.getPorts();
+      if (containerPorts != null) {
+        for (V1ContainerPort p : containerPorts) {
+          if (name.equals(p.getName())) {
+            containerPort = p;
+            break;
+          }
+        }
+      }
+      
+      if (containerPort == null) {
+        containerPort = new V1ContainerPort().name(name);
+        container.addPortsItem(containerPort);
+      }
+      
+      return containerPort;
+    }
+    
+    private static V1Lifecycle getOrCreateLifecycle(V1Container container) {
+      V1Lifecycle lifecycle = container.getLifecycle();
+      if (lifecycle == null) {
+        lifecycle = new V1Lifecycle();
+        container.setLifecycle(lifecycle);
+      }
+      return lifecycle;
+    }
+
+    // Make it protected to so that it can be unit tested:
+    protected String getInternalOperatorCertFile(TuningParameters configMapHelper, Packet packet) {
+      return configMapHelper.get(INTERNAL_OPERATOR_CERT_FILE);
+    }
+  }
+
   /**
    * Factory for {@link Step} that creates admin server pod
    *
@@ -68,7 +312,7 @@ public class PodHelper {
   }
 
   // Make this public so that it can be unit tested
-  public static class AdminPodStep extends Step {
+  public static class AdminPodStep extends BasePodStep {
     public AdminPodStep(Step next) {
       super(next);
     }
@@ -199,180 +443,20 @@ public class PodHelper {
       DomainPresenceInfo info = packet.getSPI(DomainPresenceInfo.class);
 
       Domain dom = info.getDomain();
-      V1ObjectMeta meta = dom.getMetadata();
       DomainSpec spec = dom.getSpec();
-      String namespace = meta.getNamespace();
 
-      String weblogicDomainUID = spec.getDomainUID();
-      String weblogicDomainName = spec.getDomainName();
-
-      // Create local admin server Pod object
-      String podName = CallBuilder.toDNS1123LegalName(weblogicDomainUID + "-" + spec.getAsName());
-
-      String imageName = spec.getImage();
-      if (imageName == null || imageName.length() == 0) {
-        imageName = KubernetesConstants.DEFAULT_IMAGE;
-      }
-      String imagePullPolicy = spec.getImagePullPolicy();
-      if (imagePullPolicy == null || imagePullPolicy.length() == 0) {
-        imagePullPolicy =
-            (imageName.endsWith(KubernetesConstants.LATEST_IMAGE_SUFFIX))
-                ? KubernetesConstants.ALWAYS_IMAGEPULLPOLICY
-                : KubernetesConstants.IFNOTPRESENT_IMAGEPULLPOLICY;
-      }
-
-      V1Pod adminPod = new V1Pod();
-
-      V1ObjectMeta metadata = new V1ObjectMeta();
-      metadata.setName(podName);
-      metadata.setNamespace(namespace);
-      adminPod.setMetadata(metadata);
-
-      AnnotationHelper.annotateForPrometheus(metadata, spec.getAsPort());
-
-      Map<String, String> labels = new HashMap<>();
-      labels.put(LabelConstants.RESOURCE_VERSION_LABEL, VersionConstants.DOMAIN_V1);
-      labels.put(LabelConstants.DOMAINUID_LABEL, weblogicDomainUID);
-      labels.put(LabelConstants.DOMAINNAME_LABEL, weblogicDomainName);
-      labels.put(LabelConstants.SERVERNAME_LABEL, spec.getAsName());
-      labels.put(LabelConstants.CREATEDBYOPERATOR_LABEL, "true");
-      metadata.setLabels(labels);
-
-      V1PodTemplate template = null;
-      String podTemplateName = (String) packet.get(ProcessingConstants.POD_TEMPLATE_NAME);
-      if (podTemplateName != null) {
-        @SuppressWarnings("unchecked")
-        Map<String, V1PodTemplate> podTemplates =
-            (Map<String, V1PodTemplate>) packet.get(ProcessingConstants.POD_TEMPLATES);
-        template = podTemplates.get(podTemplateName);
-      }
-
-      V1PodSpec podSpec = template != null ? template.getTemplate().getSpec() : new V1PodSpec();
-      adminPod.setSpec(podSpec);
-
-      podSpec.setHostname(podName);
-
-      V1Container container = new V1Container();
-      container.setName(KubernetesConstants.CONTAINER_NAME);
-      podSpec.addContainersItem(container);
-
-      container.setImage(imageName);
-      container.setImagePullPolicy(imagePullPolicy);
-
-      V1ContainerPort containerPort = new V1ContainerPort();
-      containerPort.setContainerPort(spec.getAsPort());
-      containerPort.setProtocol("TCP");
-      container.addPortsItem(containerPort);
-
-      V1Lifecycle lifecycle = new V1Lifecycle();
-      V1Handler preStopHandler = new V1Handler();
-      V1ExecAction lifecycleExecAction = new V1ExecAction();
-      lifecycleExecAction.addCommandItem("/weblogic-operator/scripts/stopServer.sh");
-      lifecycleExecAction.addCommandItem(weblogicDomainUID);
-      lifecycleExecAction.addCommandItem(spec.getAsName());
-      lifecycleExecAction.addCommandItem(weblogicDomainName);
-      preStopHandler.setExec(lifecycleExecAction);
-      lifecycle.setPreStop(preStopHandler);
-      container.setLifecycle(lifecycle);
-
-      V1VolumeMount volumeMount = new V1VolumeMount();
-      volumeMount.setName("weblogic-domain-storage-volume");
-      volumeMount.setMountPath("/shared");
-      container.addVolumeMountsItem(volumeMount);
-
-      V1VolumeMount volumeMountSecret = new V1VolumeMount();
-      volumeMountSecret.setName("weblogic-credentials-volume");
-      volumeMountSecret.setMountPath("/weblogic-operator/secrets");
-      volumeMountSecret.setReadOnly(true);
-      container.addVolumeMountsItem(volumeMountSecret);
-
-      V1VolumeMount volumeMountScripts = new V1VolumeMount();
-      volumeMountScripts.setName("weblogic-domain-cm-volume");
-      volumeMountScripts.setMountPath("/weblogic-operator/scripts");
-      volumeMountScripts.setReadOnly(true);
-      container.addVolumeMountsItem(volumeMountScripts);
-
-      container.addCommandItem("/weblogic-operator/scripts/startServer.sh");
-      container.addCommandItem(weblogicDomainUID);
-      container.addCommandItem(spec.getAsName());
-      container.addCommandItem(weblogicDomainName);
-
-      PodTuning tuning = configMapHelper.getPodTuning();
-
-      V1Probe readinessProbe = new V1Probe();
-      V1ExecAction readinessAction = new V1ExecAction();
-      readinessAction.addCommandItem("/weblogic-operator/scripts/readinessProbe.sh");
-      readinessAction.addCommandItem(weblogicDomainName);
-      readinessAction.addCommandItem(spec.getAsName());
-      readinessProbe.exec(readinessAction);
-      readinessProbe.setInitialDelaySeconds(tuning.readinessProbeInitialDelaySeconds);
-      readinessProbe.setTimeoutSeconds(tuning.readinessProbeTimeoutSeconds);
-      readinessProbe.setPeriodSeconds(tuning.readinessProbePeriodSeconds);
-      readinessProbe.setFailureThreshold(1); // must be 1
-      container.readinessProbe(readinessProbe);
-
-      V1Probe livenessProbe = new V1Probe();
-      V1ExecAction livenessAction = new V1ExecAction();
-      livenessAction.addCommandItem("/weblogic-operator/scripts/livenessProbe.sh");
-      livenessAction.addCommandItem(weblogicDomainName);
-      livenessAction.addCommandItem(spec.getAsName());
-      livenessProbe.exec(livenessAction);
-      livenessProbe.setInitialDelaySeconds(tuning.livenessProbeInitialDelaySeconds);
-      livenessProbe.setTimeoutSeconds(tuning.livenessProbeTimeoutSeconds);
-      livenessProbe.setPeriodSeconds(tuning.livenessProbePeriodSeconds);
-      livenessProbe.setFailureThreshold(1); // must be 1
-      container.livenessProbe(livenessProbe);
-
+      List<V1EnvVar> envVars = null;
       if (spec.getServerStartup() != null) {
         for (ServerStartup ss : spec.getServerStartup()) {
           if (ss.getServerName().equals(spec.getAsName())) {
-            for (V1EnvVar ev : ss.getEnv()) {
-              container.addEnvItem(ev);
-            }
+            envVars = ss.getEnv();
+            break;
           }
         }
       }
 
-      // Add internal-weblogic-operator-service certificate to Admin Server pod
-      String internalOperatorCert = getInternalOperatorCertFile(configMapHelper, packet);
-      addEnvVar(container, INTERNAL_OPERATOR_CERT_ENV, internalOperatorCert);
-
-      // Override the weblogic domain and admin server related environment variables that
-      // come for free with the WLS docker container with the correct values.
-      overrideContainerWeblogicEnvVars(spec, spec.getAsName(), container);
-
-      if (!info.getClaims().getItems().isEmpty()) {
-        V1Volume volume = new V1Volume();
-        volume.setName("weblogic-domain-storage-volume");
-        V1PersistentVolumeClaimVolumeSource pvClaimSource =
-            new V1PersistentVolumeClaimVolumeSource();
-        pvClaimSource.setClaimName(
-            info.getClaims().getItems().iterator().next().getMetadata().getName());
-        volume.setPersistentVolumeClaim(pvClaimSource);
-        podSpec.addVolumesItem(volume);
-      }
-
-      V1Volume volumeSecret = new V1Volume();
-      volumeSecret.setName("weblogic-credentials-volume");
-      V1SecretVolumeSource secret = new V1SecretVolumeSource();
-      secret.setSecretName(spec.getAdminSecret().getName());
-      volumeSecret.setSecret(secret);
-      podSpec.addVolumesItem(volumeSecret);
-
-      V1Volume volumeDomainConfigMap = new V1Volume();
-      volumeDomainConfigMap.setName("weblogic-domain-cm-volume");
-      V1ConfigMapVolumeSource cm = new V1ConfigMapVolumeSource();
-      cm.setName(KubernetesConstants.DOMAIN_CONFIG_MAP_NAME);
-      cm.setDefaultMode(0555); // read and execute
-      volumeDomainConfigMap.setConfigMap(cm);
-      podSpec.addVolumesItem(volumeDomainConfigMap);
-
-      return adminPod;
-    }
-
-    // Make it protected to so that it can be unit tested:
-    protected String getInternalOperatorCertFile(TuningParameters configMapHelper, Packet packet) {
-      return configMapHelper.get(INTERNAL_OPERATOR_CERT_FILE);
+      return computePodConfig(
+          spec.getAsName(), spec.getAsPort(), null, envVars, true, configMapHelper, packet);
     }
   }
 
@@ -568,7 +652,7 @@ public class PodHelper {
   }
 
   // Make this public so that it can be unit tested
-  public static class ManagedPodStep extends Step {
+  public static class ManagedPodStep extends BasePodStep {
     public ManagedPodStep(Step next) {
       super(next);
     }
@@ -721,183 +805,19 @@ public class PodHelper {
 
     // Make this protected so that it can be unit tested
     protected V1Pod computeManagedPodConfig(TuningParameters configMapHelper, Packet packet) {
-      DomainPresenceInfo info = packet.getSPI(DomainPresenceInfo.class);
-
-      Domain dom = info.getDomain();
-      V1ObjectMeta meta = dom.getMetadata();
-      DomainSpec spec = dom.getSpec();
-      String namespace = meta.getNamespace();
-
-      String weblogicDomainUID = spec.getDomainUID();
-      String weblogicDomainName = spec.getDomainName();
-
       WlsServerConfig scan = (WlsServerConfig) packet.get(ProcessingConstants.SERVER_SCAN);
       WlsClusterConfig cluster = (WlsClusterConfig) packet.get(ProcessingConstants.CLUSTER_SCAN);
       @SuppressWarnings("unchecked")
       List<V1EnvVar> envVars = (List<V1EnvVar>) packet.get(ProcessingConstants.ENVVARS);
 
-      String weblogicServerName = scan.getName();
-
-      // Create local managed server Pod object
-      String podName = CallBuilder.toDNS1123LegalName(weblogicDomainUID + "-" + weblogicServerName);
-
-      String weblogicClusterName = null;
-      if (cluster != null) weblogicClusterName = cluster.getClusterName();
-
-      String imageName = spec.getImage();
-      if (imageName == null || imageName.length() == 0) {
-        imageName = KubernetesConstants.DEFAULT_IMAGE;
-      }
-      String imagePullPolicy = spec.getImagePullPolicy();
-      if (imagePullPolicy == null || imagePullPolicy.length() == 0) {
-        imagePullPolicy =
-            (imageName.endsWith(KubernetesConstants.LATEST_IMAGE_SUFFIX))
-                ? KubernetesConstants.ALWAYS_IMAGEPULLPOLICY
-                : KubernetesConstants.IFNOTPRESENT_IMAGEPULLPOLICY;
-      }
-
-      V1Pod pod = new V1Pod();
-
-      V1ObjectMeta metadata = new V1ObjectMeta();
-      metadata.setName(podName);
-      metadata.setNamespace(namespace);
-      pod.setMetadata(metadata);
-
-      AnnotationHelper.annotateForPrometheus(metadata, scan.getListenPort());
-
-      Map<String, String> labels = new HashMap<>();
-      labels.put(LabelConstants.RESOURCE_VERSION_LABEL, VersionConstants.DOMAIN_V1);
-      labels.put(LabelConstants.DOMAINUID_LABEL, weblogicDomainUID);
-      labels.put(LabelConstants.DOMAINNAME_LABEL, weblogicDomainName);
-      labels.put(LabelConstants.SERVERNAME_LABEL, weblogicServerName);
-      labels.put(LabelConstants.CREATEDBYOPERATOR_LABEL, "true");
-      if (weblogicClusterName != null) {
-        labels.put(LabelConstants.CLUSTERNAME_LABEL, weblogicClusterName);
-      }
-      metadata.setLabels(labels);
-
-      V1PodTemplate template = null;
-      String podTemplateName = (String) packet.get(ProcessingConstants.POD_TEMPLATE_NAME);
-      if (podTemplateName != null) {
-        @SuppressWarnings("unchecked")
-        Map<String, V1PodTemplate> podTemplates =
-            (Map<String, V1PodTemplate>) packet.get(ProcessingConstants.POD_TEMPLATES);
-        template = podTemplates.get(podTemplateName);
-      }
-
-      V1PodSpec podSpec = template != null ? template.getTemplate().getSpec() : new V1PodSpec();
-      pod.setSpec(podSpec);
-
-      V1Container container = new V1Container();
-      container.setName(KubernetesConstants.CONTAINER_NAME);
-      podSpec.addContainersItem(container);
-
-      container.setImage(imageName);
-      container.setImagePullPolicy(imagePullPolicy);
-
-      V1ContainerPort containerPort = new V1ContainerPort();
-      containerPort.setContainerPort(scan.getListenPort());
-      containerPort.setProtocol("TCP");
-      container.addPortsItem(containerPort);
-
-      V1Lifecycle lifecycle = new V1Lifecycle();
-      V1Handler preStop = new V1Handler();
-      V1ExecAction exec = new V1ExecAction();
-      exec.addCommandItem("/weblogic-operator/scripts/stopServer.sh");
-      exec.addCommandItem(weblogicDomainUID);
-      exec.addCommandItem(weblogicServerName);
-      exec.addCommandItem(weblogicDomainName);
-      preStop.setExec(exec);
-      lifecycle.setPreStop(preStop);
-      container.setLifecycle(lifecycle);
-
-      V1VolumeMount volumeMount = new V1VolumeMount();
-      volumeMount.setName("weblogic-domain-storage-volume");
-      volumeMount.setMountPath("/shared");
-      container.addVolumeMountsItem(volumeMount);
-
-      V1VolumeMount volumeMountSecret = new V1VolumeMount();
-      volumeMountSecret.setName("weblogic-credentials-volume");
-      volumeMountSecret.setMountPath("/weblogic-operator/secrets");
-      volumeMountSecret.setReadOnly(true);
-      container.addVolumeMountsItem(volumeMountSecret);
-
-      V1VolumeMount volumeMountScripts = new V1VolumeMount();
-      volumeMountScripts.setName("weblogic-domain-cm-volume");
-      volumeMountScripts.setMountPath("/weblogic-operator/scripts");
-      volumeMountScripts.setReadOnly(true);
-      container.addVolumeMountsItem(volumeMountScripts);
-
-      container.addCommandItem("/weblogic-operator/scripts/startServer.sh");
-      container.addCommandItem(weblogicDomainUID);
-      container.addCommandItem(weblogicServerName);
-      container.addCommandItem(weblogicDomainName);
-      container.addCommandItem(spec.getAsName());
-      container.addCommandItem(String.valueOf(spec.getAsPort()));
-
-      PodTuning tuning = configMapHelper.getPodTuning();
-
-      V1Probe readinessProbe = new V1Probe();
-      V1ExecAction readinessAction = new V1ExecAction();
-      readinessAction.addCommandItem("/weblogic-operator/scripts/readinessProbe.sh");
-      readinessAction.addCommandItem(weblogicDomainName);
-      readinessAction.addCommandItem(weblogicServerName);
-      readinessProbe.exec(readinessAction);
-      readinessProbe.setInitialDelaySeconds(tuning.readinessProbeInitialDelaySeconds);
-      readinessProbe.setTimeoutSeconds(tuning.readinessProbeTimeoutSeconds);
-      readinessProbe.setPeriodSeconds(tuning.readinessProbePeriodSeconds);
-      readinessProbe.setFailureThreshold(1); // must be 1
-      container.readinessProbe(readinessProbe);
-
-      V1Probe livenessProbe = new V1Probe();
-      V1ExecAction livenessAction = new V1ExecAction();
-      livenessAction.addCommandItem("/weblogic-operator/scripts/livenessProbe.sh");
-      livenessAction.addCommandItem(weblogicDomainName);
-      livenessAction.addCommandItem(weblogicServerName);
-      livenessProbe.exec(livenessAction);
-      livenessProbe.setInitialDelaySeconds(tuning.livenessProbeInitialDelaySeconds);
-      livenessProbe.setTimeoutSeconds(tuning.livenessProbeTimeoutSeconds);
-      livenessProbe.setPeriodSeconds(tuning.livenessProbePeriodSeconds);
-      livenessProbe.setFailureThreshold(1); // must be 1
-      container.livenessProbe(livenessProbe);
-
-      if (!info.getClaims().getItems().isEmpty()) {
-        V1Volume volume = new V1Volume();
-        volume.setName("weblogic-domain-storage-volume");
-        V1PersistentVolumeClaimVolumeSource pvClaimSource =
-            new V1PersistentVolumeClaimVolumeSource();
-        pvClaimSource.setClaimName(
-            info.getClaims().getItems().iterator().next().getMetadata().getName());
-        volume.setPersistentVolumeClaim(pvClaimSource);
-        podSpec.addVolumesItem(volume);
-      }
-
-      V1Volume volumeSecret = new V1Volume();
-      volumeSecret.setName("weblogic-credentials-volume");
-      V1SecretVolumeSource secret = new V1SecretVolumeSource();
-      secret.setSecretName(spec.getAdminSecret().getName());
-      volumeSecret.setSecret(secret);
-      podSpec.addVolumesItem(volumeSecret);
-
-      V1Volume volumeDomainConfigMap = new V1Volume();
-      volumeDomainConfigMap.setName("weblogic-domain-cm-volume");
-      V1ConfigMapVolumeSource cm = new V1ConfigMapVolumeSource();
-      cm.setName(KubernetesConstants.DOMAIN_CONFIG_MAP_NAME);
-      cm.setDefaultMode(0555); // read and execute
-      volumeDomainConfigMap.setConfigMap(cm);
-      podSpec.addVolumesItem(volumeDomainConfigMap);
-
-      if (envVars != null) {
-        for (V1EnvVar ev : envVars) {
-          container.addEnvItem(ev);
-        }
-      }
-
-      // Override the weblogic domain and admin server related environment variables that
-      // come for free with the WLS docker container with the correct values.
-      overrideContainerWeblogicEnvVars(spec, weblogicServerName, container);
-
-      return pod;
+      return computePodConfig(
+          scan.getName(),
+          scan.getListenPort(),
+          cluster != null ? cluster.getClusterName() : null,
+          envVars,
+          false,
+          configMapHelper,
+          packet);
     }
   }
 
