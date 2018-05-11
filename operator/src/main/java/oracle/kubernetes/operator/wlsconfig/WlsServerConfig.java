@@ -111,14 +111,14 @@ public class WlsServerConfig {
     // parse the SSL configuration
     Map<String, Object> sslMap = (Map<String, Object>) serverConfigMap.get("SSL");
     Integer sslListenPort = (sslMap == null) ? null : (Integer) sslMap.get("listenPort");
-    boolean sslPortEnabled = (sslMap == null) ? false : (boolean) sslMap.get("enabled");
+    Boolean sslPortEnabled = (sslMap == null) ? false : (Boolean) sslMap.get("enabled");
 
     return new WlsServerConfig(
         (String) serverConfigMap.get("name"),
         (Integer) serverConfigMap.get("listenPort"),
         (String) serverConfigMap.get("listenAddress"),
         sslListenPort,
-        sslPortEnabled,
+        sslPortEnabled == null ? false : sslPortEnabled.booleanValue(),
         getMachineNameFromJsonMap(serverConfigMap),
         networkAccessPoints);
   }
