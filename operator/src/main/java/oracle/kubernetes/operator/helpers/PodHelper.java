@@ -131,11 +131,12 @@ public class PodHelper {
       podSpec.setHostname(podName);
 
       V1Container container = getOrCreateContainer(podSpec, KubernetesConstants.CONTAINER_NAME);
-      
+
       container.setImage(imageName);
       container.setImagePullPolicy(imagePullPolicy);
 
-      V1ContainerPort containerPort = getOrCreateContainerPort(container, KubernetesConstants.CONTAINER_PORT_NAME);
+      V1ContainerPort containerPort =
+          getOrCreateContainerPort(container, KubernetesConstants.CONTAINER_PORT_NAME);
       containerPort.setContainerPort(serverPort);
       containerPort.setProtocol("TCP");
 
@@ -245,7 +246,7 @@ public class PodHelper {
 
       return pod;
     }
-    
+
     private static V1Container getOrCreateContainer(V1PodSpec podSpec, String name) {
       V1Container container = null;
       List<V1Container> containers = podSpec.getContainers();
@@ -257,15 +258,15 @@ public class PodHelper {
           }
         }
       }
-      
+
       if (container == null) {
         container = new V1Container().name(name);
         podSpec.addContainersItem(container);
       }
-      
+
       return container;
     }
-    
+
     private static V1ContainerPort getOrCreateContainerPort(V1Container container, String name) {
       V1ContainerPort containerPort = null;
       List<V1ContainerPort> containerPorts = container.getPorts();
@@ -277,15 +278,15 @@ public class PodHelper {
           }
         }
       }
-      
+
       if (containerPort == null) {
         containerPort = new V1ContainerPort().name(name);
         container.addPortsItem(containerPort);
       }
-      
+
       return containerPort;
     }
-    
+
     private static V1Lifecycle getOrCreateLifecycle(V1Container container) {
       V1Lifecycle lifecycle = container.getLifecycle();
       if (lifecycle == null) {

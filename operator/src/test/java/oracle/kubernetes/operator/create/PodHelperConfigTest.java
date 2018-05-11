@@ -525,7 +525,11 @@ public class PodHelperConfigTest {
                                             "/weblogic-operator/scripts/readinessProbe.sh")
                                         .addCommandItem(DOMAIN_NAME)
                                         .addCommandItem(serverName)))
-                        .addPortsItem(newContainerPort().containerPort(port).protocol("TCP"))
+                        .addPortsItem(
+                            newContainerPort()
+                                .containerPort(port)
+                                .protocol("TCP")
+                                .name("default-channel"))
                         .addEnvItem(newEnvVar().name("DOMAIN_NAME").value(DOMAIN_NAME))
                         .addEnvItem(
                             newEnvVar().name("DOMAIN_HOME").value("/shared/domain/" + DOMAIN_NAME))
