@@ -4,7 +4,7 @@
 
 package oracle.kubernetes.operator.create;
 
-import static oracle.kubernetes.operator.create.FileUtils.assertSameFileContents;
+import static oracle.kubernetes.operator.utils.FileUtils.assertSameFileContents;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
@@ -12,6 +12,9 @@ import static org.hamcrest.Matchers.is;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import oracle.kubernetes.operator.utils.GeneratedHelmTemplates;
+import oracle.kubernetes.operator.utils.OperatorHelmTemplates;
+import oracle.kubernetes.operator.utils.UserProjects;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
