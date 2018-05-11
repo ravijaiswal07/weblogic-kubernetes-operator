@@ -35,7 +35,7 @@ build:
       yum -y install tar gzip procps
   - wercker/maven:
     goals: clean install
-    version: 3.5.2
+    version: 3.5.3
     cache_repo: true
   - script:
     name: Copy built-artifacts into the image
@@ -199,7 +199,7 @@ quality:
     maven_opts: -Dsonar.login=${SONAR_LOGIN} -Dsonar.password=${SONAR_PASSWORD} -Dsonar.host.url=${SONAR_HOST} 
     goals: clean install sonar:sonar
     cache_repo: true
-    version: 3.5.2
+    version: 3.5.3
 
 
 dev:
