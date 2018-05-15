@@ -535,22 +535,24 @@ function createYamlFiles {
   sed -i -e "s:%T3_PUBLIC_ADDRESS%:${t3PublicAddress}:g" ${createJobOutput}
   sed -i -e "s:%CLUSTER_NAME%:${clusterName}:g" ${createJobOutput}
   sed -i -e "s:%CLUSTER_TYPE%:${clusterType}:g" ${createJobOutput}
+  sed -i -e "s|%END_IF%|${helmEndIf}|g" ${createJobOutput}
+  sed -i -e "s|%IF_WEBLOGIC_IMAGE_PULL_SECRETS_NAME%|${helmIfWeblogicImagePullSecretsName}|g" ${createJobOutput}
+  sed -i -e "s|%IF_CREATE_WEBLOGIC_DOMAIN%|${helmIfCreateWeblogicDomain}|g" ${createJobOutput}
 
   # Generate the yaml to create the kubernetes job that will delete the weblogic domain_home folder
-  echo Generating ${deleteJobOutput}
+  # Note: not generating helm charts template for delete weblogic job 
+  if [ "${generateHelm}" = false ]; then
+    echo Generating ${deleteJobOutput}
 
-  cp ${deleteJobInput} ${deleteJobOutput}
-  sed -i -e "s:%NAMESPACE%:$namespace:g" ${deleteJobOutput}
-  sed -i -e "s:%WEBLOGIC_CREDENTIALS_SECRET_NAME%:${weblogicCredentialsSecretName}:g" ${deleteJobOutput}
-  sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_NAME%:${weblogicImagePullSecretName}:g" ${deleteJobOutput}
-  sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_PREFIX%:${weblogicImagePullSecretPrefix}:g" ${deleteJobOutput}
-  sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${deleteJobOutput}
-  sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${deleteJobOutput}
-
-  sed -i -e "s|%IF_WEBLOGIC_IMAGE_PULL_SECRETS_NAME%|${helmIfWeblogicImagePullSecretsName}|g" ${jobOutput}
-  sed -i -e "s|%IF_CREATE_WEBLOGIC_DOMAIN%|${helmIfCreateWeblogicDomain}|g" ${jobOutput}
-  sed -i -e "s|%END_IF%|${helmEndIf}|g" ${jobOutput}
-
+    cp ${deleteJobInput} ${deleteJobOutput}
+    sed -i -e "s:%NAMESPACE%:$namespace:g" ${deleteJobOutput}
+    sed -i -e "s:%WEBLOGIC_CREDENTIALS_SECRET_NAME%:${weblogicCredentialsSecretName}:g" ${deleteJobOutput}
+    sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_NAME%:${weblogicImagePullSecretName}:g" ${deleteJobOutput}
+    sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_PREFIX%:${weblogicImagePullSecretPrefix}:g" ${deleteJobOutput}
+    sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${deleteJobOutput}
+    sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${deleteJobOutput}
+  fi
+ 
   # Generate the yaml to create the domain custom resource
   echo Generating ${dcrOutput}
 

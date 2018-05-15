@@ -19,11 +19,8 @@ namespace: weblogic-operator
 # A list of target namespaces the operator manages (same as targetNamespaces but in list format)
 # The names must be lowercase
 # Example:
-#  targetNamespaces:
-#   - namespace1
-#   - namespace2
-targetNamespaces:
- - "default"
+#  targetNamespaces: [ "namespace1", "namespace2" ]
+targetNamespaces: [ "default" ]
 
 # The docker image containing the operator code.
 weblogicOperatorImage: container-registry.oracle.com/middleware/weblogic-kubernetes-operator:latest
