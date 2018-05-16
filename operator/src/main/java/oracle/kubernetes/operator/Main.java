@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -44,12 +43,13 @@ import oracle.kubernetes.operator.helpers.CallBuilder;
 import oracle.kubernetes.operator.helpers.CallBuilderFactory;
 import oracle.kubernetes.operator.helpers.ConfigMapHelper;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
+import oracle.kubernetes.operator.helpers.DomainPresenceInfoManager;
 import oracle.kubernetes.operator.helpers.HealthCheckHelper;
 import oracle.kubernetes.operator.helpers.HealthCheckHelper.KubernetesVersion;
 import oracle.kubernetes.operator.helpers.PodHelper;
 import oracle.kubernetes.operator.helpers.ResponseStep;
 import oracle.kubernetes.operator.helpers.ServerKubernetesObjects;
-import oracle.kubernetes.operator.helpers.ServerKubernetesObjectsFactory;
+import oracle.kubernetes.operator.helpers.ServerKubernetesObjectsManager;
 import oracle.kubernetes.operator.helpers.ServiceHelper;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
@@ -65,7 +65,6 @@ import oracle.kubernetes.operator.steps.ExternalAdminChannelsStep;
 import oracle.kubernetes.operator.steps.ListPersistentVolumeClaimStep;
 import oracle.kubernetes.operator.steps.ManagedServersUpStep;
 import oracle.kubernetes.operator.steps.WatchPodReadyAdminStep;
-import oracle.kubernetes.operator.utils.ConcurrentWeakHashMap;
 import oracle.kubernetes.operator.wlsconfig.WlsRetriever;
 import oracle.kubernetes.operator.work.Component;
 import oracle.kubernetes.operator.work.Container;
@@ -87,12 +86,6 @@ public class Main {
   private static final ThreadFactory factory = ThreadFactorySingleton.getInstance();
 
   private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
-  private static final ConcurrentMap<String, DomainPresenceInfo> domains =
-      new ConcurrentHashMap<>();
-  private static final ConcurrentMap<String, ServerKubernetesObjects> servers =
-      new ConcurrentWeakHashMap<>();
-  private static final ServerKubernetesObjectsFactory skoFactory =
-      new ServerKubernetesObjectsFactory(servers);
 
   private static final TuningParameters tuningAndConfig;
 
@@ -124,8 +117,7 @@ public class Main {
                 tuningAndConfig,
                 ThreadFactory.class,
                 factory,
-                callBuilderFactory,
-                skoFactory));
+                callBuilderFactory));
   }
 
   private static final Engine engine = new Engine(wrappedExecutorService);
@@ -149,7 +141,11 @@ public class Main {
       "reason=Unhealthy,type=Warning,involvedObject.fieldPath=spec.containers{weblogic-server}";
 
   static Map<String, DomainPresenceInfo> getDomainPresenceInfos() {
-    return Collections.unmodifiableMap(domains);
+    return DomainPresenceInfoManager.getDomainPresenceInfos();
+  }
+
+  static ServerKubernetesObjects getKubernetesObjects(String serverLegalName) {
+    return ServerKubernetesObjectsManager.lookup(serverLegalName);
   }
 
   /**
@@ -239,21 +235,15 @@ public class Main {
         runSteps(readExistingResources(namespace, ns));
       }
 
-      // delete stranded resources
-      for (Map.Entry<String, DomainPresenceInfo> entry : domains.entrySet()) {
-        String domainUID = entry.getKey();
-        DomainPresenceInfo info = entry.getValue();
-        if (info != null && info.getDomain() == null) {
-          deleteDomainPresence(info.getNamespace(), domainUID);
-        }
-      }
+      deleteStrandedResources();
 
       // start periodic retry and recheck
       int recheckInterval = tuningAndConfig.getMainTuning().domainPresenceRecheckIntervalSeconds;
       engine
           .getExecutor()
           .scheduleWithFixedDelay(
-              updateDomainPresenceInfos(domains.values()),
+              updateDomainPresenceInfos(
+                  DomainPresenceInfoManager.getDomainPresenceInfos().values()),
               recheckInterval,
               recheckInterval,
               TimeUnit.SECONDS);
@@ -261,6 +251,17 @@ public class Main {
       LOGGER.warning(MessageKeys.EXCEPTION, e);
     } finally {
       LOGGER.info(MessageKeys.OPERATOR_SHUTTING_DOWN);
+    }
+  }
+
+  private static void deleteStrandedResources() {
+    for (Map.Entry<String, DomainPresenceInfo> entry :
+        DomainPresenceInfoManager.getDomainPresenceInfos().entrySet()) {
+      String domainUID = entry.getKey();
+      DomainPresenceInfo info = entry.getValue();
+      if (info != null && info.getDomain() == null) {
+        deleteDomainPresence(info.getNamespace(), domainUID);
+      }
     }
   }
 
@@ -347,7 +348,7 @@ public class Main {
    * @param domainUID Domain UID
    */
   public static void doRestartAdmin(String principal, String domainUID) {
-    DomainPresenceInfo info = domains.get(domainUID);
+    DomainPresenceInfo info = DomainPresenceInfoManager.lookup(domainUID);
     if (info != null) {
       Domain dom = info.getDomain();
       if (dom != null) {
@@ -367,7 +368,7 @@ public class Main {
    */
   public static void doRollingRestartServers(
       String principal, String domainUID, List<String> servers) {
-    DomainPresenceInfo info = domains.get(domainUID);
+    DomainPresenceInfo info = DomainPresenceInfoManager.lookup(domainUID);
     if (info != null) {
       Domain dom = info.getDomain();
       if (dom != null) {
@@ -386,7 +387,7 @@ public class Main {
    */
   public static void doRollingRestartClusters(
       String principal, String domainUID, List<String> clusters) {
-    DomainPresenceInfo info = domains.get(domainUID);
+    DomainPresenceInfo info = DomainPresenceInfoManager.lookup(domainUID);
     if (info != null) {
       Domain dom = info.getDomain();
       if (dom != null) {
@@ -520,22 +521,17 @@ public class Main {
     DomainPresenceControl.normalizeDomainSpec(spec);
     String domainUID = spec.getDomainUID();
 
-    DomainPresenceInfo created = new DomainPresenceInfo(dom);
-    DomainPresenceInfo info = domains.putIfAbsent(domainUID, created);
-    if (info == null) {
-      info = created;
-    } else {
-      // Has the spec actually changed? We will get watch events for status updates
-      Domain current = info.getDomain();
-      if (current != null) {
-        if (!explicitRecheck && !hasExplicitRestarts && spec.equals(current.getSpec())) {
-          // nothing in the spec has changed
-          LOGGER.fine(MessageKeys.NOT_STARTING_DOMAINUID_THREAD, domainUID);
-          return;
-        }
+    DomainPresenceInfo info = DomainPresenceInfoManager.getOrCreate(dom);
+    // Has the spec actually changed? We will get watch events for status updates
+    Domain current = info.getDomain();
+    if (current != null) {
+      if (!explicitRecheck && !hasExplicitRestarts && spec.equals(current.getSpec())) {
+        // nothing in the spec has changed
+        LOGGER.fine(MessageKeys.NOT_STARTING_DOMAINUID_THREAD, domainUID);
+        return;
       }
-      info.setDomain(dom);
     }
+    info.setDomain(dom);
 
     if (explicitRestartAdmin) {
       LOGGER.info(MessageKeys.RESTART_ADMIN_STARTING, domainUID);
@@ -663,7 +659,7 @@ public class Main {
   private static void deleteDomainPresence(String namespace, String domainUID) {
     LOGGER.entering();
 
-    DomainPresenceInfo info = domains.remove(domainUID);
+    DomainPresenceInfo info = DomainPresenceInfoManager.remove(domainUID);
     if (info != null) {
       DomainPresenceControl.cancelDomainStatusUpdating(info);
     }
@@ -780,7 +776,7 @@ public class Main {
       String message = event.getMessage();
       if (message != null) {
         if (message.contains(WebLogicConstants.READINESS_PROBE_NOT_READY_STATE)) {
-          ServerKubernetesObjects sko = servers.get(name);
+          ServerKubernetesObjects sko = ServerKubernetesObjectsManager.lookup(name);
           if (sko != null) {
             int idx = message.lastIndexOf(':');
             sko.getLastKnownStatus().set(message.substring(idx + 1).trim());
@@ -802,9 +798,10 @@ public class Main {
       String domainUID = metadata.getLabels().get(LabelConstants.DOMAINUID_LABEL);
       String serverName = metadata.getLabels().get(LabelConstants.SERVERNAME_LABEL);
       if (domainUID != null) {
-        DomainPresenceInfo info = domains.get(domainUID);
+        DomainPresenceInfo info = DomainPresenceInfoManager.lookup(domainUID);
         if (info != null && serverName != null) {
-          ServerKubernetesObjects sko = skoFactory.getOrCreate(info, domainUID, serverName);
+          ServerKubernetesObjects sko =
+              ServerKubernetesObjectsManager.getOrCreate(info, domainUID, serverName);
           if (sko != null) {
             switch (item.type) {
               case "ADDED":
@@ -853,11 +850,11 @@ public class Main {
       String channelName = metadata.getLabels().get(LabelConstants.CHANNELNAME_LABEL);
       String clusterName = metadata.getLabels().get(LabelConstants.CLUSTERNAME_LABEL);
       if (domainUID != null) {
-        DomainPresenceInfo info = domains.get(domainUID);
+        DomainPresenceInfo info = DomainPresenceInfoManager.lookup(domainUID);
         ServerKubernetesObjects sko = null;
         if (info != null) {
           if (serverName != null) {
-            sko = skoFactory.getOrCreate(info, domainUID, serverName);
+            sko = ServerKubernetesObjectsManager.getOrCreate(info, domainUID, serverName);
           }
           switch (item.type) {
             case "ADDED":
@@ -951,7 +948,7 @@ public class Main {
       String domainUID = metadata.getLabels().get(LabelConstants.DOMAINUID_LABEL);
       String clusterName = metadata.getLabels().get(LabelConstants.CLUSTERNAME_LABEL);
       if (domainUID != null) {
-        DomainPresenceInfo info = domains.get(domainUID);
+        DomainPresenceInfo info = DomainPresenceInfoManager.lookup(domainUID);
         if (info != null && clusterName != null) {
           switch (item.type) {
             case "ADDED":
@@ -1063,7 +1060,9 @@ public class Main {
           String domainUID = IngressWatcher.getIngressDomainUID(ingress);
           String clusterName = IngressWatcher.getIngressClusterName(ingress);
           if (domainUID != null && clusterName != null) {
-            getOrCreateDomainPresenceInfo(ns, domainUID).getIngresses().put(clusterName, ingress);
+            DomainPresenceInfoManager.getOrCreate(ns, domainUID)
+                .getIngresses()
+                .put(clusterName, ingress);
           }
         }
       }
@@ -1073,12 +1072,6 @@ public class Main {
               ns, result != null ? result.getMetadata().getResourceVersion() : ""));
       return doNext(packet);
     }
-  }
-
-  static DomainPresenceInfo getOrCreateDomainPresenceInfo(String ns, String domainUID) {
-    DomainPresenceInfo createdInfo = new DomainPresenceInfo(ns);
-    DomainPresenceInfo existingInfo = domains.putIfAbsent(domainUID, createdInfo);
-    return existingInfo != null ? existingInfo : createdInfo;
   }
 
   private static class DomainListStep extends ResponseStep<DomainList> {
@@ -1154,8 +1147,9 @@ public class Main {
           String serverName = ServiceWatcher.getServiceServerName(service);
           String channelName = ServiceWatcher.getServiceChannelName(service);
           if (domainUID != null && serverName != null) {
-            DomainPresenceInfo info = getOrCreateDomainPresenceInfo(ns, domainUID);
-            ServerKubernetesObjects sko = skoFactory.getOrCreate(info, domainUID, serverName);
+            DomainPresenceInfo info = DomainPresenceInfoManager.getOrCreate(ns, domainUID);
+            ServerKubernetesObjects sko =
+                ServerKubernetesObjectsManager.getOrCreate(info, domainUID, serverName);
             if (channelName != null) {
               sko.getChannels().put(channelName, service);
             } else {
@@ -1235,8 +1229,9 @@ public class Main {
           String domainUID = PodWatcher.getPodDomainUID(pod);
           String serverName = PodWatcher.getPodServerName(pod);
           if (domainUID != null && serverName != null) {
-            DomainPresenceInfo info = getOrCreateDomainPresenceInfo(ns, domainUID);
-            ServerKubernetesObjects sko = skoFactory.getOrCreate(info, domainUID, serverName);
+            DomainPresenceInfo info = DomainPresenceInfoManager.getOrCreate(ns, domainUID);
+            ServerKubernetesObjects sko =
+                ServerKubernetesObjectsManager.getOrCreate(info, domainUID, serverName);
             sko.getPod().set(pod);
           }
         }

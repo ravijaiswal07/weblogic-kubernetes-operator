@@ -87,7 +87,8 @@ public class ManagedServerUpIteratorStep extends Step {
     }
 
     return doNext(
-        new ManagedServerUpBeforeStep(startDetails, new ManagedServerUpAfterStep(next)), packet);
+        new ManagedServerUpBeforeStep(startDetails, new ManagedServerUpAfterStep(getNext())),
+        packet);
   }
 
   // pre-conditions: DomainPresenceInfo SPI

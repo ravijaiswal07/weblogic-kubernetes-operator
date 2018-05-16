@@ -45,7 +45,7 @@ public class BeforeAdminPodStep extends Step {
     }
 
     if (podTemplateName != null) {
-      return doNext(new ReadPodTemplateStep(podTemplateName, namespace, next), packet);
+      return doNext(new ReadPodTemplateStep(podTemplateName, namespace, getNext()), packet);
     }
     return doNext(packet);
   }

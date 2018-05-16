@@ -33,7 +33,7 @@ public class ManagedServerUpBeforeStep extends Step {
       }
     }
 
-    Step after = new DoForkJoinStep(startDetailsAfter, next);
+    Step after = new DoForkJoinStep(startDetailsAfter, getNext());
 
     if (podTemplateNames.isEmpty()) {
       return doNext(after, packet);
@@ -60,7 +60,7 @@ public class ManagedServerUpBeforeStep extends Step {
 
     @Override
     public NextAction apply(Packet packet) {
-      return doForkJoin(next, packet, startDetailsAfter);
+      return doForkJoin(getNext(), packet, startDetailsAfter);
     }
   }
 }

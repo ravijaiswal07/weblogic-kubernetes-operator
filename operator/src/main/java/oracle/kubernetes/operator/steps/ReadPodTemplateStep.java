@@ -35,7 +35,7 @@ public class ReadPodTemplateStep extends Step {
             .readPodTemplateAsync(
                 podTemplateName,
                 namespace,
-                new ResponseStep<V1PodTemplate>(next) {
+                new ResponseStep<V1PodTemplate>(getNext()) {
 
                   @Override
                   public NextAction onSuccess(
