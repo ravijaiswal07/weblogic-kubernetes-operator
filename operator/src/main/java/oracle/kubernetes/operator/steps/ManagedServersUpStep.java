@@ -84,7 +84,7 @@ public class ManagedServersUpStep extends Step {
             info,
             domainConfig,
             servers,
-            new ClusterServicesStep(info, new ManagedServerUpIteratorStep(ssic, next))),
+            new ClusterServicesStep(info, new ManagedServerUpIteratorStep(ssic, getNext()))),
         packet);
   }
 
