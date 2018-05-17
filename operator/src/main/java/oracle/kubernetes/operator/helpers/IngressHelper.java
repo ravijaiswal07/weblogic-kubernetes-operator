@@ -1,12 +1,8 @@
 // Copyright 2017, 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
-// Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+// Licensed under the Universal Permissive License v 1.0 as shown at
+// http://oss.oracle.com/licenses/upl.
 
 package oracle.kubernetes.operator.helpers;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.custom.IntOrString;
@@ -17,28 +13,29 @@ import io.kubernetes.client.models.V1beta1Ingress;
 import io.kubernetes.client.models.V1beta1IngressBackend;
 import io.kubernetes.client.models.V1beta1IngressRule;
 import io.kubernetes.client.models.V1beta1IngressSpec;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import oracle.kubernetes.operator.KubernetesConstants;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.ProcessingConstants;
-import oracle.kubernetes.weblogic.domain.v1.Domain;
-import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
+import oracle.kubernetes.operator.VersionConstants;
 import oracle.kubernetes.operator.work.ContainerResolver;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
+import oracle.kubernetes.weblogic.domain.v1.Domain;
+import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
 
-/**
- * Helper class to add/remove server from Ingress.
- */
+/** Helper class to add/remove server from Ingress. */
 public class IngressHelper {
-  private IngressHelper() {
-  }
+  private IngressHelper() {}
 
   /**
    * Creates asynchronous step to create or verify Ingress for cluster
-   * 
-   * @param next
-   *          Next processing step
+   *
+   * @param next Next processing step
    * @return Step to create Ingress or verify for cluster
    */
   public static Step createClusterStep(Step next) {
@@ -65,9 +62,9 @@ public class IngressHelper {
         String weblogicDomainUID = spec.getDomainUID();
         String weblogicDomainName = spec.getDomainName();
 
-        String serviceName = CallBuilder.toDNS1123LegalName(weblogicDomainUID + "-cluster-" + clusterName);
+        String serviceName = LegalNames.toClusterServiceName(weblogicDomainUID, clusterName);
 
-        String ingressName = CallBuilder.toDNS1123LegalName(weblogicDomainUID + "-" + clusterName);
+        String ingressName = LegalNames.toIngressName(weblogicDomainUID, clusterName);
 
         V1beta1Ingress v1beta1Ingress = new V1beta1Ingress();
         v1beta1Ingress.setApiVersion(KubernetesConstants.EXTENSIONS_API_VERSION);
@@ -77,10 +74,11 @@ public class IngressHelper {
         v1ObjectMeta.setName(ingressName);
         v1ObjectMeta.setNamespace(namespace);
 
-        v1ObjectMeta.putAnnotationsItem(KubernetesConstants.CLASS_INGRESS, KubernetesConstants.CLASS_INGRESS_VALUE);
-        AnnotationHelper.annotateWithFormat(v1ObjectMeta);
+        v1ObjectMeta.putAnnotationsItem(
+            KubernetesConstants.CLASS_INGRESS, KubernetesConstants.CLASS_INGRESS_VALUE);
 
         Map<String, String> labels = new HashMap<>();
+        labels.put(LabelConstants.RESOURCE_VERSION_LABEL, VersionConstants.DOMAIN_V1);
         labels.put(LabelConstants.DOMAINUID_LABEL, weblogicDomainUID);
         labels.put(LabelConstants.DOMAINNAME_LABEL, weblogicDomainName);
         labels.put(LabelConstants.CLUSTERNAME_LABEL, clusterName);
@@ -107,63 +105,114 @@ public class IngressHelper {
         v1beta1IngressSpec.setRules(rules);
         v1beta1Ingress.setSpec(v1beta1IngressSpec);
 
-        CallBuilderFactory factory = ContainerResolver.getInstance().getContainer().getSPI(CallBuilderFactory.class);
-        return doNext(factory.create().readIngressAsync(ingressName, meta.getNamespace(),
-            new ResponseStep<V1beta1Ingress>(next) {
-              @Override
-              public NextAction onFailure(Packet packet, ApiException e, int statusCode,
-                  Map<String, List<String>> responseHeaders) {
-                if (statusCode == CallBuilder.NOT_FOUND) {
-                  return onSuccess(packet, null, statusCode, responseHeaders);
-                }
-                return super.onFailure(CreateClusterStep.this, packet, e, statusCode, responseHeaders);
-              }
-
-              @Override
-              public NextAction onSuccess(Packet packet, V1beta1Ingress result, int statusCode,
-                  Map<String, List<String>> responseHeaders) {
-                if (result == null) {
-                  return doNext(factory.create().createIngressAsync(meta.getNamespace(), v1beta1Ingress,
-                      new ResponseStep<V1beta1Ingress>(next) {
-                        @Override
-                        public NextAction onFailure(Packet packet, ApiException e, int statusCode,
-                            Map<String, List<String>> responseHeaders) {
-                          return super.onFailure(CreateClusterStep.this, packet, e, statusCode, responseHeaders);
+        CallBuilderFactory factory =
+            ContainerResolver.getInstance().getContainer().getSPI(CallBuilderFactory.class);
+        return doNext(
+            factory
+                .create()
+                .readIngressAsync(
+                    ingressName,
+                    meta.getNamespace(),
+                    new ResponseStep<V1beta1Ingress>(getNext()) {
+                      @Override
+                      public NextAction onFailure(
+                          Packet packet,
+                          ApiException e,
+                          int statusCode,
+                          Map<String, List<String>> responseHeaders) {
+                        if (statusCode == CallBuilder.NOT_FOUND) {
+                          return onSuccess(packet, null, statusCode, responseHeaders);
                         }
+                        return super.onFailure(
+                            CreateClusterStep.this, packet, e, statusCode, responseHeaders);
+                      }
 
-                        @Override
-                        public NextAction onSuccess(Packet packet, V1beta1Ingress result, int statusCode,
-                            Map<String, List<String>> responseHeaders) {
-                          if (result != null) {
-                            info.getIngresses().put(clusterName, result);
+                      @Override
+                      public NextAction onSuccess(
+                          Packet packet,
+                          V1beta1Ingress result,
+                          int statusCode,
+                          Map<String, List<String>> responseHeaders) {
+                        if (result == null) {
+                          return doNext(
+                              factory
+                                  .create()
+                                  .createIngressAsync(
+                                      meta.getNamespace(),
+                                      v1beta1Ingress,
+                                      new ResponseStep<V1beta1Ingress>(getNext()) {
+                                        @Override
+                                        public NextAction onFailure(
+                                            Packet packet,
+                                            ApiException e,
+                                            int statusCode,
+                                            Map<String, List<String>> responseHeaders) {
+                                          return super.onFailure(
+                                              CreateClusterStep.this,
+                                              packet,
+                                              e,
+                                              statusCode,
+                                              responseHeaders);
+                                        }
+
+                                        @Override
+                                        public NextAction onSuccess(
+                                            Packet packet,
+                                            V1beta1Ingress result,
+                                            int statusCode,
+                                            Map<String, List<String>> responseHeaders) {
+                                          if (result != null) {
+                                            info.getIngresses().put(clusterName, result);
+                                          }
+                                          return doNext(packet);
+                                        }
+                                      }),
+                              packet);
+                        } else {
+                          if (VersionHelper.matchesResourceVersion(
+                                  result.getMetadata(), VersionConstants.DOMAIN_V1)
+                              && v1beta1Ingress.getSpec().equals(result.getSpec())) {
+                            return doNext(packet);
                           }
-                          return doNext(packet);
-                        }
-                      }), packet);
-                } else {
-                  if (AnnotationHelper.checkFormatAnnotation(result.getMetadata()) && v1beta1Ingress.getSpec().equals(result.getSpec())) {
-                    return doNext(packet);
-                  }
-                  return doNext(factory.create().replaceIngressAsync(ingressName, meta.getNamespace(),
-                      v1beta1Ingress, new ResponseStep<V1beta1Ingress>(next) {
-                        @Override
-                        public NextAction onFailure(Packet packet, ApiException e, int statusCode,
-                            Map<String, List<String>> responseHeaders) {
-                          return super.onFailure(CreateClusterStep.this, packet, e, statusCode, responseHeaders);
-                        }
+                          return doNext(
+                              factory
+                                  .create()
+                                  .replaceIngressAsync(
+                                      ingressName,
+                                      meta.getNamespace(),
+                                      v1beta1Ingress,
+                                      new ResponseStep<V1beta1Ingress>(getNext()) {
+                                        @Override
+                                        public NextAction onFailure(
+                                            Packet packet,
+                                            ApiException e,
+                                            int statusCode,
+                                            Map<String, List<String>> responseHeaders) {
+                                          return super.onFailure(
+                                              CreateClusterStep.this,
+                                              packet,
+                                              e,
+                                              statusCode,
+                                              responseHeaders);
+                                        }
 
-                        @Override
-                        public NextAction onSuccess(Packet packet, V1beta1Ingress result, int statusCode,
-                            Map<String, List<String>> responseHeaders) {
-                          if (result != null) {
-                            info.getIngresses().put(clusterName, result);
-                          }
-                          return doNext(packet);
+                                        @Override
+                                        public NextAction onSuccess(
+                                            Packet packet,
+                                            V1beta1Ingress result,
+                                            int statusCode,
+                                            Map<String, List<String>> responseHeaders) {
+                                          if (result != null) {
+                                            info.getIngresses().put(clusterName, result);
+                                          }
+                                          return doNext(packet);
+                                        }
+                                      }),
+                              packet);
                         }
-                      }), packet);
-                }
-              }
-            }), packet);
+                      }
+                    }),
+            packet);
       }
 
       return doNext(packet);

@@ -1,6 +1,9 @@
 # Copyright 2017, 2018 Oracle Corporation and/or its affiliates.  All rights reserved.
 # Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
 
+# The version of this inputs file.  Do not modify.
+version: create-weblogic-operator-inputs-v1
+
 # The name of the service account that the operator will use to
 # make requests to the Kubernetes API server.
 # The name must be lowercase
@@ -17,7 +20,9 @@ namespace: weblogic-operator
 targetNamespaces: default
 
 # The docker image containing the operator code.
-weblogicOperatorImage: container-registry.oracle.com/middleware/weblogic-kubernetes-operator:latest
+# Ensure that the image is built or published to an appropriate registry
+# See https://github.com/oracle/weblogic-kubernetes-operator/blob/master/site/installation.md
+weblogicOperatorImage: weblogic-kubernetes-operator:1.0
 
 # The image pull policy for the operator docker image.
 weblogicOperatorImagePullPolicy: IfNotPresent
