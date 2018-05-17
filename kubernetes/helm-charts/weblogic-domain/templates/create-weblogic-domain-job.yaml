@@ -150,7 +150,7 @@ data:
     create('T3Channel', 'NetworkAccessPoint')
     cd('/Servers/{{ .Values.adminServerName }}/NetworkAccessPoints/T3Channel')
     set('PublicPort', {{ .Values.t3ChannelPort }})
-    set('PublicAddress', 'kubernetes')
+    set('PublicAddress', '{{ .Values.t3PublicAddress }}')
     set('ListenAddress', '{{ .Values.domainUID }}-{{ .Values.adminServerName }}')
     set('ListenPort', {{ .Values.t3ChannelPort }})
 
