@@ -5,8 +5,10 @@
 package oracle.kubernetes.operator.wlsconfig;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
@@ -191,6 +193,23 @@ public class WlsDynamicServersConfig {
    */
   public List<WlsServerConfig> getServerConfigs() {
     return serverConfigs;
+  }
+
+  /**
+   * Return list of WlsServerConfig objects containing configurations of WLS dynamic server that can
+   * be started under the current cluster size
+   *
+   * @return A list of WlsServerConfig objects containing configurations of WLS dynamic server that
+   *     can be started under the current cluster size
+   */
+  public Set<String> getServers() {
+    Set result = new HashSet();
+    if (serverConfigs != null) {
+      for (WlsServerConfig serverConfig : serverConfigs) {
+        result.add(serverConfig.getName());
+      }
+    }
+    return result;
   }
 
   /**

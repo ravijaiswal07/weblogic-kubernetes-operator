@@ -12,6 +12,7 @@ import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo.ServerStartupInfo;
 import oracle.kubernetes.operator.helpers.PodHelper;
+import oracle.kubernetes.operator.helpers.ServerConfig;
 import oracle.kubernetes.operator.helpers.ServiceHelper;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
@@ -20,7 +21,6 @@ import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.weblogic.domain.v1.Domain;
 import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
-import oracle.kubernetes.weblogic.domain.v1.ServerStartup;
 
 public class ManagedServerUpIteratorStep extends Step {
   private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
@@ -40,13 +40,13 @@ public class ManagedServerUpIteratorStep extends Step {
 
     for (ServerStartupInfo ssi : c) {
       Packet p = packet.clone();
-      p.put(ProcessingConstants.SERVER_SCAN, ssi.serverConfig);
+      p.put(ProcessingConstants.SERVER_SCAN, ssi.wlsServerConfig);
       p.put(ProcessingConstants.CLUSTER_SCAN, ssi.clusterConfig);
       p.put(ProcessingConstants.ENVVARS, ssi.envVars);
 
-      p.put(ProcessingConstants.SERVER_NAME, ssi.serverConfig.getName());
-      p.put(ProcessingConstants.PORT, ssi.serverConfig.getListenPort());
-      ServerStartup ss = ssi.serverStartup;
+      p.put(ProcessingConstants.SERVER_NAME, ssi.wlsServerConfig.getName());
+      p.put(ProcessingConstants.PORT, ssi.wlsServerConfig.getListenPort());
+      ServerConfig ss = ssi.serverConfig;
       p.put(ProcessingConstants.NODE_PORT, ss != null ? ss.getNodePort() : null);
 
       startDetails.add(new StepAndPacket(bringManagedServerUp(ssi, null), p));
@@ -60,7 +60,7 @@ public class ManagedServerUpIteratorStep extends Step {
 
       Collection<String> serverList = new ArrayList<>();
       for (ServerStartupInfo ssi : c) {
-        serverList.add(ssi.serverConfig.getName());
+        serverList.add(ssi.wlsServerConfig.getName());
       }
       LOGGER.fine(
           "Starting or validating servers for domain with UID: "

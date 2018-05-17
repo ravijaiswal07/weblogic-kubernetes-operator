@@ -4,8 +4,8 @@
 
 package oracle.kubernetes.operator.helpers;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -17,7 +17,7 @@ public class ClusterConfig {
   private int maxReplicas;
   private int minReplicas;
   private String clusterName;
-  private Map<String, ClusteredServerConfig> servers = new HashMap();
+  private Map<String, ClusteredServerConfig> servers = new TreeMap<>();
 
   /**
    * Gets cluster's name.

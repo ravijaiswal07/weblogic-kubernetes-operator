@@ -5,8 +5,10 @@
 package oracle.kubernetes.operator.wlsconfig;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
@@ -140,6 +142,23 @@ public class WlsClusterConfig {
       return result;
     }
     return serverConfigs;
+  }
+
+  /**
+   * Returns a Set of server names for servers that belong to this cluster, which includes both
+   * statically configured servers and dynamic servers
+   *
+   * @return A set server names of servers that belong to this cluster
+   */
+  public synchronized Set<String> getServers() {
+    Set<String> result = new HashSet<>();
+    if (dynamicServersConfig != null) {
+      result.addAll(dynamicServersConfig.getServers());
+    }
+    for (WlsServerConfig serverConfig : serverConfigs) {
+      result.add(serverConfig.getName());
+    }
+    return result;
   }
 
   /**

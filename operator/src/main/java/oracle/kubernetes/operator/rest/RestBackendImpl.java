@@ -29,6 +29,9 @@ import oracle.kubernetes.operator.helpers.AuthorizationProxy.Resource;
 import oracle.kubernetes.operator.helpers.AuthorizationProxy.Scope;
 import oracle.kubernetes.operator.helpers.CallBuilder;
 import oracle.kubernetes.operator.helpers.CallBuilderFactory;
+import oracle.kubernetes.operator.helpers.ClusterConfig;
+import oracle.kubernetes.operator.helpers.DomainConfig;
+import oracle.kubernetes.operator.helpers.LifeCycleHelper;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
@@ -269,10 +272,12 @@ public class RestBackendImpl implements RestBackend {
     String domainUID = domain.getSpec().getDomainUID();
     boolean domainModified = false;
     ClusterStartup clusterStartup = getClusterStartup(domain, cluster);
-    int currentReplicasCount =
-        clusterStartup != null ? clusterStartup.getReplicas() : domain.getSpec().getReplicas();
+    ClusterConfig clusterConfig = getClusterConfig(domain, namespace, cluster);
+    int currentReplicasCount = clusterConfig.getReplicas();
 
     if (managedServerCount != currentReplicasCount) {
+      clusterConfig.setReplicas(managedServerCount);
+      LifeCycleHelper.instance().updateDomainSpec(domain, clusterConfig);
       if (clusterStartup != null) {
         // set replica value on corresponding ClusterStartup
         clusterStartup.setReplicas(managedServerCount);
@@ -350,19 +355,35 @@ public class RestBackendImpl implements RestBackend {
     return null;
   }
 
+  private ClusterConfig getClusterConfig(Domain dom, String namespace, String cluster) {
+    WlsDomainConfig scan =
+        getWlsDomainConfig(
+            namespace, getAdminServerServiceName(dom), getAdminServiceSecretName(dom));
+    DomainConfig domainConfig =
+        LifeCycleHelper.instance()
+            .getEffectiveDomainConfig(
+                dom, scan.getStandaloneServerConfigs().keySet(), scan.getClusters());
+    return domainConfig.getClusters().get(cluster);
+  }
+
   private WlsClusterConfig getWlsClusterConfig(
       String namespace, String cluster, String adminServerServiceName, String adminSecretName) {
+    WlsDomainConfig wlsDomainConfig =
+        getWlsDomainConfig(namespace, adminServerServiceName, adminSecretName);
+    return wlsDomainConfig.getClusterConfig(cluster);
+  }
+
+  private WlsDomainConfig getWlsDomainConfig(
+      String namespace, String adminServerServiceName, String adminSecretName) {
     WlsRetriever wlsConfigRetriever =
         WlsRetriever.create(namespace, adminServerServiceName, adminSecretName);
-    WlsDomainConfig wlsDomainConfig = wlsConfigRetriever.readConfig();
-    return wlsDomainConfig.getClusterConfig(cluster);
+    return wlsConfigRetriever.readConfig();
   }
 
   private Map<String, WlsClusterConfig> getWLSConfiguredClusters(
       String namespace, String adminServerServiceName, String adminSecretName) {
-    WlsRetriever wlsConfigRetriever =
-        WlsRetriever.create(namespace, adminServerServiceName, adminSecretName);
-    WlsDomainConfig wlsDomainConfig = wlsConfigRetriever.readConfig();
+    WlsDomainConfig wlsDomainConfig =
+        getWlsDomainConfig(namespace, adminServerServiceName, adminSecretName);
     return wlsDomainConfig.getClusterConfigs();
   }
 

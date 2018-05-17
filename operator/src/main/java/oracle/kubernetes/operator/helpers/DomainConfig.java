@@ -6,6 +6,7 @@ package oracle.kubernetes.operator.helpers;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -13,7 +14,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 /** DomainConfig describes the desired state of a domain. */
 public class DomainConfig {
 
-  private Map<String, NonClusteredServerConfig> servers = new HashMap();
+  private Map<String, NonClusteredServerConfig> servers = new TreeMap<>();
   private Map<String, ClusterConfig> clusters = new HashMap();
 
   /**

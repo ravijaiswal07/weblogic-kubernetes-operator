@@ -9,6 +9,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
@@ -98,6 +100,22 @@ public class WlsDomainConfig {
     return wlsClusterConfigs;
   }
 
+  /**
+   * The clusters that are actually configured for this domain (the map keys are cluster names, the
+   * map values are sets of the names of the servers in each cluster)
+   *
+   * @return A Map of clusters and their servers, keyed by name, for all clusters found in the WLS
+   *     domain
+   */
+  public synchronized Map<String, Set<String>> getClusters() {
+    Map<String, Set<String>> result = new HashMap<>();
+    if (wlsClusterConfigs != null) {
+      for (Map.Entry<String, WlsClusterConfig> entry : wlsClusterConfigs.entrySet()) {
+        result.put(entry.getKey(), entry.getValue().getServers());
+      }
+    }
+    return result;
+  }
   /**
    * Returns configuration of servers found in the WLS domain, including admin server, standalone
    * managed servers that do not belong to any cluster, and statically configured managed servers
@@ -370,5 +388,17 @@ public class WlsDomainConfig {
         + name
         + '\''
         + '}';
+  }
+
+  public Map<String, WlsServerConfig> getStandaloneServerConfigs() {
+    Map<String, WlsServerConfig> result = new TreeMap<>();
+    Map<String, WlsServerConfig> serverConfigMap = getServerConfigs();
+    for (Map.Entry<String, WlsServerConfig> entry : serverConfigMap.entrySet()) {
+      WlsServerConfig wlsServerConfig = entry.getValue();
+      if (wlsServerConfig.getClusterName() == null) {
+        result.put(entry.getKey(), wlsServerConfig);
+      }
+    }
+    return result;
   }
 }

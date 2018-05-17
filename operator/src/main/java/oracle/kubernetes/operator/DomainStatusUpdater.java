@@ -19,6 +19,7 @@ import oracle.kubernetes.operator.helpers.CallBuilderFactory;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo.ServerStartupInfo;
 import oracle.kubernetes.operator.helpers.ResponseStep;
+import oracle.kubernetes.operator.helpers.ServerConfig;
 import oracle.kubernetes.operator.helpers.ServerKubernetesObjects;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
@@ -37,7 +38,6 @@ import oracle.kubernetes.weblogic.domain.v1.DomainCondition;
 import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
 import oracle.kubernetes.weblogic.domain.v1.DomainStatus;
 import oracle.kubernetes.weblogic.domain.v1.ServerHealth;
-import oracle.kubernetes.weblogic.domain.v1.ServerStartup;
 import oracle.kubernetes.weblogic.domain.v1.ServerStatus;
 import org.joda.time.DateTime;
 
@@ -205,11 +205,11 @@ public class DomainStatusUpdater {
       Collection<ServerStartupInfo> ssic = info.getServerStartupInfo();
       if (ssic != null) {
         for (ServerStartupInfo ssi : ssic) {
-          ServerStartup ss = ssi.serverStartup;
-          if (ss != null && !"ADMIN".equals(ss.getDesiredState())) {
+          ServerConfig ss = ssi.serverConfig;
+          if (ss != null && !"ADMIN".equals(ss.getStartedServerState())) {
             continue;
           }
-          serversIntendedToRunning.add(ssi.serverConfig.getName());
+          serversIntendedToRunning.add(ssi.wlsServerConfig.getName());
         }
       }
       for (Map.Entry<String, ServerKubernetesObjects> entry : info.getServers().entrySet()) {

@@ -68,6 +68,7 @@ public class WlsDynamicServerConfig extends WlsServerConfig {
         new MacroSubstitutor(index, name, clusterName, domainName, serverTemplate.getMachineName());
     return new WlsDynamicServerConfig(
         name,
+        clusterName,
         listenPort,
         macroSubstitutor.substituteMacro(serverTemplate.getListenAddress()),
         sslListenPort,
@@ -90,6 +91,7 @@ public class WlsDynamicServerConfig extends WlsServerConfig {
    */
   private WlsDynamicServerConfig(
       String name,
+      String clusterName,
       Integer listenPort,
       String listenAddress,
       Integer sslListenPort,
@@ -98,6 +100,7 @@ public class WlsDynamicServerConfig extends WlsServerConfig {
       List<NetworkAccessPoint> networkAccessPoints) {
     super(
         name,
+        clusterName,
         listenPort,
         listenAddress,
         sslListenPort,
@@ -133,6 +136,8 @@ public class WlsDynamicServerConfig extends WlsServerConfig {
         + sslPortEnabled
         + ", machineName='"
         + machineName
+        + ", clusterName='"
+        + clusterName
         + '\''
         + ", networkAccessPoints="
         + networkAccessPoints

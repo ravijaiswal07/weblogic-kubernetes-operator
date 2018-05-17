@@ -22,7 +22,6 @@ import oracle.kubernetes.operator.wlsconfig.WlsDomainConfig;
 import oracle.kubernetes.operator.wlsconfig.WlsServerConfig;
 import oracle.kubernetes.weblogic.domain.v1.Domain;
 import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
-import oracle.kubernetes.weblogic.domain.v1.ServerStartup;
 import org.joda.time.DateTime;
 
 /**
@@ -253,28 +252,28 @@ public class DomainPresenceInfo {
 
   /** Details about a specific managed server that will be started up */
   public static class ServerStartupInfo {
-    public final WlsServerConfig serverConfig;
+    public final WlsServerConfig wlsServerConfig;
     public final WlsClusterConfig clusterConfig;
     public final List<V1EnvVar> envVars;
-    public final ServerStartup serverStartup;
+    public final ServerConfig serverConfig;
 
     /**
      * Create server startup info
      *
-     * @param serverConfig Server config scan
+     * @param wlsServerConfig Server config scan
      * @param clusterConfig Cluster config scan
      * @param envVars Environment variables
-     * @param serverStartup Server startup configuration
+     * @param serverConfig Server startup configuration
      */
     public ServerStartupInfo(
-        WlsServerConfig serverConfig,
+        WlsServerConfig wlsServerConfig,
         WlsClusterConfig clusterConfig,
         List<V1EnvVar> envVars,
-        ServerStartup serverStartup) {
-      this.serverConfig = serverConfig;
+        ServerConfig serverConfig) {
+      this.wlsServerConfig = wlsServerConfig;
       this.clusterConfig = clusterConfig;
       this.envVars = envVars;
-      this.serverStartup = serverStartup;
+      this.serverConfig = serverConfig;
     }
   }
 

@@ -335,7 +335,14 @@ public class PodHelperConfigTest {
           ProcessingConstants.SERVER_SCAN,
           // no listen address, no network access points since PodHelper doesn't use them:
           new WlsServerConfig(
-              MANAGED_SERVER_NAME, MANAGED_SERVER_PORT, null, null, false, null, null));
+              MANAGED_SERVER_NAME,
+              CLUSTER_NAME,
+              MANAGED_SERVER_PORT,
+              null,
+              null,
+              false,
+              null,
+              null));
       packet.put(
           ProcessingConstants.CLUSTER_SCAN,
           // don't attach WlsServerConfigs for the managed server to the WlsClusterConfig

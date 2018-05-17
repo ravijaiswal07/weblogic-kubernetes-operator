@@ -16,6 +16,7 @@ public class WlsServerConfig {
   final Integer sslListenPort;
   final boolean sslPortEnabled;
   final String machineName;
+  String clusterName;
   final List<NetworkAccessPoint> networkAccessPoints;
 
   /**
@@ -84,6 +85,24 @@ public class WlsServerConfig {
   }
 
   /**
+   * Return the cluster name configured for this WLS server
+   *
+   * @return The configured cluster name for this WLS server
+   */
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  /**
+   * Set the cluster name configured for this WLS server
+   *
+   * @param clusterName
+   */
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
+  }
+
+  /**
    * Creates a WLSServerConfig object using an "servers" or "serverTemplates" item parsed from JSON
    * result from WLS REST call
    *
@@ -115,6 +134,7 @@ public class WlsServerConfig {
 
     return new WlsServerConfig(
         (String) serverConfigMap.get("name"),
+        getClusterNameFromJsonMap(serverConfigMap),
         (Integer) serverConfigMap.get("listenPort"),
         (String) serverConfigMap.get("listenAddress"),
         sslListenPort,
@@ -137,6 +157,7 @@ public class WlsServerConfig {
    */
   public WlsServerConfig(
       String name,
+      String clusterName,
       Integer listenPort,
       String listenAddress,
       Integer sslListenPort,
@@ -150,6 +171,7 @@ public class WlsServerConfig {
     this.sslListenPort = sslListenPort;
     this.sslPortEnabled = sslPortEnabled;
     this.machineName = machineName;
+    this.clusterName = clusterName;
   }
 
   /**
@@ -273,6 +295,8 @@ public class WlsServerConfig {
         + sslPortEnabled
         + ", machineName='"
         + machineName
+        + ", clusterName='"
+        + clusterName
         + '\''
         + ", networkAccessPoints="
         + networkAccessPoints
