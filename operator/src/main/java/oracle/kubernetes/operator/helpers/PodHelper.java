@@ -714,6 +714,13 @@ public class PodHelper {
     protected V1Pod computeManagedPodConfig(TuningParameters configMapHelper, Packet packet) {
       DomainPresenceInfo info = packet.getSPI(DomainPresenceInfo.class);
 
+      LOGGER.info("TEMP_DEBUG ssi=" + info.getServerStartupInfo());
+      if (info.getServerStartupInfo() != null) {
+        for (DomainPresenceInfo.ServerStartupInfo ssi : info.getServerStartupInfo()) {
+          LOGGER.info("TEMP_DEBUG sc=" + ssi.serverConfig);
+        }
+      }
+
       Domain dom = info.getDomain();
       V1ObjectMeta meta = dom.getMetadata();
       DomainSpec spec = dom.getSpec();
