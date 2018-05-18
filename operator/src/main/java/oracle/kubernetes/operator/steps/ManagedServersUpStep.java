@@ -84,7 +84,7 @@ public class ManagedServersUpStep extends Step {
             info,
             domainConfig,
             servers,
-            new ClusterServicesStep(info, new ManagedServerUpIteratorStep(ssic, next))),
+            new ClusterServicesStep(info, new ManagedServerUpIteratorStep(ssic, getNext()))),
         packet);
   }
 
@@ -131,9 +131,6 @@ public class ManagedServersUpStep extends Step {
             }
             if (ClusteredServerConfig.CLUSTERED_SERVER_START_POLICY_ALWAYS.equals(
                 clusteredServerConfig.getClusteredServerStartPolicy())) {
-
-              // done with the current cluster
-              if (startedCount >= clusterConfig.getReplicas()) continue cluster;
 
               startedCount =
                   addClusteredServer(
@@ -216,23 +213,11 @@ public class ManagedServersUpStep extends Step {
               && !servers.contains(serverName)) {
             // start server
             servers.add(serverName);
-            // find cluster if this server is part of one
-            WlsClusterConfig cc = null;
-            find:
-            for (WlsClusterConfig wlsClusterConfig : scan.getClusterConfigs().values()) {
-              for (WlsServerConfig clusterMemberServerConfig :
-                  wlsClusterConfig.getServerConfigs()) {
-                if (serverName.equals(clusterMemberServerConfig.getName())) {
-                  cc = wlsClusterConfig;
-                  break find;
-                }
-              }
-            }
             List<V1EnvVar> env = nonClusteredServer.getEnv();
             if (WebLogicConstants.ADMIN_STATE.equals(nonClusteredServer.getStartedServerState())) {
               env = startInAdminMode(env);
             }
-            ssic.add(new ServerStartupInfo(wlsServerConfig, cc, env, nonClusteredServer));
+            ssic.add(new ServerStartupInfo(wlsServerConfig, null, env, nonClusteredServer));
           }
         }
       }
@@ -279,10 +264,13 @@ public class ManagedServersUpStep extends Step {
     Collection<Map.Entry<String, ServerKubernetesObjects>> serversToStop = new ArrayList<>();
 
     // check if we need to stop Admin Server
+    // TBD - why do we need special handling for the admin server?
+    // if we really do, shouldn't we weed it out of the lists of servers earlier?
     boolean shouldStopAdmin = false;
     WlsDomainConfig scan = info.getScan();
     String adminName = spec.getAsName();
 
+    // TBD - the admin server could be a managed server
     NonClusteredServerConfig asServerConfig = domainConfig.getServers().get(adminName);
     if (asServerConfig != null
         && asServerConfig
