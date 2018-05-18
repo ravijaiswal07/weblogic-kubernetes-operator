@@ -16,12 +16,11 @@ import com.meterware.simplestub.StaticStubSupport;
 import io.kubernetes.client.models.V1PersistentVolumeClaimList;
 import io.kubernetes.client.models.V1Pod;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import oracle.kubernetes.TestUtils;
 import oracle.kubernetes.operator.ProcessingConstants;
-import oracle.kubernetes.operator.TuningParameters;
+import oracle.kubernetes.operator.TuningParameters.PodTuning;
 import oracle.kubernetes.operator.wlsconfig.WlsClusterConfig;
 import oracle.kubernetes.operator.wlsconfig.WlsServerConfig;
 import oracle.kubernetes.operator.work.Component;
@@ -286,99 +285,41 @@ public class PodHelperConfigTest {
 
   private V1Pod getActualAdminServerPodConfig(Domain domain, V1PersistentVolumeClaimList claims)
       throws Exception {
-    return (new TestAdminPodStep()).computeAdminPodConfig(domain, claims);
+    Packet packet = newPacket(domain, claims);
+    packet.put(ProcessingConstants.SERVER_NAME, domain.getSpec().getAsName());
+    packet.put(ProcessingConstants.PORT, domain.getSpec().getAsPort());
+    return PodHelper.computeAdminPodConfig(newPodTuning(), INTERNAL_OPERATOR_CERT_FILE, packet);
   }
 
   private V1Pod getActualManagedServerPodConfig(Domain domain, V1PersistentVolumeClaimList claims)
       throws Exception {
-    return (new TestManagedPodStep()).computeManagedPodConfig(domain, claims);
+    Packet packet = newPacket(domain, claims);
+    packet.put(
+        ProcessingConstants.SERVER_SCAN,
+        // no listen address, no network access points since PodHelper doesn't use them:
+        new WlsServerConfig(
+            MANAGED_SERVER_NAME, CLUSTER_NAME, MANAGED_SERVER_PORT, null, null, false, null, null));
+    packet.put(
+        ProcessingConstants.CLUSTER_SCAN,
+        // don't attach WlsServerConfigs for the managed server to the WlsClusterConfig
+        // since PodHelper doesn't use them:
+        new WlsClusterConfig(CLUSTER_NAME));
+    packet.put(
+        ProcessingConstants.ENVVARS,
+        newEnvVarList()
+            .addElement(newEnvVar().name(MANAGED_OPTION1_NAME).value(MANAGED_OPTION1_VALUE))
+            .addElement(newEnvVar().name(MANAGED_OPTION2_NAME).value(MANAGED_OPTION2_VALUE)));
+    return PodHelper.computeManagedPodConfig(newPodTuning(), packet);
   }
 
-  @SuppressWarnings("serial")
-  private static class TestTuningParameters extends HashMap<String, String>
-      implements TuningParameters {
-
-    @Override
-    public MainTuning getMainTuning() {
-      return null;
-    }
-
-    @Override
-    public CallBuilderTuning getCallBuilderTuning() {
-      return null;
-    }
-
-    @Override
-    public WatchTuning getWatchTuning() {
-      return null;
-    }
-
-    @Override
-    public PodTuning getPodTuning() {
-      PodTuning pod =
-          new PodTuning(
-              /* "readinessProbeInitialDelaySeconds" */ 2,
-              /* "readinessProbeTimeoutSeconds" */ 5,
-              /* "readinessProbePeriodSeconds" */ 10,
-              /* "livenessProbeInitialDelaySeconds" */ 10,
-              /* "livenessProbeTimeoutSeconds" */ 5,
-              /* "livenessProbePeriodSeconds" */ 10);
-      return pod;
-    }
-  }
-
-  private static class TestAdminPodStep extends PodHelper.AdminPodStep {
-    public TestAdminPodStep() {
-      super(null);
-    }
-
-    public V1Pod computeAdminPodConfig(Domain domain, V1PersistentVolumeClaimList claims)
-        throws Exception {
-      Packet packet = newPacket(domain, claims);
-      packet.put(ProcessingConstants.SERVER_NAME, domain.getSpec().getAsName());
-      packet.put(ProcessingConstants.PORT, domain.getSpec().getAsPort());
-      return super.computeAdminPodConfig(new TestTuningParameters(), packet);
-    }
-
-    @Override
-    protected String getInternalOperatorCertFile(TuningParameters configMapHelper, Packet packet) {
-      // Normally, this would open the files for the config map in the operator.
-      return INTERNAL_OPERATOR_CERT_FILE;
-    }
-  }
-
-  private static class TestManagedPodStep extends PodHelper.ManagedPodStep {
-    public TestManagedPodStep() {
-      super(null);
-    }
-
-    public V1Pod computeManagedPodConfig(Domain domain, V1PersistentVolumeClaimList claims)
-        throws Exception {
-      Packet packet = newPacket(domain, claims);
-      packet.put(
-          ProcessingConstants.SERVER_SCAN,
-          // no listen address, no network access points since PodHelper doesn't use them:
-          new WlsServerConfig(
-              MANAGED_SERVER_NAME,
-              CLUSTER_NAME,
-              MANAGED_SERVER_PORT,
-              null,
-              null,
-              false,
-              null,
-              null));
-      packet.put(
-          ProcessingConstants.CLUSTER_SCAN,
-          // don't attach WlsServerConfigs for the managed server to the WlsClusterConfig
-          // since PodHelper doesn't use them:
-          new WlsClusterConfig(CLUSTER_NAME));
-      packet.put(
-          ProcessingConstants.ENVVARS,
-          newEnvVarList()
-              .addElement(newEnvVar().name(MANAGED_OPTION1_NAME).value(MANAGED_OPTION1_VALUE))
-              .addElement(newEnvVar().name(MANAGED_OPTION2_NAME).value(MANAGED_OPTION2_VALUE)));
-      return super.computeManagedPodConfig(new TestTuningParameters(), packet);
-    }
+  private static PodTuning newPodTuning() {
+    return new PodTuning(
+        /* "readinessProbeInitialDelaySeconds" */ 2,
+        /* "readinessProbeTimeoutSeconds" */ 5,
+        /* "readinessProbePeriodSeconds" */ 10,
+        /* "livenessProbeInitialDelaySeconds" */ 10,
+        /* "livenessProbeTimeoutSeconds" */ 5,
+        /* "livenessProbePeriodSeconds" */ 10);
   }
 
   private static Packet newPacket(Domain domain, V1PersistentVolumeClaimList claims) {
@@ -453,7 +394,7 @@ public class PodHelperConfigTest {
         .getContainers()
         .get(0)
         .getEnv()
-        .add(0, newEnvVar().name("INTERNAL_OPERATOR_CERT").value(INTERNAL_OPERATOR_CERT_FILE));
+        .add(newEnvVar().name("INTERNAL_OPERATOR_CERT").value(INTERNAL_OPERATOR_CERT_FILE));
     return pod;
   }
 
