@@ -532,6 +532,16 @@ function setup_jenkins {
     docker build -t "${IMAGE_NAME_OPERATOR}:${IMAGE_TAG_OPERATOR}" --no-cache=true .
 
     docker images
+
+    trace "Helm installation starts" 
+    wget -q -O  /tmp/helm-v2.7.2-linux-amd64.tar.gz https://kubernetes-helm.storage.googleapis.com/helm-v2.7.2-linux-amd64.tar.gz
+    mkdir /tmp/helm
+    tar xzf /tmp/helm-v2.7.2-linux-amd64.tar.gz -C /tmp/helm
+    chmod +x /tmp/helm/linux-amd64/helm
+    /usr/local/packages/aime/ias/run_as_root "cp /tmp/helm/linux-amd64/helm /usr/bin/"
+    rm -rf /tmp/helm
+    helm init
+    trace "Helm is configured."
 }
 
 # setup_local is for arbitrary dev hosted linux - it assumes docker & k8s are already installed
@@ -644,6 +654,34 @@ function op_echo_all {
     env | grep "^OP_${opkey}_"
 }
 
+function operator_ready_wait {
+    if [ "$#" != 1 ] ; then
+      fail "requires 1 parameter: operatorKey"
+    fi
+    local OP_KEY=${1}
+    local OPERATOR_NS="`op_get $OP_KEY NAMESPACE`"
+    local TMP_DIR="`op_get $OP_KEY TMP_DIR`"
+
+    local namespace=$OPERATOR_NS
+    trace Waiting for operator deployment to be ready...
+    local AVAILABLE="0"
+    local max=30
+    local count=0
+    while [ "$AVAILABLE" != "1" -a $count -lt $max ] ; do
+        sleep 10
+        local AVAILABLE=`kubectl get deploy weblogic-operator -n $namespace -o jsonpath='{.status.availableReplicas}'`
+        trace "status is $AVAILABLE, iteration $count of $max"
+        local count=`expr $count + 1`
+    done
+
+    if [ "$AVAILABLE" != "1" ]; then
+        kubectl get deploy weblogic-operator -n ${namespace}
+        kubectl describe deploy weblogic-operator -n ${namespace}
+        kubectl describe pods -n ${namespace}
+        fail "The WebLogic operator deployment is not available, after waiting 300 seconds"
+    fi
+}
+
 function deploy_operator {
     if [ "$#" != 1 ] ; then
       fail "requires 1 parameter: opkey"
@@ -660,30 +698,47 @@ function deploy_operator {
     fi
 
     trace 'customize the yaml'
-    local inputs="$TMP_DIR/create-weblogic-operator-inputs.yaml"
     mkdir -p $TMP_DIR
-    cp $PROJECT_ROOT/kubernetes/create-weblogic-operator-inputs.yaml $inputs
+    if [ "$USE_HELM" = "true" ]; then
+      TARGET_NAMESPACES="\"$(sed 's/,/","/g' <<< "${TARGET_NAMESPACES}")\""
+      TARGET_NAMESPACES="[ ${TARGET_NAMESPACES} ]"
+      local inputs="$TMP_DIR/weblogic-operator-values.yaml"
+      # generate certificates
+      $PROJECT_ROOT/kubernetes/helm-charts/create-helm-certificates.sh ${NAMESPACE} DNS:${NODEPORT_HOST} $PROJECT_ROOT/kubernetes/helm-charts/weblogic-operator/values-template.yaml $inputs
+    else
+      local inputs="$TMP_DIR/create-weblogic-operator-inputs.yaml"
+      cp $PROJECT_ROOT/kubernetes/create-weblogic-operator-inputs.yaml $inputs
+    fi
 
     trace 'customize the inputs yaml file to use our pre-built docker image'
-    sed -i -e "s|\(weblogicOperatorImagePullPolicy:\).*|\1${IMAGE_PULL_POLICY_OPERATOR}|g" $inputs
-    sed -i -e "s|\(weblogicOperatorImage:\).*|\1${IMAGE_NAME_OPERATOR}:${IMAGE_TAG_OPERATOR}|g" $inputs
+    sed -i -e "s|\(weblogicOperatorImagePullPolicy:\).*|\1 ${IMAGE_PULL_POLICY_OPERATOR}|g" $inputs
+    sed -i -e "s|\(weblogicOperatorImage:\).*|\1 ${IMAGE_NAME_OPERATOR}:${IMAGE_TAG_OPERATOR}|g" $inputs
     if [ -n "${IMAGE_PULL_SECRET_OPERATOR}" ]; then
       sed -i -e "s|#weblogicOperatorImagePullSecretName:.*|weblogicOperatorImagePullSecretName: ${IMAGE_PULL_SECRET_OPERATOR}|g" $inputs
     fi
     trace 'customize the inputs yaml file to generate a self-signed cert for the external Operator REST https port'
-    sed -i -e "s|\(externalRestOption:\).*|\1SELF_SIGNED_CERT|g" $inputs
-    sed -i -e "s|\(externalSans:\).*|\1DNS:${NODEPORT_HOST}|g" $inputs
+    sed -i -e "s|\(externalRestOption:\).*|\1 SELF_SIGNED_CERT|g" $inputs
+    sed -i -e "s|\(externalSans:\).*|\1 DNS:${NODEPORT_HOST}|g" $inputs
     trace 'customize the inputs yaml file to set the java logging level to FINER'
-    sed -i -e "s|\(javaLoggingLevel:\).*|\1FINER|g" $inputs
-    sed -i -e "s|\(externalRestHttpsPort:\).*|\1${EXTERNAL_REST_HTTPSPORT}|g" $inputs
+    sed -i -e "s|\(javaLoggingLevel:\).*|\1 FINER|g" $inputs
+    sed -i -e "s|\(externalRestHttpsPort:\).*|\1 ${EXTERNAL_REST_HTTPSPORT}|g" $inputs
     trace 'customize the inputs yaml file to add test namespace' 
     sed -i -e "s/^namespace:.*/namespace: ${NAMESPACE}/" $inputs
     sed -i -e "s/^targetNamespaces:.*/targetNamespaces: ${TARGET_NAMESPACES}/" $inputs
     sed -i -e "s/^serviceAccount:.*/serviceAccount: weblogic-operator/" $inputs
 
-    local outfile="${TMP_DIR}/create-weblogic-operator.sh.out"
-    trace "Run the script to deploy the weblogic operator, see \"$outfile\" for tracking."
-    sh $PROJECT_ROOT/kubernetes/create-weblogic-operator.sh -i $inputs -o $USER_PROJECTS_DIR > ${outfile} 2>&1
+    if [ "$USE_HELM" = "true" ]; then
+      local outfile="${TMP_DIR}/create-weblogic-operator-helm.out"
+      trace "Run helm install to deploy the weblogic operator, see \"$outfile\" for tracking."
+      cd $PROJECT_ROOT/kubernetes/helm-charts
+      helm install weblogic-operator --name ${NAMESPACE} -f $inputs --namespace ${NAMESPACE} > ${outfile} 2>&1
+      operator_ready_wait $opkey
+    else
+      local outfile="${TMP_DIR}/create-weblogic-operator.sh.out"
+      trace "Run the script to deploy the weblogic operator, see \"$outfile\" for tracking."
+      sh $PROJECT_ROOT/kubernetes/create-weblogic-operator.sh -i $inputs -o $USER_PROJECTS_DIR > ${outfile} 2>&1
+    fi
+
     if [ "$?" = "0" ]; then
        # Prepend "+" to detailed debugging to make it easy to filter out
        cat ${outfile} | sed 's/^/+/g'
@@ -831,8 +886,13 @@ function run_create_domain_job {
     local WEBLOGIC_CREDENTIALS_FILE="${tmp_dir}/weblogic-credentials.yaml"
 
     # Common inputs file for creating a domain
-    local inputs="$tmp_dir/create-weblogic-domain-inputs.yaml"
-    cp $PROJECT_ROOT/kubernetes/create-weblogic-domain-inputs.yaml $inputs
+    if [ "$USE_HELM" = "true" ]; then
+      local inputs=$tmp_dir/weblogic-operator-values.yaml
+      cp $PROJECT_ROOT/kubernetes/helm-charts/weblogic-domain/values.yaml $inputs
+    else
+      local inputs="$tmp_dir/create-weblogic-domain-inputs.yaml"
+      cp $PROJECT_ROOT/kubernetes/create-weblogic-domain-inputs.yaml $inputs
+    fi
 
     # accept the default domain name (i.e. don't customize it)
     local domain_name=`egrep 'domainName' $inputs | awk '{print $2}'`
@@ -918,9 +978,17 @@ function run_create_domain_job {
     fi
 
     local outfile="${tmp_dir}/create-weblogic-domain.sh.out"
-    trace "Run the script to create the domain, see \"$outfile\" for tracing."
 
-    sh $PROJECT_ROOT/kubernetes/create-weblogic-domain.sh -i $inputs -o $USER_PROJECTS_DIR > ${outfile} 2>&1
+
+    if [ "$USE_HELM" = "true" ]; then
+      trace "Run helm install to create the domain, see \"$outfile\" for tracing."
+      cd $PROJECT_ROOT/kubernetes/helm-charts
+      helm install weblogic-domain --name $1 -f $inputs --namespace ${NAMESPACE} > ${outfile} 2>&1
+    else
+      trace "Run the script to create the domain, see \"$outfile\" for tracing."
+
+      sh $PROJECT_ROOT/kubernetes/create-weblogic-domain.sh -i $inputs -o $USER_PROJECTS_DIR > ${outfile} 2>&1
+    fi
 
     if [ "$?" = "0" ]; then
        cat ${outfile} | sed 's/^/+/g'
@@ -1399,7 +1467,11 @@ function call_operator_rest {
     local SECRET="`kubectl get serviceaccount weblogic-operator -n $OPERATOR_NS -o jsonpath='{.secrets[0].name}'`"
     local ENCODED_TOKEN="`kubectl get secret ${SECRET} -n $OPERATOR_NS -o jsonpath='{.data.token}'`"
     local TOKEN="`echo ${ENCODED_TOKEN} | base64 --decode`"
-    local OPERATOR_CERT_DATA="`grep externalOperatorCert ${OPERATOR_TMP_DIR}/weblogic-operator.yaml | awk '{ print $2 }'`"
+    if [ "$USE_HELM" = "true" ]; then
+      local OPERATOR_CERT_DATA="`grep externalOperatorCert: ${OPERATOR_TMP_DIR}/weblogic-operator-values.yaml | awk '{ print $2 }'`"
+    else
+      local OPERATOR_CERT_DATA="`grep externalOperatorCert ${OPERATOR_TMP_DIR}/weblogic-operator.yaml | awk '{ print $2 }'`"
+    fi
     local OPERATOR_CERT_FILE="${OPERATOR_TMP_DIR}/operator.cert.pem"
     echo ${OPERATOR_CERT_DATA} | base64 --decode > ${OPERATOR_CERT_FILE}
 
@@ -1591,6 +1663,11 @@ function test_mvn_integration_local {
 
     local mstart=`date +%s`
     mvn -P integration-tests clean install > $RESULT_DIR/mvn.out 2>&1
+    # Clean up clusteroles created by mvn build 
+    kubectl delete clusterrole weblogic-operator-cluster-role-nonresource
+    kubectl delete clusterrole weblogic-operator-cluster-role
+    kubectl delete clusterrole weblogic-operator-namespace-role
+
     local mend=`date +%s`
     local msecs=$((mend-mstart))
     trace "mvn complete, runtime $msecs seconds"
@@ -2186,7 +2263,13 @@ function shutdown_domain {
 
     local replicas=`get_cluster_replicas $DOM_KEY`
 
-    kubectl delete -f ${TMP_DIR}/domain-custom-resource.yaml
+    if [ "$USE_HELM" = "true" ]; then
+      trace "calling helm delete ${DOM_KEY} --purge"
+      helm delete ${DOM_KEY} --purge
+    else
+      kubectl delete -f ${TMP_DIR}/domain-custom-resource.yaml
+    fi
+
     verify_domain_deleted $DOM_KEY $replicas
     trace Done. 
 }
@@ -2199,8 +2282,16 @@ function startup_domain {
     local DOM_KEY="$1"
 
     local TMP_DIR="`dom_get $1 TMP_DIR`"
+    local NAMESPACE="`dom_get $1 NAMESPACE`"
 
-    kubectl create -f ${TMP_DIR}/domain-custom-resource.yaml
+    if [ "$USE_HELM" = "true" ]; then
+      local inputs=$TMP_DIR/weblogic-operator-values.yaml
+      cd $PROJECT_ROOT/kubernetes/helm-charts
+      trace "calling helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWeblogicDomain=false"
+      helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWeblogicDomain=false
+    else   
+      kubectl create -f ${TMP_DIR}/domain-custom-resource.yaml
+    fi
 
     verify_domain_created $DOM_KEY 
 }
@@ -2250,7 +2341,12 @@ function shutdown_operator {
     local OPERATOR_NS="`op_get $OP_KEY NAMESPACE`"
     local TMP_DIR="`op_get $OP_KEY TMP_DIR`"
 
-    kubectl delete -f $TMP_DIR/weblogic-operator.yaml
+    if [ "$USE_HELM" = "true" ]; then
+      helm delete $OPERATOR_NS --purge
+    else
+      kubectl delete -f $TMP_DIR/weblogic-operator.yaml
+    fi
+
     trace "Checking REST service is deleted"
     set +x
     local servicenum=`kubectl get services -n $OPERATOR_NS | egrep weblogic-operator-svc | wc -l`
@@ -2269,26 +2365,16 @@ function startup_operator {
     local OPERATOR_NS="`op_get $OP_KEY NAMESPACE`"
     local TMP_DIR="`op_get $OP_KEY TMP_DIR`"
 
-    kubectl create -f $TMP_DIR/weblogic-operator.yaml
+    if [ "$USE_HELM" = "true" ]; then
+      local inputs="$TMP_DIR/weblogic-operator-values.yaml"
+      helm install weblogic-operator --name ${OPERATOR_NS} -f $inputs --namespace ${OPERATOR_NS}
+    else
+      kubectl create -f $TMP_DIR/weblogic-operator.yaml
+    fi
+
+    operator_ready_wait $OP_KEY
 
     local namespace=$OPERATOR_NS
-    trace Waiting for operator deployment to be ready...
-    local AVAILABLE="0"
-    local max=30
-    local count=0
-    while [ "$AVAILABLE" != "1" -a $count -lt $max ] ; do
-        sleep 10
-        local AVAILABLE=`kubectl get deploy weblogic-operator -n $namespace -o jsonpath='{.status.availableReplicas}'`
-        trace "status is $AVAILABLE, iteration $count of $max"
-        local count=`expr $count + 1`
-    done
-
-    if [ "$AVAILABLE" != "1" ]; then
-        kubectl get deploy weblogic-operator -n ${namespace}
-        kubectl describe deploy weblogic-operator -n ${namespace}
-        kubectl describe pods -n ${namespace}
-        fail "The WebLogic operator deployment is not available, after waiting 300 seconds"
-    fi
 
     trace "Checking the operator pods"
     local REPLICA_SET=`kubectl describe deploy weblogic-operator -n ${namespace} | grep NewReplicaSet: | awk ' { print $2; }'`
@@ -2715,17 +2801,19 @@ function test_suite {
     dom_define domain4  oper2   test2     domain4    AUTO            cluster-1       CONFIGURED       managed-server 7041       30051           30704           8041    30308                  30318
     dom_define domain5  oper1   default   domain5    ADMIN           cluster-1       DYNAMIC          managed-server 7051       30061           30705           8051    30309                  30319
     dom_define domain6  oper1   default   domain6    AUTO            cluster-1       DYNAMIC          managed-server 7061       30071           30706           8061    30310                  30320
+    dom_define domain7  oper1   default   domain7    AUTO            cluster-1       DYNAMIC          managed-server 7071       30081           30707           8061    30311                  30321
 
     # create namespaces for domains (the operator job creates a namespace if needed)
     # TODO have the op_define commands themselves create target namespace if it doesn't already exist, or test if the namespace creation is needed in the first place, and if so, ask MikeG to create them as part of domain create job
     kubectl create namespace test1 2>&1 | sed 's/^/+/g' 
     kubectl create namespace test2 2>&1 | sed 's/^/+/g' 
+
     kubectl create namespace weblogic-operator-1 2>&1 | sed 's/^/+/g' 
     kubectl create namespace weblogic-operator-2 2>&1 | sed 's/^/+/g' 
 
     # This test pass pairs with 'declare_new_test 1 define_operators_and_domains' above
     declare_test_pass
-    
+   
     trace 'Running mvn integration tests...'
     if [ "$WERCKER" = "true" ]; then
       test_mvn_integration_wercker
@@ -2733,6 +2821,24 @@ function test_suite {
       test_mvn_integration_jenkins
     else
       test_mvn_integration_local
+    fi
+
+    # Test installation using helm charts
+    # if QUICKTEST is true skip the helm tests
+    #
+    if [ ! "${QUICKTEST:-false}" = "true" ]; then
+      if ! [ -x "$(command -v helm)" ]; then
+        trace 'helm is not installed. Skipping helm charts tests'
+      else
+        USE_HELM="true"
+        test_first_operator oper1
+        test_domain_creation domain7 
+        test_domain_lifecycle domain7 
+        test_operator_lifecycle domain7
+        test_shutdown_domain domain7
+        shutdown_operator oper1
+        USE_HELM="false"
+      fi
     fi
 
     # create and start first operator, manages namespaces default & test1
