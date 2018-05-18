@@ -134,7 +134,7 @@ public class RestBackendImpl implements RestBackend {
     return domain.getMetadata().getNamespace();
   }
 
-  private V1UserInfo authenticate(String accessToken) {
+  protected V1UserInfo authenticate(String accessToken) {
     LOGGER.entering();
     V1TokenReviewStatus status = atn.check(principal, accessToken);
     if (status == null) {
@@ -269,25 +269,27 @@ public class RestBackendImpl implements RestBackend {
     // Capacity of configured cluster is valid for scaling
     // Set replicas value on corresponding ClusterStartup (if defined)
     // or on the Domain level replicas value for cluster not defined in a ClusterStartup
-    String domainUID = domain.getSpec().getDomainUID();
-    boolean domainModified = false;
-    ClusterStartup clusterStartup = getClusterStartup(domain, cluster);
-    ClusterConfig clusterConfig = getClusterConfig(domain, namespace, cluster);
-    int currentReplicasCount = clusterConfig.getReplicas();
 
-    if (managedServerCount != currentReplicasCount) {
+    boolean domainModified = isReplicaCountUpdated(namespace, domain, cluster, managedServerCount);
+
+    if (domainModified) {
+      replaceDomain(namespace, domain, domain.getSpec().getDomainUID());
+    }
+  }
+
+  protected boolean isReplicaCountUpdated(
+      String namespace, Domain domain, String cluster, int managedServerCount) {
+    boolean domainModified = false;
+    ClusterConfig clusterConfig = getClusterConfig(domain, namespace, cluster);
+
+    if (managedServerCount != clusterConfig.getReplicas()) {
       clusterConfig.setReplicas(managedServerCount);
       LifeCycleHelper.instance().updateDomainSpec(domain, clusterConfig);
-      if (clusterStartup != null) {
-        // set replica value on corresponding ClusterStartup
-        clusterStartup.setReplicas(managedServerCount);
-        domainModified = true;
-      } else if (StartupControlConstants.AUTO_STARTUPCONTROL.equals(
-          domain.getSpec().getStartupControl())) {
-        // set replica on Domain for cluster not defined in ClusterStartup
-        domain.getSpec().setReplicas(managedServerCount);
-        domainModified = true;
-      } else {
+      domainModified = true;
+      String startupControl = domain.getSpec().getStartupControl();
+      // startupControl == null then we're using new Lifecycle configuration
+      if (startupControl != null
+          && !StartupControlConstants.AUTO_STARTUPCONTROL.equals(startupControl)) {
         // WebLogic Cluster is not defined in ClusterStartup AND Startup Control is not spec'd as
         // AUTO
         // so scaling will not occur since Domain.spec.Replicas property will be ignored.
@@ -295,20 +297,21 @@ public class RestBackendImpl implements RestBackend {
             Status.BAD_REQUEST, MessageKeys.SCALING_AUTO_CONTROL_AUTO, cluster);
       }
     }
+    return domainModified;
+  }
 
-    if (domainModified) {
-      try {
-        CallBuilderFactory factory =
-            ContainerResolver.getInstance().getContainer().getSPI(CallBuilderFactory.class);
-        // Write out the Domain with updated replica values
-        // TODO: Can we patch instead of replace?
-        factory.create().replaceDomain(domainUID, namespace, domain);
-      } catch (ApiException e) {
-        LOGGER.finer(
-            "Unexpected exception when updating Domain " + domainUID + " in namespace " + namespace,
-            e);
-        throw new WebApplicationException(e.getMessage());
-      }
+  protected void replaceDomain(String namespace, Domain domain, String domainUID) {
+    try {
+      CallBuilderFactory factory =
+          ContainerResolver.getInstance().getContainer().getSPI(CallBuilderFactory.class);
+      // Write out the Domain with updated replica values
+      // TODO: Can we patch instead of replace?
+      factory.create().replaceDomain(domainUID, namespace, domain);
+    } catch (ApiException e) {
+      LOGGER.finer(
+          "Unexpected exception when updating Domain " + domainUID + " in namespace " + namespace,
+          e);
+      throw new WebApplicationException(e.getMessage());
     }
   }
 
@@ -355,7 +358,7 @@ public class RestBackendImpl implements RestBackend {
     return null;
   }
 
-  private ClusterConfig getClusterConfig(Domain dom, String namespace, String cluster) {
+  protected ClusterConfig getClusterConfig(Domain dom, String namespace, String cluster) {
     WlsDomainConfig scan =
         getWlsDomainConfig(
             namespace, getAdminServerServiceName(dom), getAdminServiceSecretName(dom));

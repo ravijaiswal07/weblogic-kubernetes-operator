@@ -187,9 +187,9 @@ public class ManagedServersUpStep extends Step {
       if (WebLogicConstants.ADMIN_STATE.equals(clusteredServerConfig.getStartedServerState())) {
         env = startInAdminMode(env);
       }
+      WlsServerConfig wlsServerConfig = wlsClusterConfig.getServerConfig(serverName);
       ssic.add(
-          new ServerStartupInfo(
-              scan.getServerConfig(serverName), wlsClusterConfig, env, clusteredServerConfig));
+          new ServerStartupInfo(wlsServerConfig, wlsClusterConfig, env, clusteredServerConfig));
       startedCount++;
     }
     return startedCount;

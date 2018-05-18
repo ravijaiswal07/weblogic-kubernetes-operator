@@ -144,6 +144,16 @@ public class WlsClusterConfig {
     return serverConfigs;
   }
 
+  public synchronized WlsServerConfig getServerConfig(String serverName) {
+    List<WlsServerConfig> wlsServerConfigs = getServerConfigs();
+    for (WlsServerConfig wlsServerConfig : wlsServerConfigs) {
+      if (wlsServerConfig.getName().equals(serverName)) {
+        return wlsServerConfig;
+      }
+    }
+    return null;
+  }
+
   /**
    * Returns a Set of server names for servers that belong to this cluster, which includes both
    * statically configured servers and dynamic servers
