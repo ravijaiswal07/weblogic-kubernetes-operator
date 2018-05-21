@@ -271,6 +271,7 @@ public class RestBackendImpl implements RestBackend {
 
     boolean domainModified = isReplicaCountUpdated(namespace, domain, cluster, managedServerCount);
 
+    LOGGER.finer("domainModified: " + domainModified);
     if (domainModified) {
       replaceDomain(namespace, domain, domain.getSpec().getDomainUID());
     }
@@ -284,7 +285,6 @@ public class RestBackendImpl implements RestBackend {
     if (managedServerCount != clusterConfig.getReplicas()) {
       clusterConfig.setReplicas(managedServerCount);
       LifeCycleHelper.instance().updateDomainSpec(domain, clusterConfig);
-      domainModified = true;
       String startupControl = domain.getSpec().getStartupControl();
       // startupControl == null then we're using new Lifecycle configuration
       if (startupControl != null
@@ -295,6 +295,7 @@ public class RestBackendImpl implements RestBackend {
         throw createWebApplicationException(
             Status.BAD_REQUEST, MessageKeys.SCALING_AUTO_CONTROL_AUTO, cluster);
       }
+      domainModified = true;
     }
     return domainModified;
   }
@@ -314,7 +315,7 @@ public class RestBackendImpl implements RestBackend {
     }
   }
 
-  private void verifyWLSConfiguredClusterCapacity(
+  protected void verifyWLSConfiguredClusterCapacity(
       String namespace, Domain domain, String cluster, int managedServerCount) {
     // Query WebLogic Admin Server for current configured WebLogic Cluster size
     // and verify we have enough configured managed servers to auto-scale
@@ -328,6 +329,7 @@ public class RestBackendImpl implements RestBackend {
     if (wlsClusterConfig.hasDynamicServers()) {
       clusterSize += wlsClusterConfig.getMaxDynamicClusterSize();
     }
+    LOGGER.finer("managedServerCount: " + managedServerCount + ", clusterSize: " + clusterSize);
     if (managedServerCount > clusterSize) {
       throw createWebApplicationException(
           Status.BAD_REQUEST,
@@ -368,7 +370,7 @@ public class RestBackendImpl implements RestBackend {
     return domainConfig.getClusters().get(cluster);
   }
 
-  private WlsClusterConfig getWlsClusterConfig(
+  protected WlsClusterConfig getWlsClusterConfig(
       String namespace, String cluster, String adminServerServiceName, String adminSecretName) {
     WlsDomainConfig wlsDomainConfig =
         getWlsDomainConfig(namespace, adminServerServiceName, adminSecretName);
