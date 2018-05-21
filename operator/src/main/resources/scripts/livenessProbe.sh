@@ -5,6 +5,12 @@
 DN=${DOMAIN_NAME:-$1}
 SN=${SERVER_NAME:-$2}
 STATEFILE=/shared/domain/${DN}/servers/${SN}/data/nodemanager/${SN}.state
+LIVENESSLOG=/shared/domain/${DN}/servers/${SN}/data/nodemanager/liveness.log
+
+date  >> $LIVENESSLOG
+jps -l >> $LIVENESSLOG
+[ -f ${STATEFILE} ] && cat ${STATEFILE} >> $LIVENESSLOG
+
 if [ `jps -l | grep -c " weblogic.NodeManager"` -eq 0 ]; then
   echo "Error: WebLogic NodeManager process not found."
   exit 1
