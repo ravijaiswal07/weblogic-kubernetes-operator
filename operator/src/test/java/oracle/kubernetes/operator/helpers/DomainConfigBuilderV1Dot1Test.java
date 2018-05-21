@@ -5,6 +5,7 @@
 package oracle.kubernetes.operator.helpers;
 
 import static oracle.kubernetes.operator.KubernetesConstants.*;
+import static oracle.kubernetes.operator.WebLogicConstants.*;
 import static oracle.kubernetes.operator.helpers.ClusteredServerConfig.*;
 import static oracle.kubernetes.operator.helpers.DomainConfigBuilderV1Dot1.*;
 import static oracle.kubernetes.operator.helpers.NonClusteredServerConfig.*;
@@ -342,7 +343,7 @@ public class DomainConfigBuilderV1Dot1Test {
   public void copyServerProperties_allPropertiesSet_copiesProperties() {
     Server s =
         newServer()
-            .withStartedServerState(STARTED_SERVER_STATE_ADMIN)
+            .withStartedServerState(ADMIN_STATE)
             .withRestartedLabel(LABEL1)
             .withNodePort(30003)
             .withEnv(ENV1)
@@ -384,7 +385,7 @@ public class DomainConfigBuilderV1Dot1Test {
 
     ServerConfig want =
         (new ServerConfig())
-            .withStartedServerState(STARTED_SERVER_STATE_RUNNING)
+            .withStartedServerState(RUNNING_STATE)
             .withNodePort(0)
             .withImage(DEFAULT_IMAGE)
             .withImagePullPolicy(IFNOTPRESENT_IMAGEPULLPOLICY)
@@ -485,7 +486,7 @@ public class DomainConfigBuilderV1Dot1Test {
     want.setRestartedLabel(clusterDefaultsServerDefaults.getRestartedLabel());
 
     serverDefaults.setStartedServerState(
-        STARTED_SERVER_STATE_ADMIN); // used because not set on server1, cluster1ServerDefaults or
+        ADMIN_STATE); // used because not set on server1, cluster1ServerDefaults or
     // clusterDefaultsServerDefaults
     want.setStartedServerState(serverDefaults.getStartedServerState());
 
@@ -968,7 +969,7 @@ public class DomainConfigBuilderV1Dot1Test {
 
   private Server withServerDefaults(Server server) {
     return server
-        .withStartedServerState(STARTED_SERVER_STATE_RUNNING)
+        .withStartedServerState(RUNNING_STATE)
         // no restartedLabel value
         // no nodePort value
         // no env value

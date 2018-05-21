@@ -4,13 +4,11 @@
 
 package oracle.kubernetes.operator.helpers;
 
-import io.kubernetes.client.models.V1EnvVar;
 import io.kubernetes.client.models.V1PersistentVolumeClaimList;
 import io.kubernetes.client.models.V1Service;
 import io.kubernetes.client.models.V1beta1Ingress;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -277,7 +275,6 @@ public class DomainPresenceInfo {
   public static class ServerStartupInfo {
     public final WlsServerConfig wlsServerConfig;
     public final WlsClusterConfig clusterConfig;
-    public final List<V1EnvVar> envVars;
     public final ServerConfig serverConfig;
 
     /**
@@ -285,17 +282,14 @@ public class DomainPresenceInfo {
      *
      * @param wlsServerConfig Server config scan
      * @param clusterConfig Cluster config scan
-     * @param envVars Environment variables
      * @param serverConfig Server startup configuration
      */
     public ServerStartupInfo(
         WlsServerConfig wlsServerConfig,
         WlsClusterConfig clusterConfig,
-        List<V1EnvVar> envVars,
         ServerConfig serverConfig) {
       this.wlsServerConfig = wlsServerConfig;
       this.clusterConfig = clusterConfig;
-      this.envVars = envVars;
       this.serverConfig = serverConfig;
     }
   }

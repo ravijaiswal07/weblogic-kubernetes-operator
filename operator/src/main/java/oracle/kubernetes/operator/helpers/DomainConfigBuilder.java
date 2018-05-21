@@ -4,6 +4,7 @@
 package oracle.kubernetes.operator.helpers;
 
 import static oracle.kubernetes.operator.KubernetesConstants.*;
+import static oracle.kubernetes.operator.WebLogicConstants.*;
 
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
@@ -18,7 +19,7 @@ public abstract class DomainConfigBuilder {
   protected static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
 
   protected static Integer DEFAULT_NODE_PORT = new Integer(0);
-  protected static String DEFAULT_STARTED_SERVER_STATE = ServerConfig.STARTED_SERVER_STATE_RUNNING;
+  protected static String DEFAULT_STARTED_SERVER_STATE = RUNNING_STATE;
   protected static String DEFAULT_SHUTDOWN_POLICY = ServerConfig.SHUTDOWN_POLICY_FORCED_SHUTDOWN;
   protected static Integer DEFAULT_GRACEFUL_SHUTDOWN_TIMEOUT = new Integer(0);
   protected static Boolean DEFAULT_GRACEFUL_SHUTDOWN_IGNORE_SESSIONS = Boolean.FALSE;

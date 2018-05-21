@@ -6,6 +6,7 @@ package oracle.kubernetes.operator.helpers;
 
 import static oracle.kubernetes.operator.KubernetesConstants.*;
 import static oracle.kubernetes.operator.StartupControlConstants.*;
+import static oracle.kubernetes.operator.WebLogicConstants.*;
 import static oracle.kubernetes.operator.helpers.ClusteredServerConfig.*;
 import static oracle.kubernetes.operator.helpers.DomainConfigBuilder.*;
 import static oracle.kubernetes.operator.helpers.NonClusteredServerConfig.*;
@@ -154,7 +155,7 @@ public class DomainConfigBuilderV1Test {
       getEffectiveNonClusteredServerConfig_domainSpecPropertiesSet_serverStartupPropertiesSet_returnsCorrectConfig() {
     List<ServerStartup> serverStartups = createServerStartups(SERVER1);
     ServerStartup serverStartup = serverStartups.get(0);
-    serverStartup.withNodePort(1).withDesiredState(STARTED_SERVER_STATE_ADMIN).withEnv(ENV1);
+    serverStartup.withNodePort(1).withDesiredState(ADMIN_STATE).withEnv(ENV1);
 
     DomainSpec domainSpec =
         (new DomainSpec())
@@ -229,11 +230,11 @@ public class DomainConfigBuilderV1Test {
       getEffectiveClusteredServerConfig_domainSpecPropertiesSet_clusterStartupPropertiesSet_serverStartupPropertiesSet_returnsCorrectConfig() {
     List<ServerStartup> serverStartups = createServerStartups(SERVER1);
     ServerStartup serverStartup = serverStartups.get(0);
-    serverStartup.withNodePort(1).withDesiredState(STARTED_SERVER_STATE_ADMIN).withEnv(ENV1);
+    serverStartup.withNodePort(1).withDesiredState(ADMIN_STATE).withEnv(ENV1);
 
     List<ClusterStartup> clusterStartups = createClusterStartups(CLUSTER1);
     ClusterStartup clusterStartup = clusterStartups.get(0);
-    clusterStartup.withDesiredState(STARTED_SERVER_STATE_RUNNING).withEnv(ENV2);
+    clusterStartup.withDesiredState(RUNNING_STATE).withEnv(ENV2);
 
     DomainSpec domainSpec =
         (new DomainSpec())
@@ -300,7 +301,7 @@ public class DomainConfigBuilderV1Test {
       getEffectiveClusteredServerConfig_domainSpecPropertiesSet_clusterStartupPropertiesSet_noServerStartup_returnsCorrectConfig() {
     List<ClusterStartup> clusterStartups = createClusterStartups(CLUSTER1);
     ClusterStartup clusterStartup = clusterStartups.get(0);
-    clusterStartup.withDesiredState(STARTED_SERVER_STATE_RUNNING).withEnv(ENV2);
+    clusterStartup.withDesiredState(RUNNING_STATE).withEnv(ENV2);
 
     DomainSpec domainSpec =
         (new DomainSpec())
@@ -474,10 +475,7 @@ public class DomainConfigBuilderV1Test {
   @Test
   public void initServerConfigFromServerStartup_serverStartupPropertiesSet_copiesProperties() {
     ServerConfig actual =
-        (new ServerConfig())
-            .withNodePort(2)
-            .withStartedServerState(STARTED_SERVER_STATE_RUNNING)
-            .withEnv(ENV2);
+        (new ServerConfig()).withNodePort(2).withStartedServerState(RUNNING_STATE).withEnv(ENV2);
 
     ServerStartup serverStartup =
         (new ServerStartup())
@@ -538,9 +536,7 @@ public class DomainConfigBuilderV1Test {
   @Test
   public void initClusteredServerFromClusterStartup_clusterStartupPropertiesSet_copiesProperties() {
     ClusteredServerConfig actual =
-        (new ClusteredServerConfig())
-            .withStartedServerState(STARTED_SERVER_STATE_RUNNING)
-            .withEnv(ENV2);
+        (new ClusteredServerConfig()).withStartedServerState(RUNNING_STATE).withEnv(ENV2);
 
     ClusterStartup clusterStartup =
         (new ClusterStartup()).withDesiredState(STARTED_SERVER_STATE_ADMIN).withEnv(ENV1);
@@ -618,7 +614,7 @@ public class DomainConfigBuilderV1Test {
     ServerConfig want =
         (new ServerConfig())
             .withNodePort(0)
-            .withStartedServerState(STARTED_SERVER_STATE_RUNNING)
+            .withStartedServerState(RUNNING_STATE)
             .withEnv(EMPTY_ENV)
             .withImage("store/oracle/weblogic:12.2.1.3")
             .withShutdownPolicy(SHUTDOWN_POLICY_FORCED_SHUTDOWN)

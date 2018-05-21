@@ -15,7 +15,7 @@ public interface ProcessingConstants {
   public static final String PRINCIPAL = "principal";
   public static final String SERVER_SCAN = "serverScan";
   public static final String CLUSTER_SCAN = "clusterScan";
-  public static final String ENVVARS = "envVars";
+  public static final String SERVER_CONFIG = "serverConfig";
 
   public static final String SERVER_NAME = "serverName";
   public static final String CLUSTER_NAME = "clusterName";

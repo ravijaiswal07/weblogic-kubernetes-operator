@@ -4,6 +4,7 @@
 package oracle.kubernetes.operator.helpers;
 
 import static oracle.kubernetes.operator.KubernetesConstants.*;
+import static oracle.kubernetes.operator.WebLogicConstants.*;
 import static oracle.kubernetes.operator.helpers.ClusteredServerConfig.*;
 import static oracle.kubernetes.operator.helpers.NonClusteredServerConfig.*;
 import static oracle.kubernetes.operator.helpers.ServerConfig.*;
@@ -113,7 +114,7 @@ public class DomainConfigBuilderV1Dot1 extends DomainConfigBuilder {
 
   protected static Server SERVER_DEFAULTS =
       (new Server())
-          .withStartedServerState(STARTED_SERVER_STATE_RUNNING)
+          .withStartedServerState(RUNNING_STATE)
           .withRestartedLabel(null)
           .withNodePort(null)
           .withEnv(null)

@@ -42,7 +42,7 @@ public class ManagedServerUpIteratorStep extends Step {
       Packet p = packet.clone();
       p.put(ProcessingConstants.SERVER_SCAN, ssi.wlsServerConfig);
       p.put(ProcessingConstants.CLUSTER_SCAN, ssi.clusterConfig);
-      p.put(ProcessingConstants.ENVVARS, ssi.envVars);
+      p.put(ProcessingConstants.SERVER_CONFIG, ssi.serverConfig);
 
       p.put(ProcessingConstants.SERVER_NAME, ssi.wlsServerConfig.getName());
       p.put(ProcessingConstants.PORT, ssi.wlsServerConfig.getListenPort());
