@@ -9,7 +9,6 @@ import static oracle.kubernetes.operator.LabelConstants.*;
 import static oracle.kubernetes.operator.VersionConstants.*;
 import static oracle.kubernetes.operator.WebLogicConstants.*;
 import static oracle.kubernetes.operator.utils.KubernetesArtifactUtils.*;
-import static oracle.kubernetes.operator.utils.YamlUtils.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -28,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import oracle.kubernetes.TestUtils;
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.TuningParameters.PodTuning;
+import oracle.kubernetes.operator.wlsconfig.WlsServerConfig;
 import oracle.kubernetes.operator.work.Component;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.weblogic.domain.v1.Domain;
@@ -54,10 +54,8 @@ public class PodHelperTest {
   private static final String WEBLOGIC_DOMAIN_PERSISTENT_VOLUME_CLAIM_NAME =
       "test-weblogic-domain-pvc-name";
   private static final String INTERNAL_OPERATOR_CERT_FILE = "test-internal-operator-cert-file";
-  private static final String CUSTOM_LATEST_IMAGE = "custom-image:latest";
 
   private static final String RESTARTED_LABEL1 = "restartedLabel1";
-  private static final String NO_RESTARTED_LABEL = null;
 
   private static final String JAVA_OPTIONS = "JAVA_OPTIONS";
   private static final String ADMIN_STARTUP_MODE = "-Dweblogic.management.startupMode=ADMIN";
@@ -108,455 +106,77 @@ public class PodHelperTest {
     for (Memento memento : mementos) memento.revert();
   }
 
-  /*
-    @Test
-    public void computedAdminServerPodConfigForDefaults_isCorrect() throws Exception {
-      assertThat(
-          getActualAdminServerPodConfigForDefaults(),
-          yamlEqualTo(getDesiredAdminServerPodConfigForDefaults()));
-    }
+  @Test
+  public void computeAdminPodConfig_clusteredSerer_addsCorrectResources() {
+    ClusteredServerConfig serverConfig =
+        (new ClusteredServerConfig())
+            .withClusterName(CLUSTER_NAME)
+            .withServerName(ADMIN_SERVER_NAME);
+    computeAdminPodConfig_addsCorrectResources(serverConfig);
+  }
 
-    private V1Pod getDesiredAdminServerPodConfigForDefaults() {
-      return getDesiredAdminServerPodConfigForDefaults(DEFAULT_IMAGE, IFNOTPRESENT_IMAGEPULLPOLICY);
-    }
+  @Test
+  public void computeAdminPodConfig_nonClusteredServer_addsCorrectResources() {
+    NonClusteredServerConfig serverConfig =
+        (new NonClusteredServerConfig()).withServerName(ADMIN_SERVER_NAME);
+    computeAdminPodConfig_addsCorrectResources(serverConfig);
+  }
 
-    private V1Pod getActualAdminServerPodConfigForDefaults() throws Exception {
-      return getActualAdminServerPodConfig(
-          getDomainCustomResourceForDefaults(null, null), // default image & image pull policy
-          newEmptyPersistentVolumeClaimList());
-    }
+  private void computeAdminPodConfig_addsCorrectResources(ServerConfig serverConfig) {
+    setupBaseServerConfig(serverConfig);
+    Packet packet = newPacket(ONE_CLAIM);
+    V1Pod actual =
+        PodHelper.computeAdminPodConfig(
+            serverConfig, newPodTuning(), INTERNAL_OPERATOR_CERT_FILE, packet);
 
-    @Test
-    public void computedManagedServerPodConfigForDefaults_isCorrect() throws Exception {
-      assertThat(
-          getActualManagedServerPodConfigForDefaults(),
-          yamlEqualTo(getDesiredManagedServerPodConfigForDefaults()));
-    }
+    V1Pod want = getExpectedBaseServerPod(serverConfig, ADMIN_SERVER_PORT, ONE_CLAIM);
+    V1Container containerWant = want.getSpec().getContainers().get(0);
+    containerWant.addEnvItem(newEnvVar("INTERNAL_OPERATOR_CERT", INTERNAL_OPERATOR_CERT_FILE));
+    want.getSpec().setHostname(want.getMetadata().getName());
 
-    private V1Pod getDesiredManagedServerPodConfigForDefaults() {
-      return getDesiredManagedServerPodConfigForDefaults(DEFAULT_IMAGE, IFNOTPRESENT_IMAGEPULLPOLICY);
-    }
+    assertThat(actual, equalTo(want));
+  }
 
-    private V1Pod getActualManagedServerPodConfigForDefaults() throws Exception {
-      return getActualManagedServerPodConfig(
-          getDomainCustomResourceForDefaults(null, null), // default image & image pull policy
-          newEmptyPersistentVolumeClaimList());
-    }
+  @Test
+  public void computeManagedPodConfig_clusteredServer_addsCorrectResources() {
+    ClusteredServerConfig serverConfig =
+        (new ClusteredServerConfig())
+            .withClusterName(CLUSTER_NAME)
+            .withServerName(MANAGED_SERVER_NAME);
+    computeManagedPodConfig_addsCorrectResources(serverConfig);
+  }
 
-    @Test
-    public void computedAdminServerPodConfigForCustomLatestImageAndDefaults_isCorrect()
-        throws Exception {
-      assertThat(
-          getActualAdminServerPodConfigForCustomLatestImageAndDefaults(),
-          yamlEqualTo(getDesiredAdminServerPodConfigForCustomLatestImageAndDefaults()));
-    }
+  @Test
+  public void computeManagedPodConfig_nonClusteredServer_addsCorrectResources() {
+    NonClusteredServerConfig serverConfig =
+        (new NonClusteredServerConfig()).withServerName(MANAGED_SERVER_NAME);
+    computeManagedPodConfig_addsCorrectResources(serverConfig);
+  }
 
-    private V1Pod getDesiredAdminServerPodConfigForCustomLatestImageAndDefaults() {
-      return getDesiredAdminServerPodConfigForDefaults(CUSTOM_LATEST_IMAGE, ALWAYS_IMAGEPULLPOLICY);
-    }
+  private void computeManagedPodConfig_addsCorrectResources(ServerConfig serverConfig) {
+    setupBaseServerConfig(serverConfig);
+    Packet packet = newPacket(NO_CLAIMS);
+    packet.put(
+        ProcessingConstants.SERVER_SCAN,
+        // no cluster name, listen address, no network access points since PodHelper doesn't use
+        // them:
+        new WlsServerConfig(
+            serverConfig.getServerName(),
+            null,
+            MANAGED_SERVER_PORT,
+            null,
+            null,
+            false,
+            null,
+            null));
+    V1Pod actual = PodHelper.computeManagedPodConfig(serverConfig, newPodTuning(), packet);
 
-    private V1Pod getActualAdminServerPodConfigForCustomLatestImageAndDefaults() throws Exception {
-      return getActualAdminServerPodConfig(
-          getDomainCustomResourceForDefaults(
-              CUSTOM_LATEST_IMAGE, null), // custom latest image & default image pull policy
-          newEmptyPersistentVolumeClaimList());
-    }
+    V1Pod want = getExpectedBaseServerPod(serverConfig, MANAGED_SERVER_PORT, NO_CLAIMS);
+    V1Container containerWant = want.getSpec().getContainers().get(0);
+    containerWant.addCommandItem(ADMIN_SERVER_NAME).addCommandItem("" + ADMIN_SERVER_PORT);
 
-    @Test
-    public void computedManagedServerPodConfigForCustomLatestImageAndDefaults_isCorrect()
-        throws Exception {
-      assertThat(
-          getActualManagedServerPodConfigForCustomLatestImageAndDefaults(),
-          yamlEqualTo(getDesiredManagedServerPodConfigForCustomLatestImageAndDefaults()));
-    }
-
-    private V1Pod getDesiredManagedServerPodConfigForCustomLatestImageAndDefaults() {
-      return getDesiredManagedServerPodConfigForDefaults(CUSTOM_LATEST_IMAGE, ALWAYS_IMAGEPULLPOLICY);
-    }
-
-    private V1Pod getActualManagedServerPodConfigForCustomLatestImageAndDefaults() throws Exception {
-      return getActualManagedServerPodConfig(
-          getDomainCustomResourceForDefaults(
-              CUSTOM_LATEST_IMAGE, null), // custom latest image & default image pull policy
-          newEmptyPersistentVolumeClaimList());
-    }
-
-    @Test
-    public void
-        computedAdminServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults_isCorrect()
-            throws Exception {
-      assertThat(
-          getActualAdminServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults(),
-          yamlEqualTo(
-              getDesiredAdminServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults()));
-    }
-
-    private V1Pod
-        getDesiredAdminServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults() {
-      return getDesiredAdminServerPodConfigForDefaults(
-          CUSTOM_LATEST_IMAGE, IFNOTPRESENT_IMAGEPULLPOLICY);
-    }
-
-    private V1Pod
-        getActualAdminServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults()
-            throws Exception {
-      return getActualAdminServerPodConfig(
-          getDomainCustomResourceForDefaults(
-              CUSTOM_LATEST_IMAGE,
-              IFNOTPRESENT_IMAGEPULLPOLICY), // custom latest image & custom image pull policy
-          newEmptyPersistentVolumeClaimList());
-    }
-
-    @Test
-    public void
-        computedManagedServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults_isCorrect()
-            throws Exception {
-      assertThat(
-          getActualManagedServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults(),
-          yamlEqualTo(
-              getDesiredManagedServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults()));
-    }
-
-    private V1Pod
-        getDesiredManagedServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults() {
-      return getDesiredManagedServerPodConfigForDefaults(
-          CUSTOM_LATEST_IMAGE, IFNOTPRESENT_IMAGEPULLPOLICY);
-    }
-
-    private V1Pod
-        getActualManagedServerPodConfigForCustomLatestImageAndCustomImagePullPolicyAndDefaults()
-            throws Exception {
-      return getActualManagedServerPodConfig(
-          getDomainCustomResourceForDefaults(
-              CUSTOM_LATEST_IMAGE,
-              IFNOTPRESENT_IMAGEPULLPOLICY), // custom latest image & custom image pull policy
-          newEmptyPersistentVolumeClaimList());
-    }
-
-    @Test
-    public void computedAdminServerPodConfigForPersistentVolumeClaimAndDefaults_isCorrect()
-        throws Exception {
-      assertThat(
-          getActualAdminServerPodConfigForPersistentVolumeClaimAndDefaults(),
-          yamlEqualTo(getDesiredAdminServerPodConfigForPersistentVolumeClaimAndDefaults()));
-    }
-
-    private V1Pod getDesiredAdminServerPodConfigForPersistentVolumeClaimAndDefaults() {
-      V1Pod pod =
-          getDesiredAdminServerPodConfigForDefaults(DEFAULT_IMAGE, IFNOTPRESENT_IMAGEPULLPOLICY);
-      setDesiredPersistentVolumeClaim(pod);
-      return pod;
-    }
-
-    private V1Pod getActualAdminServerPodConfigForPersistentVolumeClaimAndDefaults()
-        throws Exception {
-      return getActualAdminServerPodConfig(
-          getDomainCustomResourceForDefaults(null, null), // default image & default image pull policy
-          newPersistentVolumeClaimListForPersistentVolumeClaim());
-    }
-
-    @Test
-    public void computedManagedServerPodConfigForPersistentVolumeClaimAndDefaults_isCorrect()
-        throws Exception {
-      assertThat(
-          getActualManagedServerPodConfigForPersistentVolumeClaimAndDefaults(),
-          yamlEqualTo(getDesiredManagedServerPodConfigForPersistentVolumeClaimAndDefaults()));
-    }
-
-    private V1Pod getDesiredManagedServerPodConfigForPersistentVolumeClaimAndDefaults() {
-      V1Pod pod =
-          getDesiredManagedServerPodConfigForDefaults(DEFAULT_IMAGE, IFNOTPRESENT_IMAGEPULLPOLICY);
-      setDesiredPersistentVolumeClaim(pod);
-      return pod;
-    }
-
-    private V1Pod getActualManagedServerPodConfigForPersistentVolumeClaimAndDefaults()
-        throws Exception {
-      return getActualManagedServerPodConfig(
-          getDomainCustomResourceForDefaults(null, null), // default image & default image pull policy
-          newPersistentVolumeClaimListForPersistentVolumeClaim());
-    }
-
-    @Test
-    public void computedAdminServerPodConfigForServerStartupAndDefaults_isCorrect() throws Exception {
-      assertThat(
-          getActualAdminServerPodConfigForServerStartupAndDefaults(),
-          yamlEqualTo(getDesiredAdminServerPodConfigForServerStartupAndDefaults()));
-    }
-
-    private V1Pod getDesiredAdminServerPodConfigForServerStartupAndDefaults() {
-      V1Pod pod =
-          getDesiredAdminServerPodConfigForDefaults(DEFAULT_IMAGE, IFNOTPRESENT_IMAGEPULLPOLICY);
-      // the custom env vars need to be added to the beginning of the list:
-      pod.getSpec()
-          .getContainers()
-          .get(0)
-          .getEnv()
-          .add(0, newEnvVar().name(ADMIN_OPTION2_NAME).value(ADMIN_OPTION2_VALUE));
-      pod.getSpec()
-          .getContainers()
-          .get(0)
-          .getEnv()
-          .add(0, newEnvVar().name(ADMIN_OPTION1_NAME).value(ADMIN_OPTION1_VALUE));
-      return pod;
-    }
-
-    private V1Pod getActualAdminServerPodConfigForServerStartupAndDefaults() throws Exception {
-      Domain domain =
-          getDomainCustomResourceForDefaults(null, null); // default image & default image pull policy
-      domain.getSpec().withServerStartup(newTestServersStartupList());
-      return getActualAdminServerPodConfig(domain, newPersistentVolumeClaimList()); // no pvc
-    }
-
-    // don't test sending in a server startup list when creating a managed pod config since
-    // PodHelper doesn't pay attention to the server startup list - intead, it uses the
-    // packet's env vars (which we've already tested)
-
-    private V1Pod getActualAdminServerPodConfig(Domain domain, V1PersistentVolumeClaimList claims)
-        throws Exception {
-      Packet packet = newPacket(domain, claims);
-      packet.put(ProcessingConstants.SERVER_NAME, domain.getSpec().getAsName());
-      packet.put(ProcessingConstants.PORT, domain.getSpec().getAsPort());
-      return PodHelper.computeAdminPodConfig(newPodTuning(), INTERNAL_OPERATOR_CERT_FILE, packet);
-    }
-  */
-  // TBD - test imagePullSecrets, startedServerState ADMIN
-  /*
-        .addImagePullSecretsItem(
-            newLocalObjectReference().name(getInputs().getWeblogicImagePullSecretName()));
-
-         serverConfig.
-         withImagePullSecrets(List<V1LocalObjectReference> imagePullSecrets)
-
-                     .withImagePullSecrets(
-                newLocalObjectReferenceList().addElement(newLocalObjectReference().name("secret1")))
-  */
-  /*
-    private V1Pod getActualManagedServerPodConfig(Domain domain, V1PersistentVolumeClaimList claims)
-        throws Exception {
-      Packet packet = newPacket(domain, claims);
-      packet.put(
-          ProcessingConstants.SERVER_SCAN,
-          // no listen address, no network access points since PodHelper doesn't use them:
-          new WlsServerConfig(
-              MANAGED_SERVER_NAME, CLUSTER_NAME, MANAGED_SERVER_PORT, null, null, false, null, null));
-      packet.put(
-          ProcessingConstants.CLUSTER_SCAN,
-          // don't attach WlsServerConfigs for the managed server to the WlsClusterConfig
-          // since PodHelper doesn't use them:
-          new WlsClusterConfig(CLUSTER_NAME));
-      packet.put(
-          ProcessingConstants.SERVER_CONFIG,
-          new ServerConfig()
-              .withServerName(MANAGED_SERVER_NAME)
-              .withImage(DEFAULT_IMAGE)
-              .withImagePullPolicy(IFNOTPRESENT_IMAGEPULLPOLICY)
-              .withEnv(newEnvVarList()
-                  .addElement(newEnvVar().name(MANAGED_OPTION1_NAME).value(MANAGED_OPTION1_VALUE))
-                  .addElement(newEnvVar().name(MANAGED_OPTION2_NAME).value(MANAGED_OPTION2_VALUE))));
-      return PodHelper.computeManagedPodConfig(newPodTuning(), packet);
-    }
-
-    private List<ServerStartup> newTestServersStartupList() {
-      return newServerStartupList()
-          .addElement(
-              newServerStartup()
-                  .withDesiredState("RUNNING")
-                  .withServerName(ADMIN_SERVER_NAME)
-                  .withEnv(
-                      newEnvVarList()
-                          .addElement(newEnvVar().name(ADMIN_OPTION1_NAME).value(ADMIN_OPTION1_VALUE))
-                          .addElement(
-                              newEnvVar().name(ADMIN_OPTION2_NAME).value(ADMIN_OPTION2_VALUE))))
-          .addElement(
-              newServerStartup()
-                  .withDesiredState("RUNNING")
-                  .withServerName(MANAGED_SERVER_NAME)
-                  .withEnv(
-                      newEnvVarList()
-                          .addElement(
-                              newEnvVar().name(MANAGED_OPTION3_NAME).value(MANAGED_OPTION3_VALUE))
-                          .addElement(
-                              newEnvVar().name(MANAGED_OPTION4_NAME).value(MANAGED_OPTION4_VALUE))));
-    }
-
-    private Domain getDomainCustomResourceForDefaults(String image, String imagePullPolicy) {
-      DomainSpec spec = newDomainSpec();
-      spec.setDomainUID(DOMAIN_UID);
-      spec.setDomainName(DOMAIN_NAME);
-      spec.setAsName(ADMIN_SERVER_NAME);
-      spec.setAdminSecret(newSecretReference().name(WEBLOGIC_CREDENTIALS_SECRET_NAME));
-      spec.setAsPort(ADMIN_SERVER_PORT);
-      if (image != null) {
-        spec.setImage(image);
-      }
-      if (imagePullPolicy != null) {
-        spec.setImagePullPolicy(imagePullPolicy);
-      }
-      Domain domain = new Domain();
-      domain.setMetadata(newObjectMeta().namespace(NAMESPACE));
-      domain.setSpec(spec);
-      return domain;
-    }
-
-    private V1Pod getDesiredAdminServerPodConfigForDefaults(String image, String imagePullPolicy) {
-      V1Pod pod =
-          getDesiredBaseServerPodConfigForDefaults(
-              image, imagePullPolicy, ADMIN_SERVER_NAME, ADMIN_SERVER_PORT);
-      pod.getSpec().hostname(DOMAIN_UID + "-" + ADMIN_SERVER_NAME.toLowerCase());
-      pod.getSpec()
-          .getContainers()
-          .get(0)
-          .getEnv()
-          .add(newEnvVar().name("INTERNAL_OPERATOR_CERT").value(INTERNAL_OPERATOR_CERT_FILE));
-      return pod;
-    }
-
-    private V1Pod getDesiredManagedServerPodConfigForDefaults(String image, String imagePullPolicy) {
-      V1Pod pod =
-          getDesiredBaseServerPodConfigForDefaults(
-              image, imagePullPolicy, MANAGED_SERVER_NAME, MANAGED_SERVER_PORT);
-      pod.getSpec()
-          .getContainers()
-          .get(0)
-          .getEnv()
-          .add(0, newEnvVar().name(MANAGED_OPTION1_NAME).value(MANAGED_OPTION1_VALUE));
-      pod.getSpec()
-          .getContainers()
-          .get(0)
-          .getEnv()
-          .add(1, newEnvVar().name(MANAGED_OPTION2_NAME).value(MANAGED_OPTION2_VALUE));
-      pod.getMetadata().putLabelsItem(CLUSTERNAME_LABEL, CLUSTER_NAME);
-      pod.getSpec()
-          .getContainers()
-          .get(0)
-          .addCommandItem(ADMIN_SERVER_NAME)
-          .addCommandItem(String.valueOf(ADMIN_SERVER_PORT));
-      return pod;
-    }
-
-    private void setDesiredPersistentVolumeClaim(V1Pod pod) {
-      pod.getSpec()
-          .getVolumes()
-          .add(
-              0,
-              newVolume() // needs to be first in the list
-                  .name("weblogic-domain-storage-volume")
-                  .persistentVolumeClaim(
-                      newPersistentVolumeClaimVolumeSource()
-                          .claimName(WEBLOGIC_DOMAIN_PERSISTENT_VOLUME_CLAIM_NAME)));
-    }
-
-    private V1Pod getDesiredBaseServerPodConfigForDefaults(
-        String image, String imagePullPolicy, String serverName, int port) {
-      String serverNameLC = serverName.toLowerCase();
-      return newPod()
-          .metadata(
-              newObjectMeta()
-                  .name(DOMAIN_UID + "-" + serverNameLC)
-                  .namespace(NAMESPACE)
-                  .putAnnotationsItem("prometheus.io/path", "/wls-exporter/metrics")
-                  .putAnnotationsItem("prometheus.io/port", "" + port)
-                  .putAnnotationsItem("prometheus.io/scrape", "true")
-                  .putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1)
-                  .putLabelsItem(CREATEDBYOPERATOR_LABEL, "true")
-                  .putLabelsItem(DOMAINNAME_LABEL, DOMAIN_NAME)
-                  .putLabelsItem(DOMAINUID_LABEL, DOMAIN_UID)
-                  .putLabelsItem(SERVERNAME_LABEL, serverName))
-          .spec(
-              newPodSpec()
-                  .addContainersItem(
-                      newContainer()
-                          .name("weblogic-server")
-                          .image(image)
-                          .imagePullPolicy(imagePullPolicy)
-                          .addCommandItem("/weblogic-operator/scripts/startServer.sh")
-                          .addCommandItem(DOMAIN_UID)
-                          .addCommandItem(serverName)
-                          .addCommandItem(DOMAIN_NAME)
-                          .lifecycle(
-                              newLifecycle()
-                                  .preStop(
-                                      newHandler()
-                                          .exec(
-                                              newExecAction()
-                                                  .addCommandItem(
-                                                      "/weblogic-operator/scripts/stopServer.sh")
-                                                  .addCommandItem(DOMAIN_UID)
-                                                  .addCommandItem(serverName)
-                                                  .addCommandItem(DOMAIN_NAME))))
-                          .livenessProbe(
-                              newProbe()
-                                  .initialDelaySeconds(10)
-                                  .periodSeconds(10)
-                                  .timeoutSeconds(5)
-                                  .failureThreshold(1)
-                                  .exec(
-                                      newExecAction()
-                                          .addCommandItem(
-                                              "/weblogic-operator/scripts/livenessProbe.sh")
-                                          .addCommandItem(DOMAIN_NAME)
-                                          .addCommandItem(serverName)))
-                          .readinessProbe(
-                              newProbe()
-                                  .initialDelaySeconds(2)
-                                  .periodSeconds(10)
-                                  .timeoutSeconds(5)
-                                  .failureThreshold(1)
-                                  .exec(
-                                      newExecAction()
-                                          .addCommandItem(
-                                              "/weblogic-operator/scripts/readinessProbe.sh")
-                                          .addCommandItem(DOMAIN_NAME)
-                                          .addCommandItem(serverName)))
-                          .addPortsItem(newContainerPort().containerPort(port).protocol("TCP"))
-                          .addEnvItem(newEnvVar().name("DOMAIN_NAME").value(DOMAIN_NAME))
-                          .addEnvItem(
-                              newEnvVar().name("DOMAIN_HOME").value("/shared/domain/" + DOMAIN_NAME))
-                          .addEnvItem(newEnvVar().name("ADMIN_NAME").value(ADMIN_SERVER_NAME))
-                          .addEnvItem(newEnvVar().name("ADMIN_PORT").value("" + ADMIN_SERVER_PORT))
-                          .addEnvItem(newEnvVar().name("SERVER_NAME").value(serverName))
-                          .addEnvItem(newEnvVar().name("ADMIN_USERNAME").value(null))
-                          .addEnvItem(newEnvVar().name("ADMIN_PASSWORD").value(null))
-                          .addVolumeMountsItem(
-                              newVolumeMount() // TBD - why is the mount created if the volume doesn't
-                                  // exist?
-                                  .name("weblogic-domain-storage-volume")
-                                  .mountPath("/shared"))
-                          .addVolumeMountsItem(
-                              newVolumeMount()
-                                  .name("weblogic-credentials-volume")
-                                  .mountPath("/weblogic-operator/secrets"))
-                          .addVolumeMountsItem(
-                              newVolumeMount()
-                                  .name("weblogic-domain-cm-volume")
-                                  .mountPath("/weblogic-operator/scripts")))
-                  .addVolumesItem(
-                      newVolume()
-                          .name("weblogic-credentials-volume")
-                          .secret(
-                              newSecretVolumeSource().secretName(WEBLOGIC_CREDENTIALS_SECRET_NAME)))
-                  .addVolumesItem(
-                      newVolume()
-                          .name("weblogic-domain-cm-volume")
-                          .configMap(
-                              newConfigMapVolumeSource()
-                                  .name("weblogic-domain-cm")
-                                  .defaultMode(365))));
-    }
-  */
-
-  /*
-    private void addExpectedManagedServerStartCommand(V1Container container, serverConfig) {
-      container
-          .addCommandItem("/weblogic-operator/scripts/startServer.sh")
-          .addCommandItem(DOMAIN_UID)
-          .addCommandItem(serverConfig.getServerName())
-          .addCommandItem(DOMAIN_NAME)
-          .addCommandItem(ADMIN_SERVER_NAME)
-          .addCommandItem(ADMIN_SERVER_PORT);
-    }
-  */
+    assertThat(actual, equalTo(want));
+  }
 
   @Test
   public void computeBaseServerPodConfig_addsCorrectResources() {
