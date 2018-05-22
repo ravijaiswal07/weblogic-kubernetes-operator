@@ -658,20 +658,22 @@ public class PodHelper {
   }
 
   protected static void addAdminServerStartCommand(V1Container container, DomainSpec domainSpec) {
-    container.addCommandItem("/weblogic-operator/scripts/startServer.sh");
-    container.addCommandItem(domainSpec.getDomainUID());
-    container.addCommandItem(domainSpec.getAsName());
-    container.addCommandItem(domainSpec.getDomainName());
+    container
+        .addCommandItem("/weblogic-operator/scripts/startServer.sh")
+        .addCommandItem(domainSpec.getDomainUID())
+        .addCommandItem(domainSpec.getAsName())
+        .addCommandItem(domainSpec.getDomainName());
   }
 
   protected static void addManagedServerStartCommand(
       V1Container container, DomainSpec domainSpec, ServerConfig serverConfig) {
-    container.addCommandItem("/weblogic-operator/scripts/startServer.sh");
-    container.addCommandItem(domainSpec.getDomainUID());
-    container.addCommandItem(serverConfig.getServerName());
-    container.addCommandItem(domainSpec.getDomainName());
-    container.addCommandItem(domainSpec.getAsName());
-    container.addCommandItem(String.valueOf(domainSpec.getAsPort()));
+    container
+        .addCommandItem("/weblogic-operator/scripts/startServer.sh")
+        .addCommandItem(domainSpec.getDomainUID())
+        .addCommandItem(serverConfig.getServerName())
+        .addCommandItem(domainSpec.getDomainName())
+        .addCommandItem(domainSpec.getAsName())
+        .addCommandItem(String.valueOf(domainSpec.getAsPort()));
   }
 
   protected static V1Pod computeBaseServerPodConfig(
@@ -690,8 +692,8 @@ public class PodHelper {
     addWeblogicServerPort(container, weblogicServerPort);
 
     addHandlersAndProbes(container, domainSpec, serverConfig, tuning);
-    addVolumes(podSpec, container, domainSpec, info.getClaims());
-
+    addVolumes(podSpec, domainSpec, info.getClaims());
+    addVolumeMounts(container);
     addWeblogicServerEnv(container, domainSpec, serverConfig);
 
     V1Pod pod = new V1Pod();
@@ -707,136 +709,137 @@ public class PodHelper {
 
   protected static void setWeblogicServerImage(
       V1PodSpec podSpec, V1Container container, ServerConfig serverConfig) {
-    container.setImage(serverConfig.getImage());
-    container.setImagePullPolicy(serverConfig.getImagePullPolicy());
+    container.image(serverConfig.getImage()).imagePullPolicy(serverConfig.getImagePullPolicy());
     podSpec.setImagePullSecrets(serverConfig.getImagePullSecrets());
   }
 
   protected static void addWeblogicServerPort(V1Container container, int weblogicServerPort) {
-    V1ContainerPort containerPort = new V1ContainerPort();
-    containerPort.setContainerPort(weblogicServerPort);
-    containerPort.setProtocol("TCP");
+    V1ContainerPort containerPort =
+        (new V1ContainerPort()).containerPort(weblogicServerPort).protocol("TCP");
     container.addPortsItem(containerPort);
   }
 
   protected static void addHandlersAndProbes(
       V1Container container, DomainSpec domainSpec, ServerConfig serverConfig, PodTuning tuning) {
-    addStopServerHandler(container, domainSpec, serverConfig);
+    addPreStopHandler(container, domainSpec, serverConfig);
     addLivenessProbe(container, domainSpec, serverConfig, tuning);
     addReadinessProbe(container, domainSpec, serverConfig, tuning);
   }
 
-  protected static void addStopServerHandler(
+  protected static void addPreStopHandler(
       V1Container container, DomainSpec domainSpec, ServerConfig serverConfig) {
-    V1Lifecycle lifecycle = new V1Lifecycle();
-    V1Handler preStopHandler = new V1Handler();
-    V1ExecAction lifecycleExecAction = new V1ExecAction();
-    lifecycleExecAction.addCommandItem("/weblogic-operator/scripts/stopServer.sh");
-    lifecycleExecAction.addCommandItem(domainSpec.getDomainUID());
-    lifecycleExecAction.addCommandItem(serverConfig.getServerName());
-    lifecycleExecAction.addCommandItem(domainSpec.getDomainName());
     // TBD - hook up to serverConfig shutdown related properties
-    preStopHandler.setExec(lifecycleExecAction);
-    lifecycle.setPreStop(preStopHandler);
+    V1ExecAction lifecycleExecAction =
+        (new V1ExecAction())
+            .addCommandItem("/weblogic-operator/scripts/stopServer.sh")
+            .addCommandItem(domainSpec.getDomainUID())
+            .addCommandItem(serverConfig.getServerName())
+            .addCommandItem(domainSpec.getDomainName());
+    V1Handler preStopHandler = (new V1Handler()).exec(lifecycleExecAction);
+    V1Lifecycle lifecycle = (new V1Lifecycle()).preStop(preStopHandler);
     container.setLifecycle(lifecycle);
   }
 
   protected static void addLivenessProbe(
       V1Container container, DomainSpec domainSpec, ServerConfig serverConfig, PodTuning tuning) {
-    V1Probe livenessProbe = new V1Probe();
-    V1ExecAction livenessAction = new V1ExecAction();
-    livenessAction.addCommandItem("/weblogic-operator/scripts/livenessProbe.sh");
-    livenessAction.addCommandItem(domainSpec.getDomainName());
-    livenessAction.addCommandItem(serverConfig.getServerName());
-    livenessProbe.exec(livenessAction);
-    livenessProbe.setInitialDelaySeconds(tuning.livenessProbeInitialDelaySeconds);
-    livenessProbe.setTimeoutSeconds(tuning.livenessProbeTimeoutSeconds);
-    livenessProbe.setPeriodSeconds(tuning.livenessProbePeriodSeconds);
-    livenessProbe.setFailureThreshold(1); // must be 1
+    V1ExecAction livenessAction =
+        (new V1ExecAction())
+            .addCommandItem("/weblogic-operator/scripts/livenessProbe.sh")
+            .addCommandItem(domainSpec.getDomainName())
+            .addCommandItem(serverConfig.getServerName());
+    V1Probe livenessProbe =
+        (new V1Probe())
+            .exec(livenessAction)
+            .initialDelaySeconds(tuning.livenessProbeInitialDelaySeconds)
+            .timeoutSeconds(tuning.livenessProbeTimeoutSeconds)
+            .periodSeconds(tuning.livenessProbePeriodSeconds)
+            .failureThreshold(1); // must be 1
     container.livenessProbe(livenessProbe);
   }
 
   protected static void addReadinessProbe(
       V1Container container, DomainSpec domainSpec, ServerConfig serverConfig, PodTuning tuning) {
-    V1Probe readinessProbe = new V1Probe();
-    V1ExecAction readinessAction = new V1ExecAction();
-    readinessAction.addCommandItem("/weblogic-operator/scripts/readinessProbe.sh");
-    readinessAction.addCommandItem(domainSpec.getDomainName());
-    readinessAction.addCommandItem(serverConfig.getServerName());
-    readinessProbe.exec(readinessAction);
-    readinessProbe.setInitialDelaySeconds(tuning.readinessProbeInitialDelaySeconds);
-    readinessProbe.setTimeoutSeconds(tuning.readinessProbeTimeoutSeconds);
-    readinessProbe.setPeriodSeconds(tuning.readinessProbePeriodSeconds);
-    readinessProbe.setFailureThreshold(1); // must be 1
+    V1ExecAction readinessAction =
+        (new V1ExecAction())
+            .addCommandItem("/weblogic-operator/scripts/readinessProbe.sh")
+            .addCommandItem(domainSpec.getDomainName())
+            .addCommandItem(serverConfig.getServerName());
+    V1Probe readinessProbe =
+        (new V1Probe())
+            .exec(readinessAction)
+            .initialDelaySeconds(tuning.readinessProbeInitialDelaySeconds)
+            .timeoutSeconds(tuning.readinessProbeTimeoutSeconds)
+            .periodSeconds(tuning.readinessProbePeriodSeconds)
+            .failureThreshold(1); // must be 1
     container.readinessProbe(readinessProbe);
   }
 
   protected static void addVolumes(
-      V1PodSpec podSpec,
-      V1Container container,
-      DomainSpec domainSpec,
-      V1PersistentVolumeClaimList claims) {
-    addWeblogicDomainStorageVolumeMount(container);
-    addWeblogicCredentialsVolumeMount(container);
-    addWeblogicDomainConfigMapVolumeMount(container);
-
-    addWeblogicDomainStoragePersistentVolumeClaim(podSpec, claims);
+      V1PodSpec podSpec, DomainSpec domainSpec, V1PersistentVolumeClaimList claims) {
+    addWeblogicDomainStorageVolume(podSpec, claims);
     addWeblogicCredentialsVolume(podSpec, domainSpec);
     addWeblogicDomainConfigMapVolume(podSpec);
   }
 
-  protected static void addWeblogicDomainStorageVolumeMount(V1Container container) {
-    V1VolumeMount volumeMount = new V1VolumeMount();
-    volumeMount.setName("weblogic-domain-storage-volume");
-    volumeMount.setMountPath("/shared");
-    container.addVolumeMountsItem(volumeMount);
-  }
-
-  protected static void addWeblogicCredentialsVolumeMount(V1Container container) {
-    V1VolumeMount volumeMountSecret = new V1VolumeMount();
-    volumeMountSecret.setName("weblogic-credentials-volume");
-    volumeMountSecret.setMountPath("/weblogic-operator/secrets");
-    volumeMountSecret.setReadOnly(true);
-    container.addVolumeMountsItem(volumeMountSecret);
-  }
-
-  protected static void addWeblogicDomainConfigMapVolumeMount(V1Container container) {
-    V1VolumeMount volumeMountScripts = new V1VolumeMount();
-    volumeMountScripts.setName("weblogic-domain-cm-volume");
-    volumeMountScripts.setMountPath("/weblogic-operator/scripts");
-    volumeMountScripts.setReadOnly(true);
-    container.addVolumeMountsItem(volumeMountScripts);
-  }
-
-  protected static void addWeblogicDomainStoragePersistentVolumeClaim(
+  protected static void addWeblogicDomainStorageVolume(
       V1PodSpec podSpec, V1PersistentVolumeClaimList claims) {
     if (!claims.getItems().isEmpty()) {
-      V1Volume volume = new V1Volume();
-      volume.setName("weblogic-domain-storage-volume");
-      V1PersistentVolumeClaimVolumeSource pvClaimSource = new V1PersistentVolumeClaimVolumeSource();
-      pvClaimSource.setClaimName(claims.getItems().iterator().next().getMetadata().getName());
-      volume.setPersistentVolumeClaim(pvClaimSource);
+      V1PersistentVolumeClaimVolumeSource pvClaimSource =
+          (new V1PersistentVolumeClaimVolumeSource())
+              .claimName(claims.getItems().iterator().next().getMetadata().getName());
+      V1Volume volume =
+          (new V1Volume())
+              .name("weblogic-domain-storage-volume")
+              .persistentVolumeClaim(pvClaimSource);
       podSpec.addVolumesItem(volume);
     }
   }
 
   protected static void addWeblogicCredentialsVolume(V1PodSpec podSpec, DomainSpec domainSpec) {
-    V1Volume volumeSecret = new V1Volume();
-    volumeSecret.setName("weblogic-credentials-volume");
-    V1SecretVolumeSource secret = new V1SecretVolumeSource();
-    secret.setSecretName(domainSpec.getAdminSecret().getName());
-    volumeSecret.setSecret(secret);
+    V1SecretVolumeSource secret =
+        (new V1SecretVolumeSource()).secretName(domainSpec.getAdminSecret().getName());
+    V1Volume volumeSecret = (new V1Volume()).name("weblogic-credentials-volume").secret(secret);
     podSpec.addVolumesItem(volumeSecret);
   }
 
   protected static void addWeblogicDomainConfigMapVolume(V1PodSpec podSpec) {
-    V1Volume volumeDomainConfigMap = new V1Volume();
-    volumeDomainConfigMap.setName("weblogic-domain-cm-volume");
-    V1ConfigMapVolumeSource cm = new V1ConfigMapVolumeSource();
-    cm.setName(KubernetesConstants.DOMAIN_CONFIG_MAP_NAME);
-    cm.setDefaultMode(0555); // read and execute
-    volumeDomainConfigMap.setConfigMap(cm);
+    V1ConfigMapVolumeSource cm =
+        (new V1ConfigMapVolumeSource())
+            .name(KubernetesConstants.DOMAIN_CONFIG_MAP_NAME)
+            .defaultMode(0555); // read and execute
+    V1Volume volumeDomainConfigMap =
+        (new V1Volume()).name("weblogic-domain-cm-volume").configMap(cm);
     podSpec.addVolumesItem(volumeDomainConfigMap);
+  }
+
+  protected static void addVolumeMounts(V1Container container) {
+    addWeblogicDomainStorageVolumeMount(container);
+    addWeblogicCredentialsVolumeMount(container);
+    addWeblogicDomainConfigMapVolumeMount(container);
+  }
+
+  protected static void addWeblogicCredentialsVolumeMount(V1Container container) {
+    V1VolumeMount volumeMountSecret =
+        (new V1VolumeMount())
+            .name("weblogic-credentials-volume")
+            .mountPath("/weblogic-operator/secrets")
+            .readOnly(true);
+    container.addVolumeMountsItem(volumeMountSecret);
+  }
+
+  protected static void addWeblogicDomainConfigMapVolumeMount(V1Container container) {
+    V1VolumeMount volumeMountScripts =
+        (new V1VolumeMount())
+            .name("weblogic-domain-cm-volume")
+            .mountPath("/weblogic-operator/scripts")
+            .readOnly(true);
+    container.addVolumeMountsItem(volumeMountScripts);
+  }
+
+  protected static void addWeblogicDomainStorageVolumeMount(V1Container container) {
+    V1VolumeMount volumeMount =
+        (new V1VolumeMount()).name("weblogic-domain-storage-volume").mountPath("/shared");
+    container.addVolumeMountsItem(volumeMount);
   }
 
   protected static void addWeblogicServerEnv(
