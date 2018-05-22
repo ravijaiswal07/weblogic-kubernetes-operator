@@ -4,13 +4,11 @@
 
 package oracle.kubernetes.operator.steps;
 
-import io.kubernetes.client.models.V1EnvVar;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import oracle.kubernetes.operator.WebLogicConstants;
 import oracle.kubernetes.operator.helpers.ClusterConfig;
 import oracle.kubernetes.operator.helpers.ClusteredServerConfig;
 import oracle.kubernetes.operator.helpers.DomainConfig;
@@ -80,7 +78,7 @@ public class ManagedServersUpStep extends Step {
     info.setServerStartupInfo(ssic);
     LOGGER.exiting();
     return doNext(
-        scaleDownIfNecessary(
+        stopServersThatShouldNotBeRunning(
             info,
             domainConfig,
             servers,
@@ -177,16 +175,10 @@ public class ManagedServersUpStep extends Step {
       String serverName,
       ClusteredServerConfig clusteredServerConfig) {
     if (!serverName.equals(asName) && !servers.contains(serverName)) {
-      List<V1EnvVar> env = clusteredServerConfig.getEnv();
-
       // start server
       servers.add(serverName);
-      if (WebLogicConstants.ADMIN_STATE.equals(clusteredServerConfig.getStartedServerState())) {
-        env = startInAdminMode(env);
-      }
       WlsServerConfig wlsServerConfig = wlsClusterConfig.getServerConfig(serverName);
-      ssic.add(
-          new ServerStartupInfo(wlsServerConfig, wlsClusterConfig, env, clusteredServerConfig));
+      ssic.add(new ServerStartupInfo(wlsServerConfig, wlsClusterConfig, clusteredServerConfig));
       startedCount++;
     }
     return startedCount;
@@ -213,75 +205,38 @@ public class ManagedServersUpStep extends Step {
               && !servers.contains(serverName)) {
             // start server
             servers.add(serverName);
-            List<V1EnvVar> env = nonClusteredServer.getEnv();
-            if (WebLogicConstants.ADMIN_STATE.equals(nonClusteredServer.getStartedServerState())) {
-              env = startInAdminMode(env);
-            }
-            ssic.add(new ServerStartupInfo(wlsServerConfig, null, env, nonClusteredServer));
+            ssic.add(new ServerStartupInfo(wlsServerConfig, null, nonClusteredServer));
           }
         }
       }
     }
   }
 
-  private static List<V1EnvVar> startInAdminMode(List<V1EnvVar> env) {
-    if (env == null) {
-      env = new ArrayList<>();
-    }
-
-    // look for JAVA_OPTIONS
-    V1EnvVar jo = null;
-    for (V1EnvVar e : env) {
-      if ("JAVA_OPTIONS".equals(e.getName())) {
-        jo = e;
-        if (jo.getValueFrom() != null) {
-          throw new IllegalStateException();
-        }
-        break;
-      }
-    }
-    if (jo == null) {
-      jo = new V1EnvVar();
-      jo.setName("JAVA_OPTIONS");
-      env.add(jo);
-    }
-
-    // create or update value
-    String startInAdmin = "-Dweblogic.management.startupMode=ADMIN";
-    String value = jo.getValue();
-    value = (value != null) ? (startInAdmin + " " + value) : startInAdmin;
-    jo.setValue(value);
-
-    return env;
-  }
-
-  private static Step scaleDownIfNecessary(
-      DomainPresenceInfo info, DomainConfig domainConfig, Collection<String> servers, Step next) {
-    Domain dom = info.getDomain();
-    DomainSpec spec = dom.getSpec();
+  // This method stops any running servers that should not be running.
+  // For example, when a cluster is scaled down, this method will stop
+  // any extra running servers for that cluster.
+  // TBD - split this into smaller unit testable methods ...
+  private static Step stopServersThatShouldNotBeRunning(
+      DomainPresenceInfo info,
+      DomainConfig domainConfig,
+      Collection<String> managedServersThatShouldBeRunning,
+      Step next) {
+    Domain domain = info.getDomain();
+    DomainSpec domainSpec = domain.getSpec();
 
     Map<String, ServerKubernetesObjects> currentServers = info.getServers();
     Collection<Map.Entry<String, ServerKubernetesObjects>> serversToStop = new ArrayList<>();
 
-    // check if we need to stop Admin Server
-    // TBD - why do we need special handling for the admin server?
-    // if we really do, shouldn't we weed it out of the lists of servers earlier?
-    boolean shouldStopAdmin = false;
-    WlsDomainConfig scan = info.getScan();
-    String adminName = spec.getAsName();
-
-    // TBD - the admin server could be a managed server
-    NonClusteredServerConfig asServerConfig = domainConfig.getServers().get(adminName);
-    if (asServerConfig != null
-        && asServerConfig
-            .getNonClusteredServerStartPolicy()
-            .equals(NonClusteredServerConfig.NON_CLUSTERED_SERVER_START_POLICY_NEVER)) {
-      shouldStopAdmin = true;
-    }
+    // Since the admin server is started separately from the managed servers,
+    // it does not get put on the list of managed servers that should be running.
+    // Therefore, we need to find out explicitly whether or not it should be running.
+    String adminServerName = domainSpec.getAsName();
+    boolean shouldStopAdmin = shouldStopAdminServer(adminServerName, domainConfig);
 
     for (Map.Entry<String, ServerKubernetesObjects> entry : currentServers.entrySet()) {
-      if ((shouldStopAdmin || !entry.getKey().equals(adminName))
-          && !servers.contains(entry.getKey())) {
+      String serverName = entry.getKey();
+      if (shouldStopServer(
+          serverName, adminServerName, shouldStopAdmin, managedServersThatShouldBeRunning)) {
         serversToStop.add(entry);
       }
     }
@@ -291,5 +246,32 @@ public class ManagedServersUpStep extends Step {
     }
 
     return next;
+  }
+
+  protected static boolean shouldStopAdminServer(
+      String adminServerName, DomainConfig domainConfig) {
+    // TBD - the admin server could be a managed server
+    NonClusteredServerConfig asServerConfig = domainConfig.getServers().get(adminServerName);
+    if (asServerConfig != null
+        && asServerConfig
+            .getNonClusteredServerStartPolicy()
+            .equals(NonClusteredServerConfig.NON_CLUSTERED_SERVER_START_POLICY_NEVER)) {
+      return true;
+    }
+    return false;
+  }
+
+  protected static boolean shouldStopServer(
+      String serverName,
+      String adminServerName,
+      boolean shouldStopAdminServer,
+      Collection<String> managedServersThatShouldBeRunning) {
+    if (adminServerName.equals(serverName) && shouldStopAdminServer) {
+      return true;
+    }
+    if (!managedServersThatShouldBeRunning.contains(serverName)) {
+      return true;
+    }
+    return false;
   }
 }

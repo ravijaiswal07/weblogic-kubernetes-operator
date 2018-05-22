@@ -1,13 +1,10 @@
 package oracle.kubernetes.operator.steps;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import io.kubernetes.client.models.V1EnvVar;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import oracle.kubernetes.operator.helpers.ClusterConfig;
 import oracle.kubernetes.operator.helpers.ClusteredServerConfig;
 import oracle.kubernetes.operator.helpers.DomainConfig;
@@ -227,7 +224,6 @@ public class ManagedServersUpStepTest {
     DomainConfig domainConfig = createDomainConfig(3);
     ClusterConfig clusterConfig = domainConfig.getClusters().get(CLUSTER1);
     ClusteredServerConfig clusteredServerConfig = clusterConfig.getServers().get(SERVER1);
-    clusteredServerConfig.setStartedServerState(ClusteredServerConfig.STARTED_SERVER_STATE_ADMIN);
 
     Collection<DomainPresenceInfo.ServerStartupInfo> ssic =
         new ArrayList<DomainPresenceInfo.ServerStartupInfo>();
@@ -248,12 +244,7 @@ public class ManagedServersUpStepTest {
     assertEquals(1, ssic.size());
 
     DomainPresenceInfo.ServerStartupInfo ssi = ssic.iterator().next();
-    List<V1EnvVar> envVars = ssi.envVars;
-    assertEquals(1, envVars.size());
-    V1EnvVar javaOptions = envVars.iterator().next();
-    assertEquals("JAVA_OPTIONS", javaOptions.getName());
-    assertNotNull(javaOptions.getValue());
-    assertTrue(javaOptions.getValue().contains("-Dweblogic.management.startupMode=ADMIN"));
+    assertTrue(ssi.serverConfig == clusteredServerConfig);
   }
 
   private DomainConfig createDomainConfig(int replicas) {

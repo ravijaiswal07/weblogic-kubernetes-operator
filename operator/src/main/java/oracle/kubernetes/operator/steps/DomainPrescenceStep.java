@@ -4,8 +4,9 @@
 
 package oracle.kubernetes.operator.steps;
 
-import oracle.kubernetes.operator.StartupControlConstants;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
+import oracle.kubernetes.operator.helpers.LifeCycleHelper;
+import oracle.kubernetes.operator.helpers.NonClusteredServerConfig;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.work.NextAction;
@@ -32,8 +33,10 @@ public class DomainPrescenceStep extends Step {
     Domain dom = info.getDomain();
     DomainSpec spec = dom.getSpec();
 
-    String sc = spec.getStartupControl();
-    if (sc == null || !StartupControlConstants.NONE_STARTUPCONTROL.equals(sc.toUpperCase())) {
+    NonClusteredServerConfig sc =
+        LifeCycleHelper.instance().getEffectiveNonClusteredServerConfig(dom, spec.getAsName());
+    if (NonClusteredServerConfig.NON_CLUSTERED_SERVER_START_POLICY_ALWAYS.equals(
+        sc.getNonClusteredServerStartPolicy())) {
       LOGGER.exiting();
       return doNext(packet);
     }

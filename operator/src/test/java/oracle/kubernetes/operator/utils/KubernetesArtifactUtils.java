@@ -199,6 +199,10 @@ public class KubernetesArtifactUtils {
     return new V1EnvVar();
   }
 
+  public static V1EnvVar newEnvVar(String name, String value) {
+    return newEnvVar().name(name).value(value);
+  }
+
   public static FluentArrayList<V1EnvVar> newEnvVarList() {
     return newFluentArrayList(V1EnvVar.class);
   }
