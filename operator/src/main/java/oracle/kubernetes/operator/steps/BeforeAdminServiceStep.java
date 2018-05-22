@@ -4,15 +4,15 @@
 
 package oracle.kubernetes.operator.steps;
 
-import java.util.List;
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
+import oracle.kubernetes.operator.helpers.LifeCycleHelper;
+import oracle.kubernetes.operator.helpers.NonClusteredServerConfig;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
 import oracle.kubernetes.weblogic.domain.v1.Domain;
 import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
-import oracle.kubernetes.weblogic.domain.v1.ServerStartup;
 
 public class BeforeAdminServiceStep extends Step {
   public BeforeAdminServiceStep(Step next) {
@@ -28,14 +28,11 @@ public class BeforeAdminServiceStep extends Step {
 
     packet.put(ProcessingConstants.SERVER_NAME, spec.getAsName());
     packet.put(ProcessingConstants.PORT, spec.getAsPort());
-    List<ServerStartup> ssl = spec.getServerStartup();
-    if (ssl != null) {
-      for (ServerStartup ss : ssl) {
-        if (ss.getServerName().equals(spec.getAsName())) {
-          packet.put(ProcessingConstants.NODE_PORT, ss.getNodePort());
-          break;
-        }
-      }
+    NonClusteredServerConfig adminServerConfig =
+        LifeCycleHelper.instance().getEffectiveNonClusteredServerConfig(dom, spec.getAsName());
+    if (adminServerConfig != null) {
+      packet.put(ProcessingConstants.NODE_PORT, adminServerConfig.getNodePort());
+      packet.put(ProcessingConstants.ENVVARS, adminServerConfig.getEnv());
     }
     return doNext(packet);
   }

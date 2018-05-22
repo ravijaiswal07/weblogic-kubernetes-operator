@@ -1,6 +1,8 @@
 package oracle.kubernetes.operator.rest;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import io.kubernetes.client.models.V1ObjectMeta;
 import io.kubernetes.client.models.V1SecretReference;
@@ -10,10 +12,14 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import javax.ws.rs.WebApplicationException;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.StartupControlConstants;
 import oracle.kubernetes.operator.VersionConstants;
+import oracle.kubernetes.operator.helpers.AuthorizationProxy;
 import oracle.kubernetes.operator.helpers.ClusterConfig;
+import oracle.kubernetes.operator.rest.backend.RestBackend;
 import oracle.kubernetes.operator.wlsconfig.WlsClusterConfig;
 import oracle.kubernetes.operator.wlsconfig.WlsDomainConfig;
 import oracle.kubernetes.weblogic.domain.v1.ClusterStartup;
@@ -22,12 +28,6 @@ import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
 import org.junit.Test;
 
 public class RestBackendImplTest {
-
-  private static final String WEBLOGIC_DOMAIN = "weblogic-domain";
-  private static final String CLUSTER1 = "cluster-1";
-  private static final String AS_NAME = "admin-server";
-  private static final String DOMAIN_UID = "domain1";
-  private static final String ADMIN_SECRET = "adminSecret";
 
   static final String JSON_STRING_1_CLUSTER =
       "{     \"name\": \"base_domain\",\n "
@@ -125,21 +125,13 @@ public class RestBackendImplTest {
           + "        }\n"
           + "    ]}\n"
           + "}";
+  private static final String WEBLOGIC_DOMAIN = "weblogic-domain";
+  private static final String CLUSTER1 = "cluster-1";
+  private static final String AS_NAME = "admin-server";
+  private static final String DOMAIN_UID = "domain1";
+  private static final String ADMIN_SECRET = "adminSecret";
 
-  @Test
-  public void isReplicaCountUpdated() {
-    Collection<String> targetNamespaces = new ArrayList<>();
-    targetNamespaces.add(WEBLOGIC_DOMAIN);
-    RestBackendImpl restBackend = new MyRestBackendImpl("default", "accessToken", targetNamespaces);
-
-    Domain domain = createDomain();
-    boolean isReplicaCountUpdated =
-        restBackend.isReplicaCountUpdated(WEBLOGIC_DOMAIN, domain, CLUSTER1, 2);
-    System.out.println("isReplicaCountUpdated: " + isReplicaCountUpdated);
-    assertTrue(isReplicaCountUpdated);
-  }
-
-  private Domain createDomain() {
+  private static Domain createV1Domain() {
     DomainSpec spec = new DomainSpec();
     spec.setStartupControl(StartupControlConstants.AUTO_STARTUPCONTROL);
     spec.setAsName(AS_NAME);
@@ -162,7 +154,101 @@ public class RestBackendImplTest {
     return WlsDomainConfig.create(json);
   }
 
-  public static class MyRestBackendImpl extends RestBackendImpl {
+  @Test
+  public void isReplicaCountUpdated() {
+    RestBackendImpl restBackend = getRestBackend();
+
+    Domain domain = createV1Domain();
+    boolean isReplicaCountUpdated =
+        restBackend.isReplicaCountUpdated(WEBLOGIC_DOMAIN, domain, CLUSTER1, 2);
+    System.out.println("isReplicaCountUpdated: " + isReplicaCountUpdated);
+    assertTrue(isReplicaCountUpdated);
+  }
+
+  private Collection<String> getTargetNamespaces() {
+    Collection<String> targetNamespaces = new ArrayList<>();
+    targetNamespaces.add(WEBLOGIC_DOMAIN);
+    return targetNamespaces;
+  }
+
+  @Test
+  public void scaleCluster_badRequestException() {
+    try {
+      RestBackendImpl restBackend = getRestBackend();
+      restBackend.scaleCluster(DOMAIN_UID, CLUSTER1, -1);
+      fail("Expected WebApplicationException for managedServerCount < 0");
+    } catch (Exception wae) {
+    }
+  }
+
+  @Test
+  public void scaleCluster() {
+    try {
+      RestBackend restBackend = getRestBackend();
+      restBackend.scaleCluster(DOMAIN_UID, CLUSTER1, 3);
+    } catch (Exception wae) {
+      wae.printStackTrace();
+      fail("scaleCluster: Did not expect WebApplicationException wae: " + wae);
+    }
+  }
+
+  @Test
+  public void verifyWLSConfiguredClusterCapacity_badRequestException() {
+    Domain domain = createV1Domain();
+    try {
+      RestBackendImpl restBackend = getRestBackend();
+      restBackend.verifyWLSConfiguredClusterCapacity(DOMAIN_UID, domain, CLUSTER1, 4);
+      fail("Expected WebApplicationException for managedServerCount > cluster size");
+    } catch (WebApplicationException wae) {
+
+    }
+  }
+
+  @Test
+  public void verifyWLSConfiguredClusterCapacity() {
+    Domain domain = createV1Domain();
+    try {
+      RestBackendImpl restBackend = getRestBackend();
+      restBackend.verifyWLSConfiguredClusterCapacity(DOMAIN_UID, domain, CLUSTER1, 3);
+    } catch (WebApplicationException wae) {
+      fail("Didn't expect WebApplicationException wae: " + wae);
+    }
+  }
+
+  private RestBackendImpl getRestBackend() {
+    Collection<String> targetNamespaces = getTargetNamespaces();
+    return new MyRestBackendImpl("default", "accessToken", targetNamespaces);
+  }
+
+  @Test
+  public void isCluster() {
+    RestBackendImpl restBackend = getRestBackend();
+    restBackend.isCluster(DOMAIN_UID, CLUSTER1);
+  }
+
+  @Test
+  public void getClusters() {
+    RestBackendImpl restBackend = getRestBackend();
+    Set<String> clusters = restBackend.getClusters(DOMAIN_UID);
+    assertEquals(1, clusters.size());
+    assertTrue(clusters.contains(CLUSTER1));
+  }
+
+  @Test
+  public void getDomainUIDs() {
+    RestBackendImpl restBackend = getRestBackend();
+    Set<String> domainUIDs = restBackend.getDomainUIDs();
+    assertEquals(1, domainUIDs.size());
+    assertTrue(domainUIDs.contains(DOMAIN_UID));
+  }
+
+  @Test
+  public void isDomainUID() {
+    RestBackendImpl restBackend = getRestBackend();
+    assertTrue(restBackend.isDomainUID(DOMAIN_UID));
+  }
+
+  private static class MyRestBackendImpl extends RestBackendImpl {
 
     /**
      * Construct a RestBackendImpl that is used to handle one WebLogic operator REST request.
@@ -188,8 +274,24 @@ public class RestBackendImplTest {
 
     protected WlsClusterConfig getWlsClusterConfig(
         String namespace, String cluster, String adminServerServiceName, String adminSecretName) {
-      WlsDomainConfig wlsDomainConfig = createWLSDomainConfig(JSON_STRING_1_CLUSTER);
+      WlsDomainConfig wlsDomainConfig =
+          getWlsDomainConfig(namespace, adminServerServiceName, adminSecretName);
       return wlsDomainConfig.getClusterConfig(cluster);
     }
+
+    protected WlsDomainConfig getWlsDomainConfig(
+        String namespace, String adminServerServiceName, String adminSecretName) {
+      return createWLSDomainConfig(JSON_STRING_1_CLUSTER);
+    }
+
+    protected void authorize(String domainUID, AuthorizationProxy.Operation operation) {}
+
+    protected List<Domain> getDomainsList() {
+      List<Domain> domains = new ArrayList<>();
+      domains.add(createV1Domain());
+      return domains;
+    }
+
+    protected void replaceDomain(String namespace, Domain domain, String domainUID) {}
   }
 }

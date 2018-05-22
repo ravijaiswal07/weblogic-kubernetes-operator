@@ -40,7 +40,6 @@ import oracle.kubernetes.operator.wlsconfig.WlsClusterConfig;
 import oracle.kubernetes.operator.wlsconfig.WlsDomainConfig;
 import oracle.kubernetes.operator.wlsconfig.WlsRetriever;
 import oracle.kubernetes.operator.work.ContainerResolver;
-import oracle.kubernetes.weblogic.domain.v1.ClusterStartup;
 import oracle.kubernetes.weblogic.domain.v1.Domain;
 import oracle.kubernetes.weblogic.domain.v1.DomainList;
 import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
@@ -80,12 +79,12 @@ public class RestBackendImpl implements RestBackend {
     LOGGER.exiting();
   }
 
-  private void authorize(String domainUID, String cluster, Operation operation) {
+  protected void authorize(String domainUID, String cluster, Operation operation) {
     // TBD - should cluster atz be different than domain atz?
     authorize(domainUID, operation);
   }
 
-  private void authorize(String domainUID, Operation operation) {
+  protected void authorize(String domainUID, Operation operation) {
     LOGGER.entering(domainUID, operation);
     boolean authorized = false;
     if (domainUID == null) {
@@ -175,9 +174,8 @@ public class RestBackendImpl implements RestBackend {
     return result;
   }
 
-  private List<Domain> getDomainsList() {
-    CallBuilderFactory factory =
-        ContainerResolver.getInstance().getContainer().getSPI(CallBuilderFactory.class);
+  protected List<Domain> getDomainsList() {
+    CallBuilderFactory factory = getCallBuilderFactory();
     Collection<List<Domain>> c = new ArrayList<List<Domain>>();
     try {
       for (String ns : targetNamespaces) {
@@ -191,6 +189,10 @@ public class RestBackendImpl implements RestBackend {
     } catch (ApiException e) {
       throw handleApiException(e);
     }
+  }
+
+  protected CallBuilderFactory getCallBuilderFactory() {
+    return ContainerResolver.getInstance().getContainer().getSPI(CallBuilderFactory.class);
   }
 
   /** {@inheritDoc} */
@@ -302,8 +304,7 @@ public class RestBackendImpl implements RestBackend {
 
   protected void replaceDomain(String namespace, Domain domain, String domainUID) {
     try {
-      CallBuilderFactory factory =
-          ContainerResolver.getInstance().getContainer().getSPI(CallBuilderFactory.class);
+      CallBuilderFactory factory = getCallBuilderFactory();
       // Write out the Domain with updated replica values
       // TODO: Can we patch instead of replace?
       factory.create().replaceDomain(domainUID, namespace, domain);
@@ -347,18 +348,6 @@ public class RestBackendImpl implements RestBackend {
         : domain.getSpec().getAdminSecret().getName();
   }
 
-  private ClusterStartup getClusterStartup(Domain domain, String cluster) {
-    List<ClusterStartup> clusterStartups = domain.getSpec().getClusterStartup();
-    for (ClusterStartup clusterStartup : clusterStartups) {
-      String clusterName = clusterStartup.getClusterName();
-      if (cluster.equals(clusterName)) {
-        return clusterStartup;
-      }
-    }
-
-    return null;
-  }
-
   protected ClusterConfig getClusterConfig(Domain dom, String namespace, String cluster) {
     WlsDomainConfig scan =
         getWlsDomainConfig(
@@ -377,7 +366,7 @@ public class RestBackendImpl implements RestBackend {
     return wlsDomainConfig.getClusterConfig(cluster);
   }
 
-  private WlsDomainConfig getWlsDomainConfig(
+  protected WlsDomainConfig getWlsDomainConfig(
       String namespace, String adminServerServiceName, String adminSecretName) {
     WlsRetriever wlsConfigRetriever =
         WlsRetriever.create(namespace, adminServerServiceName, adminSecretName);
@@ -396,7 +385,7 @@ public class RestBackendImpl implements RestBackend {
     return findDomain(domainUID, domains);
   }
 
-  private Domain findDomain(String domainUID, List<Domain> domains) {
+  protected Domain findDomain(String domainUID, List<Domain> domains) {
     for (Domain domain : domains) {
       if (domainUID.equals(domain.getSpec().getDomainUID())) {
         return domain;
