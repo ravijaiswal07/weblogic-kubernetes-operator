@@ -57,6 +57,8 @@ public class PodHelperTest {
   private static final String CUSTOM_LATEST_IMAGE = "custom-image:latest";
 
   private static final String RESTARTED_LABEL1 = "restartedLabel1";
+  private static final String NO_RESTARTED_LABEL = null;
+
   private static final String JAVA_OPTIONS = "JAVA_OPTIONS";
   private static final String ADMIN_STARTUP_MODE = "-Dweblogic.management.startupMode=ADMIN";
 
@@ -79,6 +81,8 @@ public class PodHelperTest {
   private static final List<V1LocalObjectReference> IMAGE_PULL_SECRETS =
       newLocalObjectReferenceList()
           .addElement(newLocalObjectReference().name("weblogic-image-pull-secret-name"));
+
+  private static final List<V1LocalObjectReference> NO_IMAGE_PULL_SECRETS = null;
 
   private static final V1PersistentVolumeClaimList NO_CLAIMS = newPersistentVolumeClaimList();
 
@@ -352,19 +356,7 @@ public class PodHelperTest {
                   .addElement(newEnvVar().name(MANAGED_OPTION2_NAME).value(MANAGED_OPTION2_VALUE))));
       return PodHelper.computeManagedPodConfig(newPodTuning(), packet);
     }
-  */
 
-  private static Packet newPacket(Domain domain, V1PersistentVolumeClaimList claims) {
-    DomainPresenceInfo info = DomainPresenceInfoManager.getOrCreate(domain);
-    info.setClaims(claims);
-    Packet packet = new Packet();
-    packet
-        .getComponents()
-        .put(ProcessingConstants.DOMAIN_COMPONENT_NAME, Component.createFor(info));
-    return packet;
-  }
-
-  /*
     private List<ServerStartup> newTestServersStartupList() {
       return newServerStartupList()
           .addElement(
@@ -554,6 +546,72 @@ public class PodHelperTest {
     }
   */
 
+  /*
+    private void addExpectedManagedServerStartCommand(V1Container container, serverConfig) {
+      container
+          .addCommandItem("/weblogic-operator/scripts/startServer.sh")
+          .addCommandItem(DOMAIN_UID)
+          .addCommandItem(serverConfig.getServerName())
+          .addCommandItem(DOMAIN_NAME)
+          .addCommandItem(ADMIN_SERVER_NAME)
+          .addCommandItem(ADMIN_SERVER_PORT);
+    }
+  */
+
+  @Test
+  public void computeBaseServerPodConfig_addsCorrectResources() {
+    ServerConfig serverConfig = (new ServerConfig()).withServerName(MANAGED_SERVER_NAME);
+    setupBaseServerConfig(serverConfig);
+    Packet packet = newPacket(ONE_CLAIM);
+    V1Pod actual =
+        PodHelper.computeBaseServerPodConfig(
+            serverConfig, MANAGED_SERVER_PORT, newPodTuning(), packet);
+
+    V1Pod want = getExpectedBaseServerPod(serverConfig, MANAGED_SERVER_PORT, ONE_CLAIM);
+
+    assertThat(actual, equalTo(want));
+  }
+
+  private Packet newPacket(V1PersistentVolumeClaimList claims) {
+    DomainPresenceInfo info = DomainPresenceInfoManager.getOrCreate(DOMAIN);
+    info.setClaims(claims);
+    Packet packet = new Packet();
+    packet
+        .getComponents()
+        .put(ProcessingConstants.DOMAIN_COMPONENT_NAME, Component.createFor(info));
+    return packet;
+  }
+
+  private void setupBaseServerConfig(ServerConfig serverConfig) {
+    serverConfig
+        .withImage(DEFAULT_IMAGE)
+        .withImagePullPolicy(IFNOTPRESENT_IMAGEPULLPOLICY)
+        .withImagePullSecrets(null)
+        .withRestartedLabel(null)
+        .withEnv(null); // TBD
+  }
+
+  private V1Pod getExpectedBaseServerPod(
+      ServerConfig serverConfig, int weblogicServerPort, V1PersistentVolumeClaimList claims) {
+    V1Container container = newContainer().name("weblogic-server");
+    V1PodSpec podSpec = newPodSpec().addContainersItem(container);
+
+    addExpectedImageProperties(container, serverConfig);
+    addExpectedImageProperties(podSpec, serverConfig);
+    addExpectedWeblogicServerPort(container, weblogicServerPort);
+    addExpectedCommands(container, serverConfig);
+    addExpectedVolumes(podSpec, claims);
+    addExpectedVolumeMounts(container);
+    addExpectedWeblogicEnvVars(container, serverConfig);
+
+    V1Pod pod =
+        newPod()
+            .spec(podSpec)
+            .metadata(getExpectedServerPodMetadata(serverConfig, weblogicServerPort));
+
+    return pod;
+  }
+
   @Test
   public void setWeblogicServerImage_addsCorrectResources() {
     ServerConfig serverConfig =
@@ -598,17 +656,42 @@ public class PodHelperTest {
   }
 
   @Test
-  public void addHandlersAndProbes_addsCorrectResources() {
+  public void addCommands() {
     ServerConfig serverConfig = (new ServerConfig()).withServerName(MANAGED_SERVER_NAME);
     V1Container actual = newContainer();
-    PodHelper.addHandlersAndProbes(actual, DOMAIN_SPEC, serverConfig, newPodTuning());
+    PodHelper.addCommands(actual, DOMAIN_SPEC, serverConfig, newPodTuning());
 
     V1Container want = newContainer();
-    addExpectedPreStopHandler(want, MANAGED_SERVER_NAME);
-    addExpectedLivenessProbe(want, MANAGED_SERVER_NAME);
-    addExpectedReadinessProbe(want, MANAGED_SERVER_NAME);
+    addExpectedCommands(want, serverConfig);
 
     assertThat(actual, equalTo(want));
+  }
+
+  private void addExpectedCommands(V1Container container, ServerConfig serverConfig) {
+    addExpectedServerStartCommand(container, serverConfig);
+    addExpectedPreStopHandler(container, serverConfig);
+    addExpectedLivenessProbe(container, serverConfig);
+    addExpectedReadinessProbe(container, serverConfig);
+  }
+
+  @Test
+  public void addServerStartCommand_addsCorrectCommand() {
+    ServerConfig serverConfig = (new ServerConfig()).withServerName(MANAGED_SERVER_NAME);
+    V1Container actual = newContainer();
+    PodHelper.addServerStartCommand(actual, DOMAIN_SPEC, serverConfig);
+
+    V1Container want = newContainer();
+    addExpectedServerStartCommand(want, serverConfig);
+
+    assertThat(actual, equalTo(want));
+  }
+
+  private void addExpectedServerStartCommand(V1Container container, ServerConfig serverConfig) {
+    container
+        .addCommandItem("/weblogic-operator/scripts/startServer.sh")
+        .addCommandItem(DOMAIN_UID)
+        .addCommandItem(serverConfig.getServerName())
+        .addCommandItem(DOMAIN_NAME);
   }
 
   @Test
@@ -618,12 +701,12 @@ public class PodHelperTest {
     PodHelper.addPreStopHandler(actual, DOMAIN_SPEC, serverConfig);
 
     V1Container want = newContainer();
-    addExpectedPreStopHandler(want, MANAGED_SERVER_NAME);
+    addExpectedPreStopHandler(want, serverConfig);
 
     assertThat(actual, equalTo(want));
   }
 
-  private void addExpectedPreStopHandler(V1Container container, String serverName) {
+  private void addExpectedPreStopHandler(V1Container container, ServerConfig serverConfig) {
     container.lifecycle(
         newLifecycle()
             .preStop(
@@ -632,7 +715,7 @@ public class PodHelperTest {
                         newExecAction()
                             .addCommandItem("/weblogic-operator/scripts/stopServer.sh")
                             .addCommandItem(DOMAIN_UID)
-                            .addCommandItem(serverName)
+                            .addCommandItem(serverConfig.getServerName())
                             .addCommandItem(DOMAIN_NAME))));
   }
 
@@ -643,12 +726,12 @@ public class PodHelperTest {
     PodHelper.addLivenessProbe(actual, DOMAIN_SPEC, serverConfig, newPodTuning());
 
     V1Container want = newContainer();
-    addExpectedLivenessProbe(want, MANAGED_SERVER_NAME);
+    addExpectedLivenessProbe(want, serverConfig);
 
     assertThat(actual, equalTo(want));
   }
 
-  private void addExpectedLivenessProbe(V1Container container, String serverName) {
+  private void addExpectedLivenessProbe(V1Container container, ServerConfig serverConfig) {
     container.livenessProbe(
         newProbe()
             .initialDelaySeconds(10)
@@ -659,7 +742,7 @@ public class PodHelperTest {
                 newExecAction()
                     .addCommandItem("/weblogic-operator/scripts/livenessProbe.sh")
                     .addCommandItem(DOMAIN_NAME)
-                    .addCommandItem(serverName)));
+                    .addCommandItem(serverConfig.getServerName())));
   }
 
   @Test
@@ -669,12 +752,12 @@ public class PodHelperTest {
     PodHelper.addReadinessProbe(actual, DOMAIN_SPEC, serverConfig, newPodTuning());
 
     V1Container want = newContainer();
-    addExpectedReadinessProbe(want, MANAGED_SERVER_NAME);
+    addExpectedReadinessProbe(want, serverConfig);
 
     assertThat(actual, equalTo(want));
   }
 
-  private void addExpectedReadinessProbe(V1Container container, String serverName) {
+  private void addExpectedReadinessProbe(V1Container container, ServerConfig serverConfig) {
     container.readinessProbe(
         newProbe()
             .initialDelaySeconds(2)
@@ -685,7 +768,7 @@ public class PodHelperTest {
                 newExecAction()
                     .addCommandItem("/weblogic-operator/scripts/readinessProbe.sh")
                     .addCommandItem(DOMAIN_NAME)
-                    .addCommandItem(MANAGED_SERVER_NAME)));
+                    .addCommandItem(serverConfig.getServerName())));
   }
 
   private PodTuning newPodTuning() {
@@ -704,13 +787,13 @@ public class PodHelperTest {
     PodHelper.addVolumes(actual, DOMAIN_SPEC, ONE_CLAIM);
 
     V1PodSpec want = newPodSpec();
-    addExpectedVolumes(want, true); // have a claim
+    addExpectedVolumes(want, ONE_CLAIM);
 
     assertThat(actual, equalTo(want));
   }
 
-  private void addExpectedVolumes(V1PodSpec podSpec, boolean haveClaim) {
-    if (haveClaim) {
+  private void addExpectedVolumes(V1PodSpec podSpec, V1PersistentVolumeClaimList claims) {
+    if (!claims.getItems().isEmpty()) {
       addExpectedWeblogicDomainStorageVolume(podSpec);
     }
     addExpectedWeblogicCredentialsVolume(podSpec);
@@ -856,17 +939,16 @@ public class PodHelperTest {
 
   @Test
   public void addWeblogicServerEnv_addsCorrectEnv() {
-    V1Container actual = newContainer();
-    PodHelper.addWeblogicServerEnv(
-        actual,
-        DOMAIN_SPEC,
+    ServerConfig serverConfig =
         (new ServerConfig())
             .withServerName(MANAGED_SERVER_NAME)
             .withStartedServerState(ADMIN_STATE)
-            .withEnv(newEnvVarList().addElement(ENV_VAR1)));
+            .withEnv(newEnvVarList().addElement(ENV_VAR1));
+    V1Container actual = newContainer();
+    PodHelper.addWeblogicServerEnv(actual, DOMAIN_SPEC, serverConfig);
 
     V1Container want = newContainer().addEnvItem(ENV_VAR1).addEnvItem(ADMIN_STARTUP_MODE_ENV_VAR);
-    addExpectedWeblogicEnvVars(want, MANAGED_SERVER_NAME);
+    addExpectedWeblogicEnvVars(want, serverConfig);
 
     assertThat(actual, equalTo(want));
   }
@@ -962,31 +1044,27 @@ public class PodHelperTest {
     V1Pod actual = newPod();
     PodHelper.addWeblogicServerPodMetadata(actual, DOMAIN, serverConfig, MANAGED_SERVER_PORT);
 
-    V1Pod want =
-        newPod()
-            .metadata(
-                getExpectedServerPodMetadata(
-                    CLUSTER_NAME, MANAGED_SERVER_NAME, MANAGED_SERVER_PORT, RESTARTED_LABEL1));
+    V1Pod want = newPod().metadata(getExpectedServerPodMetadata(serverConfig, MANAGED_SERVER_PORT));
 
     assertThat(actual, equalTo(want));
   }
 
   private V1ObjectMeta getExpectedServerPodMetadata(
-      String clusterName, String serverName, int port, String restartedLabel) {
+      ServerConfig serverConfig, int weblogicServerPort) {
     V1ObjectMeta metadata =
         newObjectMeta()
-            .name(DOMAIN_UID + "-" + serverName.toLowerCase())
+            .name(DOMAIN_UID + "-" + serverConfig.getServerName().toLowerCase())
             .namespace(NAMESPACE)
             .putAnnotationsItem("prometheus.io/path", "/wls-exporter/metrics")
-            .putAnnotationsItem("prometheus.io/port", "" + port)
+            .putAnnotationsItem("prometheus.io/port", "" + weblogicServerPort)
             .putAnnotationsItem("prometheus.io/scrape", "true")
             .putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1)
             .putLabelsItem(CREATEDBYOPERATOR_LABEL, "true")
             .putLabelsItem(DOMAINNAME_LABEL, DOMAIN_NAME)
             .putLabelsItem(DOMAINUID_LABEL, DOMAIN_UID)
-            .putLabelsItem(SERVERNAME_LABEL, serverName);
-    addExpectedClusterNameLabel(metadata, clusterName);
-    addExpectedRestartedLabel(metadata, restartedLabel);
+            .putLabelsItem(SERVERNAME_LABEL, serverConfig.getServerName());
+    addExpectedClusterNameLabel(metadata, serverConfig);
+    addExpectedRestartedLabel(metadata, serverConfig);
     return metadata;
   }
 
@@ -997,18 +1075,18 @@ public class PodHelperTest {
     PodHelper.overrideContainerWeblogicEnvVars(actual, DOMAIN_SPEC, serverConfig);
 
     V1Container want = newContainer();
-    addExpectedWeblogicEnvVars(want, MANAGED_SERVER_NAME);
+    addExpectedWeblogicEnvVars(want, serverConfig);
 
     assertThat(actual, equalTo(want));
   }
 
-  private void addExpectedWeblogicEnvVars(V1Container container, String serverName) {
+  private void addExpectedWeblogicEnvVars(V1Container container, ServerConfig serverConfig) {
     container
         .addEnvItem(newEnvVar("DOMAIN_NAME", DOMAIN_NAME))
         .addEnvItem(newEnvVar("DOMAIN_HOME", "/shared/domain/" + DOMAIN_NAME))
         .addEnvItem(newEnvVar("ADMIN_NAME", ADMIN_SERVER_NAME))
         .addEnvItem(newEnvVar("ADMIN_PORT", "" + ADMIN_SERVER_PORT))
-        .addEnvItem(newEnvVar("SERVER_NAME", serverName))
+        .addEnvItem(newEnvVar("SERVER_NAME", serverConfig.getServerName()))
         .addEnvItem(newEnvVar("ADMIN_USERNAME", null))
         .addEnvItem(newEnvVar("ADMIN_PASSWORD", null));
   }
@@ -1020,12 +1098,13 @@ public class PodHelperTest {
     PodHelper.addRestartedLabel(actual, serverConfig);
 
     V1ObjectMeta want = newObjectMeta();
-    addExpectedRestartedLabel(want, RESTARTED_LABEL1);
+    addExpectedRestartedLabel(want, serverConfig);
 
     assertThat(actual, equalTo(want));
   }
 
-  private void addExpectedRestartedLabel(V1ObjectMeta metadata, String restartedLabel) {
+  private void addExpectedRestartedLabel(V1ObjectMeta metadata, ServerConfig serverConfig) {
+    String restartedLabel = serverConfig.getRestartedLabel();
     if (restartedLabel != null) {
       metadata.putLabelsItem(RESTARTED_LABEL, restartedLabel);
     }
@@ -1049,7 +1128,7 @@ public class PodHelperTest {
     PodHelper.addClusterNameLabel(actual, serverConfig);
 
     V1ObjectMeta want = newObjectMeta();
-    addExpectedClusterNameLabel(want, CLUSTER_NAME);
+    addExpectedClusterNameLabel(want, serverConfig);
 
     assertThat(actual, equalTo(want));
   }
@@ -1072,8 +1151,9 @@ public class PodHelperTest {
     assertThat(actual, equalTo(want));
   }
 
-  private void addExpectedClusterNameLabel(V1ObjectMeta metadata, String clusterName) {
-    if (clusterName != null) {
+  private void addExpectedClusterNameLabel(V1ObjectMeta metadata, ServerConfig serverConfig) {
+    if (serverConfig instanceof ClusteredServerConfig) {
+      String clusterName = ((ClusteredServerConfig) serverConfig).getClusterName();
       metadata.putLabelsItem(CLUSTERNAME_LABEL, clusterName);
     }
   }

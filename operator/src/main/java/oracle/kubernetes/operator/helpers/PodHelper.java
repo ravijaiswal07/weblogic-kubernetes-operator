@@ -637,9 +637,6 @@ public class PodHelper {
     pod.getSpec().setHostname(pod.getMetadata().getName());
 
     V1Container container = pod.getSpec().getContainers().get(0);
-    addAdminServerStartCommand(container, domainSpec);
-
-    // Add internal-weblogic-operator-service certificate to the admin server pod
     addEnvVar(container, INTERNAL_OPERATOR_CERT_ENV, internalOperatorCert);
 
     return pod;
@@ -652,28 +649,11 @@ public class PodHelper {
 
     V1Container container = pod.getSpec().getContainers().get(0);
     DomainSpec domainSpec = packet.getSPI(DomainPresenceInfo.class).getDomain().getSpec();
-    addManagedServerStartCommand(container, domainSpec, serverConfig);
-
-    return pod;
-  }
-
-  protected static void addAdminServerStartCommand(V1Container container, DomainSpec domainSpec) {
     container
-        .addCommandItem("/weblogic-operator/scripts/startServer.sh")
-        .addCommandItem(domainSpec.getDomainUID())
-        .addCommandItem(domainSpec.getAsName())
-        .addCommandItem(domainSpec.getDomainName());
-  }
-
-  protected static void addManagedServerStartCommand(
-      V1Container container, DomainSpec domainSpec, ServerConfig serverConfig) {
-    container
-        .addCommandItem("/weblogic-operator/scripts/startServer.sh")
-        .addCommandItem(domainSpec.getDomainUID())
-        .addCommandItem(serverConfig.getServerName())
-        .addCommandItem(domainSpec.getDomainName())
         .addCommandItem(domainSpec.getAsName())
         .addCommandItem(String.valueOf(domainSpec.getAsPort()));
+
+    return pod;
   }
 
   protected static V1Pod computeBaseServerPodConfig(
@@ -691,7 +671,7 @@ public class PodHelper {
     setWeblogicServerImage(podSpec, container, serverConfig);
     addWeblogicServerPort(container, weblogicServerPort);
 
-    addHandlersAndProbes(container, domainSpec, serverConfig, tuning);
+    addCommands(container, domainSpec, serverConfig, tuning);
     addVolumes(podSpec, domainSpec, info.getClaims());
     addVolumeMounts(container);
     addWeblogicServerEnv(container, domainSpec, serverConfig);
@@ -719,11 +699,21 @@ public class PodHelper {
     container.addPortsItem(containerPort);
   }
 
-  protected static void addHandlersAndProbes(
+  protected static void addCommands(
       V1Container container, DomainSpec domainSpec, ServerConfig serverConfig, PodTuning tuning) {
+    addServerStartCommand(container, domainSpec, serverConfig);
     addPreStopHandler(container, domainSpec, serverConfig);
     addLivenessProbe(container, domainSpec, serverConfig, tuning);
     addReadinessProbe(container, domainSpec, serverConfig, tuning);
+  }
+
+  protected static void addServerStartCommand(
+      V1Container container, DomainSpec domainSpec, ServerConfig serverConfig) {
+    container
+        .addCommandItem("/weblogic-operator/scripts/startServer.sh")
+        .addCommandItem(domainSpec.getDomainUID())
+        .addCommandItem(serverConfig.getServerName())
+        .addCommandItem(domainSpec.getDomainName());
   }
 
   protected static void addPreStopHandler(
