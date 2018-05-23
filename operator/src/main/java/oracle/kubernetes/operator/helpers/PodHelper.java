@@ -676,6 +676,7 @@ public class PodHelper {
 
   protected static V1Pod computeAdminPodConfig(
       ServerConfig serverConfig, PodTuning tuning, String internalOperatorCert, Packet packet) {
+    LOGGER.entering(serverConfig, tuning, internalOperatorCert, packet);
     DomainSpec domainSpec = packet.getSPI(DomainPresenceInfo.class).getDomain().getSpec();
 
     V1Pod pod = computeBaseServerPodConfig(serverConfig, domainSpec.getAsPort(), tuning, packet);
@@ -685,11 +686,13 @@ public class PodHelper {
     V1Container container = pod.getSpec().getContainers().get(0);
     addEnvVar(container, INTERNAL_OPERATOR_CERT_ENV, internalOperatorCert);
 
+    LOGGER.exiting(pod);
     return pod;
   }
 
   protected static V1Pod computeManagedPodConfig(
       ServerConfig serverConfig, PodTuning tuning, Packet packet) {
+    LOGGER.entering(serverConfig, tuning, packet);
     WlsServerConfig scan = (WlsServerConfig) packet.get(ProcessingConstants.SERVER_SCAN);
     V1Pod pod = computeBaseServerPodConfig(serverConfig, scan.getListenPort(), tuning, packet);
 
@@ -699,6 +702,7 @@ public class PodHelper {
         .addCommandItem(domainSpec.getAsName())
         .addCommandItem(String.valueOf(domainSpec.getAsPort()));
 
+    LOGGER.exiting(pod);
     return pod;
   }
 
