@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import oracle.kubernetes.operator.DomainStatusUpdater;
 import oracle.kubernetes.operator.KubernetesConstants;
+import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.PodWatcher;
 import oracle.kubernetes.operator.ProcessingConstants;
 import oracle.kubernetes.operator.TuningParameters;
@@ -543,58 +544,108 @@ public class PodHelper {
     }
   }
 
-  private static boolean validateCurrentPod(V1Pod build, V1Pod current) {
+  protected static boolean validateCurrentPod(V1Pod build, V1Pod current) {
     // We want to detect changes that would require replacing an existing Pod
     // however, we've also found that Pod.equals(Pod) isn't right because k8s
     // returns fields, such as nodeName, even when export=true is specified.
     // Therefore, we'll just compare specific fields
 
-    if (!VersionHelper.matchesResourceVersion(current.getMetadata(), VersionConstants.DOMAIN_V1)) {
+    // PodHelper always creates the build pod and it always has metadata and containers
+    // and names, so don't bother checking for nulls
+
+    if (!validateCurrentHasMetadata(current)
+        || !validateCurrentVersion(current)
+        || !validateCurrentRestartedLabel(build, current)
+        || !validateCurrentImagePullSecrets(build, current)
+        || !validateCurrentContainers(build, current)) {
       return false;
     }
-
-    V1PodSpec buildSpec = build.getSpec();
-    V1PodSpec currentSpec = current.getSpec();
-
-    List<V1Container> buildContainers = buildSpec.getContainers();
-    List<V1Container> currentContainers = currentSpec.getContainers();
-
-    if (buildContainers != null) {
-      if (currentContainers == null) {
-        return false;
-      }
-
-      for (V1Container bc : buildContainers) {
-        V1Container fcc = null;
-        for (V1Container cc : currentContainers) {
-          if (cc.getName().equals(bc.getName())) {
-            fcc = cc;
-            break;
-          }
-        }
-        if (fcc == null) {
-          return false;
-        }
-        if (!fcc.getImage().equals(bc.getImage())
-            || !fcc.getImagePullPolicy().equals(bc.getImagePullPolicy())) {
-          return false;
-        }
-        if (!compareUnordered(fcc.getPorts(), bc.getPorts())) {
-          return false;
-        }
-        if (!compareUnordered(fcc.getEnv(), bc.getEnv())) {
-          return false;
-        }
-        if (!compareUnordered(fcc.getEnvFrom(), bc.getEnvFrom())) {
-          return false;
-        }
-      }
-    }
-
     return true;
   }
 
-  private static <T> boolean compareUnordered(List<T> a, List<T> b) {
+  protected static boolean validateCurrentHasMetadata(V1Pod current) {
+    return current.getMetadata() != null;
+  }
+
+  protected static boolean validateCurrentVersion(V1Pod current) {
+    return VersionHelper.matchesResourceVersion(
+        current.getMetadata(), VersionConstants.DOMAIN_V1DOT1);
+  }
+
+  protected static boolean validateCurrentRestartedLabel(V1Pod build, V1Pod current) {
+    String buildLabel = getRestartedLabel(build);
+    if (buildLabel != null) {
+      // the current pod is obsolete if it doesn't have the new restarted label
+      return buildLabel.equals(getRestartedLabel(current));
+    }
+    // there is no new restarted label.
+    // accept any restarted label (including null) on the current pod
+    return true;
+  }
+
+  protected static String getRestartedLabel(V1Pod pod) {
+    Map<String, String> labels = pod.getMetadata().getLabels();
+    if (labels == null) {
+      return null;
+    }
+    return labels.get(LabelConstants.RESTARTED_LABEL);
+  }
+
+  protected static boolean validateCurrentImagePullSecrets(V1Pod build, V1Pod current) {
+    return compareUnordered(
+        build.getSpec().getImagePullSecrets(), current.getSpec().getImagePullSecrets());
+  }
+
+  protected static boolean validateCurrentContainers(V1Pod build, V1Pod current) {
+    List<V1Container> currentContainers = current.getSpec().getContainers();
+    if (currentContainers == null) {
+      return false;
+    }
+    List<V1Container> buildContainers = build.getSpec().getContainers();
+    if (buildContainers.size() != currentContainers.size()) {
+      return false;
+    }
+    for (V1Container buildContainer : build.getSpec().getContainers()) {
+      V1Container currentContainer = findCurrentContainer(buildContainer, currentContainers);
+      if (currentContainer == null) {
+        return false;
+      }
+      if (!validateCurrentContainer(buildContainer, currentContainer)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  protected static V1Container findCurrentContainer(
+      V1Container buildContainer, List<V1Container> currentContainers) {
+    String name = buildContainer.getName();
+    for (V1Container currentContainer : currentContainers) {
+      if (name.equals(currentContainer.getName())) {
+        return currentContainer;
+      }
+    }
+    return null;
+  }
+
+  protected static boolean validateCurrentContainer(V1Container build, V1Container current) {
+    if (!build.getImage().equals(current.getImage())
+        || !build.getImagePullPolicy().equals(current.getImagePullPolicy())) {
+      return false;
+    }
+    if (!compareUnordered(build.getPorts(), current.getPorts())) {
+      return false;
+    }
+    if (!compareUnordered(build.getEnv(), current.getEnv())) {
+      return false;
+    }
+    if (!compareUnordered(build.getEnvFrom(), current.getEnvFrom())) {
+      return false;
+    }
+    return true;
+  }
+
+  protected static <T> boolean compareUnordered(List<T> a, List<T> b) {
     if (a == b) {
       return true;
     } else if (a == null || b == null) {
@@ -923,7 +974,7 @@ public class PodHelper {
     AnnotationHelper.annotateForPrometheus(metadata, weblogicServerPort);
 
     metadata
-        .putLabelsItem(RESOURCE_VERSION_LABEL, VersionConstants.DOMAIN_V1)
+        .putLabelsItem(RESOURCE_VERSION_LABEL, VersionConstants.DOMAIN_V1DOT1)
         .putLabelsItem(DOMAINUID_LABEL, weblogicDomainUID)
         .putLabelsItem(DOMAINNAME_LABEL, domainSpec.getDomainName())
         .putLabelsItem(SERVERNAME_LABEL, weblogicServerName)

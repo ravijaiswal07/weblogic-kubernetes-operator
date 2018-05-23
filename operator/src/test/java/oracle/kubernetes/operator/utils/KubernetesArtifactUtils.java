@@ -13,6 +13,7 @@ import io.kubernetes.client.models.V1ConfigMapVolumeSource;
 import io.kubernetes.client.models.V1Container;
 import io.kubernetes.client.models.V1ContainerPort;
 import io.kubernetes.client.models.V1EmptyDirVolumeSource;
+import io.kubernetes.client.models.V1EnvFromSource;
 import io.kubernetes.client.models.V1EnvVar;
 import io.kubernetes.client.models.V1EnvVarSource;
 import io.kubernetes.client.models.V1ExecAction;
@@ -39,6 +40,7 @@ import io.kubernetes.client.models.V1PodTemplateSpec;
 import io.kubernetes.client.models.V1Probe;
 import io.kubernetes.client.models.V1ResourceRequirements;
 import io.kubernetes.client.models.V1Secret;
+import io.kubernetes.client.models.V1SecretEnvSource;
 import io.kubernetes.client.models.V1SecretReference;
 import io.kubernetes.client.models.V1SecretVolumeSource;
 import io.kubernetes.client.models.V1Service;
@@ -203,6 +205,10 @@ public class KubernetesArtifactUtils {
     return newEnvVar().name(name).value(value);
   }
 
+  public static V1EnvFromSource newEnvFromSource() {
+    return new V1EnvFromSource();
+  }
+
   public static FluentArrayList<V1EnvVar> newEnvVarList() {
     return newFluentArrayList(V1EnvVar.class);
   }
@@ -281,6 +287,10 @@ public class KubernetesArtifactUtils {
 
   public static Quantity newQuantity(String val) {
     return Quantity.fromString(val);
+  }
+
+  public static V1SecretEnvSource newSecretEnvSource() {
+    return new V1SecretEnvSource();
   }
 
   public static V1SecretReference newSecretReference() {
