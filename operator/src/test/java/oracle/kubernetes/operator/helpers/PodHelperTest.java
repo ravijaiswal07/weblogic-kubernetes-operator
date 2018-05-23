@@ -15,6 +15,8 @@ import static org.hamcrest.Matchers.*;
 import com.meterware.simplestub.Memento;
 import com.meterware.simplestub.StaticStubSupport;
 import io.kubernetes.client.models.V1Container;
+import io.kubernetes.client.models.V1ContainerPort;
+import io.kubernetes.client.models.V1EnvFromSource;
 import io.kubernetes.client.models.V1EnvVar;
 import io.kubernetes.client.models.V1LocalObjectReference;
 import io.kubernetes.client.models.V1ObjectMeta;
@@ -90,6 +92,42 @@ public class PodHelperTest {
               newPersistentVolumeClaim()
                   .metadata(newObjectMeta().name(WEBLOGIC_DOMAIN_PERSISTENT_VOLUME_CLAIM_NAME)));
 
+  private static final String V1 = "V1";
+  private static final String V2 = "V2";
+  private static final String V3 = "V3";
+
+  private static final String IMAGE1 = "image1";
+  private static final String IMAGE2 = "image2";
+
+  private static final String IMAGE_PULL_POLICY1 = ALWAYS_IMAGEPULLPOLICY;
+  private static final String IMAGE_PULL_POLICY2 = NEVER_IMAGEPULLPOLICY;
+
+  private static final List<V1LocalObjectReference> SECRET1 =
+      newList(newLocalObjectReference().name("secret1"));
+  private static final List<V1LocalObjectReference> SECRET2 =
+      newList(newLocalObjectReference().name("secret2"));
+
+  private static final List<V1ContainerPort> PORT1 =
+      newList(newContainerPort().containerPort(1234).protocol("TCP"));
+  private static final List<V1ContainerPort> PORT2 =
+      newList(newContainerPort().containerPort(4321).protocol("TCP"));
+
+  private static final List<V1EnvVar> ENV1 = newList(newEnvVar("env1", "val1"));
+  private static final List<V1EnvVar> ENV2 = newList(newEnvVar("env2", "val2"));
+
+  private static final List<V1EnvFromSource> ENV_FROM1 =
+      newList(newEnvFromSource().secretRef(newSecretEnvSource().name("source1")));
+  private static final List<V1EnvFromSource> ENV_FROM2 =
+      newList(newEnvFromSource().secretRef(newSecretEnvSource().name("source2")));
+
+  private static final String CONTAINER1_NAME = "container1";
+  private static final String CONTAINER2_NAME = "container2";
+  private static final String CONTAINER3_NAME = "container3";
+
+  private static final V1Container CONTAINER1 = newContainer().name(CONTAINER1_NAME);
+  private static final V1Container CONTAINER2 = newContainer().name(CONTAINER2_NAME);
+  private static final V1Container CONTAINER3 = newContainer().name(CONTAINER3_NAME);
+
   @Before
   public void setUp() throws Exception {
     mementos.add(TestUtils.silenceOperatorLogger());
@@ -104,6 +142,362 @@ public class PodHelperTest {
   @After
   public void tearDown() throws Exception {
     for (Memento memento : mementos) memento.revert();
+  }
+
+  @Test
+  public void validateCurrentPod_CurrentNullMetadata_returnsFalse() {
+    V1Pod current = createPopulatedPod();
+    current.setMetadata(null);
+    assertThat(PodHelper.validateCurrentPod(createPopulatedPod(), current), equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentPod_differentVersion_returnsFalse() {
+    V1Pod current = createPopulatedPod();
+    current.getMetadata().putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1);
+    assertThat(PodHelper.validateCurrentPod(createPopulatedPod(), current), equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentPod_differentRestartedLabel_returnsFalse() {
+    V1Pod build = createPopulatedPod();
+    build.getMetadata().putLabelsItem(RESTARTED_LABEL, RESTARTED_LABEL1);
+    assertThat(PodHelper.validateCurrentPod(build, createPopulatedPod()), equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentPod_differentImagePullSecrets_returnsFalse() {
+    V1Pod current = createPopulatedPod();
+    current.getSpec().imagePullSecrets(SECRET1);
+    assertThat(PodHelper.validateCurrentPod(createPopulatedPod(), current), equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentPod_differentContainers_returnsFalse() {
+    V1Pod current = createPopulatedPod();
+    current.getSpec().addContainersItem(newContainer().name(CONTAINER2_NAME));
+    assertThat(PodHelper.validateCurrentPod(createPopulatedPod(), current), equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentPod_samePods_returnsTrue() {
+    assertThat(
+        PodHelper.validateCurrentPod(createPopulatedPod(), createPopulatedPod()), equalTo(true));
+  }
+
+  private V1Pod createPopulatedPod() {
+    return newPod()
+        .metadata(newObjectMeta().putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1DOT1))
+        .spec(
+            newPodSpec()
+                .addContainersItem(
+                    newContainer()
+                        .name(CONTAINER1_NAME)
+                        .image(IMAGE1)
+                        .imagePullPolicy(IMAGE_PULL_POLICY1)));
+  }
+
+  @Test
+  public void validateCurrentHasMetadata_nullMetadata_returnsFalse() {
+    assertThat(PodHelper.validateCurrentHasMetadata(newPod()), equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentHasMetadata_hasMetadata_returnsTrue() {
+    assertThat(
+        PodHelper.validateCurrentHasMetadata(newPod().metadata(newObjectMeta())), equalTo(true));
+  }
+
+  @Test
+  public void validateCurrentVersion_V1_returnsFalse() {
+    assertThat(
+        PodHelper.validateCurrentVersion(
+            newPod().metadata(newObjectMeta().putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1))),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentVersion_V1DOT1_returnsTrue() {
+    assertThat(
+        PodHelper.validateCurrentVersion(
+            newPod()
+                .metadata(newObjectMeta().putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1DOT1))),
+        equalTo(true));
+  }
+
+  @Test
+  public void validateCurrentRestartedLabel_buildNull_currentNull_returnsTrue() {
+    assertThat(
+        PodHelper.validateCurrentRestartedLabel(
+            createPodWithoutRestartedLabel(), createPodWithoutRestartedLabel()),
+        equalTo(true));
+  }
+
+  @Test
+  public void validateCurrentRestartedLabel_buildNull_currentHasLabel_returnsTrue() {
+    assertThat(
+        PodHelper.validateCurrentRestartedLabel(
+            createPodWithoutRestartedLabel(), createPodWithRestartedLabel(RESTARTED_LABEL1)),
+        equalTo(true));
+  }
+
+  @Test
+  public void validateCurrentRestartedLabel_buildHasLabel_currentNull_returnsFalse() {
+    assertThat(
+        PodHelper.validateCurrentRestartedLabel(
+            createPodWithRestartedLabel(RESTARTED_LABEL1), createPodWithoutRestartedLabel()),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentRestartedLabel_differentLabels_returnsFalse() {
+    assertThat(
+        PodHelper.validateCurrentRestartedLabel(
+            createPodWithRestartedLabel("label1"), createPodWithRestartedLabel("label2")),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentRestartedLabel_sameLabel_returnsTrue() {
+    assertThat(
+        PodHelper.validateCurrentRestartedLabel(
+            createPodWithRestartedLabel(RESTARTED_LABEL1),
+            createPodWithRestartedLabel(RESTARTED_LABEL1)),
+        equalTo(true));
+  }
+
+  private V1Pod createPodWithRestartedLabel(String restartedLabel) {
+    return newPod().metadata(newObjectMeta().putLabelsItem(RESTARTED_LABEL, restartedLabel));
+  }
+
+  private V1Pod createPodWithoutRestartedLabel() {
+    return newPod().metadata(newObjectMeta());
+  }
+
+  @Test
+  public void getRestartedLabel_nullLabels_returnsNull() {
+    assertThat(
+        PodHelper.getRestartedLabel(newPod().metadata(newObjectMeta().labels(null))), nullValue());
+  }
+
+  @Test
+  public void getRestartedLabel_labelsDoesntIncludeRestartedLabel_returnsNull() {
+    assertThat(
+        PodHelper.getRestartedLabel(
+            newPod().metadata(newObjectMeta().putLabelsItem("label1", "value1"))),
+        nullValue());
+  }
+
+  @Test
+  public void getRestartedLabel_labelsIncludesRestartedLabel_returnsRestartedLabel() {
+    assertThat(
+        PodHelper.getRestartedLabel(
+            newPod().metadata(newObjectMeta().putLabelsItem(RESTARTED_LABEL, RESTARTED_LABEL1))),
+        equalTo(RESTARTED_LABEL1));
+  }
+
+  @Test
+  public void validateCurrentImagePullSecrets_sameSecrets_returnsTrue() {
+    assertThat(
+        PodHelper.validateCurrentImagePullSecrets(
+            newPod().spec(newPodSpec().imagePullSecrets(SECRET1)),
+            newPod().spec(newPodSpec().imagePullSecrets(SECRET1))),
+        equalTo(true));
+  }
+
+  @Test
+  public void validateCurrentImagePullSecrets_differentSecrets_returnsFalse() {
+    assertThat(
+        PodHelper.validateCurrentImagePullSecrets(
+            newPod().spec(newPodSpec().imagePullSecrets(SECRET1)),
+            newPod().spec(newPodSpec().imagePullSecrets(SECRET1))),
+        equalTo(true));
+  }
+
+  @Test
+  public void validateCurrentContainers_currentNullContainerList_returns_false() {
+    assertThat(
+        PodHelper.validateCurrentContainers(
+            createPod(newList(createContainer(CONTAINER1_NAME, IMAGE1))), createPod(null)),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentContainers_differentContainerCounts_returns_false() {
+    assertThat(
+        PodHelper.validateCurrentContainers(
+            createPod(newList(createContainer(CONTAINER1_NAME, IMAGE1))),
+            createPod(
+                newList(
+                    createContainer(CONTAINER1_NAME, IMAGE1),
+                    createContainer(CONTAINER2_NAME, IMAGE2)))),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentContainers_differentContainerNames_returns_false() {
+    assertThat(
+        PodHelper.validateCurrentContainers(
+            createPod(newList(createContainer(CONTAINER1_NAME, IMAGE1))),
+            createPod(newList(createContainer(CONTAINER2_NAME, IMAGE1)))),
+        equalTo(false));
+  }
+
+  @Test
+  public void
+      validateCurrentContainers_sameContainersNamesDifferentContainerContents_returns_false() {
+    assertThat(
+        PodHelper.validateCurrentContainers(
+            createPod(newList(createContainer(CONTAINER1_NAME, IMAGE1))),
+            createPod(newList(createContainer(CONTAINER1_NAME, IMAGE2)))),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentContainers_sameContainerNamesSameContainerContents_returns_true() {
+    assertThat(
+        PodHelper.validateCurrentContainers(
+            createPod(newList(createContainer(CONTAINER1_NAME, IMAGE1))),
+            createPod(newList(createContainer(CONTAINER1_NAME, IMAGE1)))),
+        equalTo(true));
+  }
+
+  private V1Pod createPod(List<V1Container> containers) {
+    return newPod().spec(newPodSpec().containers(containers));
+  }
+
+  private V1Container createContainer(String name, String image) {
+    return createContainer(image, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM1).name(name);
+  }
+
+  @Test
+  public void findCurrentContainer_containerInList_returnsContainer() {
+    assertThat(
+        PodHelper.findCurrentContainer(CONTAINER1, newList(CONTAINER3, CONTAINER2, CONTAINER1)),
+        equalTo(CONTAINER1));
+  }
+
+  @Test
+  public void findCurrentContainer_containerNotInList_returnsNull() {
+    assertThat(
+        PodHelper.findCurrentContainer(CONTAINER1, newList(CONTAINER2, CONTAINER3)), nullValue());
+  }
+
+  @Test
+  public void validateCurrentContainer_sameProperties_returnsTrue() {
+    assertThat(
+        PodHelper.validateCurrentContainer(
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM1),
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM1)),
+        equalTo(true));
+  }
+
+  @Test
+  public void validateCurrentContainer_differentImage_returnsFalse() {
+    assertThat(
+        PodHelper.validateCurrentContainer(
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM1),
+            createContainer(IMAGE2, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM1)),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentContainer_differentImagePullPolicy_returnsFalse() {
+    assertThat(
+        PodHelper.validateCurrentContainer(
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM1),
+            createContainer(IMAGE1, IMAGE_PULL_POLICY2, PORT1, ENV1, ENV_FROM1)),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentContainer_differentPorts_returnsFalse() {
+    assertThat(
+        PodHelper.validateCurrentContainer(
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM1),
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT2, ENV1, ENV_FROM1)),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentContainer_differentEnv_returnsFalse() {
+    assertThat(
+        PodHelper.validateCurrentContainer(
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM1),
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT1, ENV2, ENV_FROM1)),
+        equalTo(false));
+  }
+
+  @Test
+  public void validateCurrentContainer_differentEnvFrom_returnsFalse() {
+    assertThat(
+        PodHelper.validateCurrentContainer(
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM1),
+            createContainer(IMAGE1, IMAGE_PULL_POLICY1, PORT1, ENV1, ENV_FROM2)),
+        equalTo(false));
+  }
+
+  private V1Container createContainer(
+      String image,
+      String imagePullPolicy,
+      List<V1ContainerPort> ports,
+      List<V1EnvVar> env,
+      List<V1EnvFromSource> envFrom) {
+    return newContainer()
+        .image(image)
+        .imagePullPolicy(imagePullPolicy)
+        .ports(ports)
+        .env(env)
+        .envFrom(envFrom);
+  }
+
+  @Test
+  public void compareUnordered_null_null_returnsTrue() {
+    assertThat(PodHelper.compareUnordered(null, null), equalTo(true));
+  }
+
+  @Test
+  public void compareUnordered_null_notNull_returnsFalse() {
+    assertThat(PodHelper.compareUnordered(null, newList(V1)), equalTo(false));
+  }
+
+  @Test
+  public void compareUnordered_notNull_null_returnsFalse() {
+    assertThat(PodHelper.compareUnordered(newList(V1), null), equalTo(false));
+  }
+
+  @Test
+  public void compareUnordered_differentSizes_returnsFalse() {
+    assertThat(PodHelper.compareUnordered(newList(V1), newList(V1, V2)), equalTo(false));
+  }
+
+  @Test
+  public void compareUnordered_elementsUnique_sameElements_sameOrder_returnsTrue() {
+    assertThat(PodHelper.compareUnordered(newList(V1, V2, V3), newList(V1, V2, V3)), equalTo(true));
+  }
+
+  @Test
+  public void compareUnordered_elementsUnique_sameElements_differentOrder_returnsTrue() {
+    assertThat(PodHelper.compareUnordered(newList(V1, V2, V3), newList(V2, V1, V3)), equalTo(true));
+  }
+
+  @Test
+  public void compareUnordered_duplicateElements_differentElements_returnsFalse() {
+    assertThat(
+        PodHelper.compareUnordered(newList(V1, V1, V2), newList(V1, V3, V1)), equalTo(false));
+  }
+
+  @Test
+  public void compareUnordered_duplicateElements_sameElements_differentOrder_returnsTrue() {
+    assertThat(PodHelper.compareUnordered(newList(V1, V1, V2), newList(V1, V2, V1)), equalTo(true));
+  }
+
+  private static <T> List<T> newList(T... elements) {
+    List<T> list = new ArrayList();
+    for (T element : elements) {
+      list.add(element);
+    }
+    return list;
   }
 
   @Test
@@ -678,7 +1072,7 @@ public class PodHelperTest {
             .putAnnotationsItem("prometheus.io/path", "/wls-exporter/metrics")
             .putAnnotationsItem("prometheus.io/port", "" + weblogicServerPort)
             .putAnnotationsItem("prometheus.io/scrape", "true")
-            .putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1)
+            .putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1DOT1)
             .putLabelsItem(CREATEDBYOPERATOR_LABEL, "true")
             .putLabelsItem(DOMAINNAME_LABEL, DOMAIN_NAME)
             .putLabelsItem(DOMAINUID_LABEL, DOMAIN_UID)
