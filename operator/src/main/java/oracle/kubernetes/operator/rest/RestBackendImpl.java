@@ -288,7 +288,7 @@ public class RestBackendImpl implements RestBackend {
       clusterConfig.setReplicas(managedServerCount);
       LifeCycleHelper.instance().updateDomainSpec(domain, clusterConfig);
       String startupControl = domain.getSpec().getStartupControl();
-      // startupControl == null then we're using new Lifecycle configuration
+      // startupControl is not defined then we're using new Lifecycle configuration
       if (startupControl != null
           && !StartupControlConstants.AUTO_STARTUPCONTROL.equals(startupControl)) {
         // WebLogic Cluster is not defined in ClusterStartup AND Startup Control is not spec'd as
@@ -363,7 +363,7 @@ public class RestBackendImpl implements RestBackend {
       String namespace, String cluster, String adminServerServiceName, String adminSecretName) {
     WlsDomainConfig wlsDomainConfig =
         getWlsDomainConfig(namespace, adminServerServiceName, adminSecretName);
-    return wlsDomainConfig.getClusterConfig(cluster);
+    return wlsDomainConfig.getWlsClusterConfig(cluster);
   }
 
   protected WlsDomainConfig getWlsDomainConfig(
@@ -377,7 +377,7 @@ public class RestBackendImpl implements RestBackend {
       String namespace, String adminServerServiceName, String adminSecretName) {
     WlsDomainConfig wlsDomainConfig =
         getWlsDomainConfig(namespace, adminServerServiceName, adminSecretName);
-    return wlsDomainConfig.getClusterConfigs();
+    return wlsDomainConfig.getWlsClusterConfigs();
   }
 
   private Domain findDomain(String domainUID) {

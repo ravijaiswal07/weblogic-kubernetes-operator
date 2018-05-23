@@ -19,7 +19,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import oracle.kubernetes.operator.ProcessingConstants;
+import oracle.kubernetes.operator.helpers.DomainConfig;
 import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
+import oracle.kubernetes.operator.helpers.LifeCycleHelper;
 import oracle.kubernetes.operator.helpers.ServerKubernetesObjects;
 import oracle.kubernetes.operator.http.HttpClient;
 import oracle.kubernetes.operator.logging.LoggingFacade;
@@ -270,11 +272,17 @@ public class WlsRetriever {
 
           wlsDomainConfig = WlsDomainConfig.create(jsonResult);
 
+          DomainConfig domainConfig =
+              LifeCycleHelper.instance()
+                  .getEffectiveDomainConfig(
+                      dom,
+                      wlsDomainConfig.getStandaloneServerConfigs().keySet(),
+                      wlsDomainConfig.getClusters());
           List<ConfigUpdate> suggestedConfigUpdates = new ArrayList<>();
 
           // This logs warning messages as well as returning a list of suggested
           // WebLogic configuration updates, but it does not update the DomainSpec.
-          wlsDomainConfig.validate(dom.getSpec(), suggestedConfigUpdates);
+          wlsDomainConfig.validate(domainConfig, suggestedConfigUpdates);
 
           info.setScan(wlsDomainConfig);
           info.setLastScanTime(new DateTime());

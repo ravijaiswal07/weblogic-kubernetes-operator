@@ -32,7 +32,7 @@ public class BeforeAdminServiceStep extends Step {
         LifeCycleHelper.instance().getEffectiveNonClusteredServerConfig(dom, spec.getAsName());
     if (adminServerConfig != null) {
       packet.put(ProcessingConstants.NODE_PORT, adminServerConfig.getNodePort());
-      packet.put(ProcessingConstants.ENVVARS, adminServerConfig.getEnv());
+      packet.put(ProcessingConstants.SERVER_CONFIG, adminServerConfig);
     }
     return doNext(packet);
   }

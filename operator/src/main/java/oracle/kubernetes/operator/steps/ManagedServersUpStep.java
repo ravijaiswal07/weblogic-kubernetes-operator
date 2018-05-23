@@ -88,7 +88,7 @@ public class ManagedServersUpStep extends Step {
 
   protected static void processClusterRestarts(DomainPresenceInfo info, WlsDomainConfig scan) {
     for (String clusterName : info.getExplicitRestartClusters()) {
-      WlsClusterConfig cluster = scan.getClusterConfig(clusterName);
+      WlsClusterConfig cluster = scan.getWlsClusterConfig(clusterName);
       if (cluster != null) {
         for (WlsServerConfig server : cluster.getServerConfigs()) {
           info.getExplicitRestartServers().add(server.getName());
@@ -114,7 +114,7 @@ public class ManagedServersUpStep extends Step {
         ClusterConfig clusterConfig = entry.getValue();
         clusters.add(clusterName);
         // find cluster
-        WlsClusterConfig wlsClusterConfig = scan.getClusterConfig(clusterName);
+        WlsClusterConfig wlsClusterConfig = scan.getWlsClusterConfig(clusterName);
         if (wlsClusterConfig != null) {
           int startedCount = 0;
           List ifNeededList = new ArrayList();

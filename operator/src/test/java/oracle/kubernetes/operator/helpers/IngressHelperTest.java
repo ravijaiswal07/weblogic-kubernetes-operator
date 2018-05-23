@@ -90,7 +90,7 @@ public class IngressHelperTest {
     cluster1Scan.getServerConfigs().add(server1Scan);
     cluster1Scan.getServerConfigs().add(server2Scan);
 
-    scan.getClusterConfigs().put(clusterName, cluster1Scan);
+    scan.getWlsClusterConfigs().put(clusterName, cluster1Scan);
 
     info.setScan(scan);
 
@@ -142,7 +142,7 @@ public class IngressHelperTest {
     Packet p = new Packet();
     p.getComponents().put(ProcessingConstants.DOMAIN_COMPONENT_NAME, Component.createFor(info));
     p.put(ProcessingConstants.SERVER_SCAN, info.getScan().getServerConfig(server1Name));
-    p.put(ProcessingConstants.CLUSTER_SCAN, info.getScan().getClusterConfig(clusterName));
+    p.put(ProcessingConstants.CLUSTER_SCAN, info.getScan().getWlsClusterConfig(clusterName));
     p.put(ProcessingConstants.SERVER_NAME, server1Name);
 
     Fiber f = engine.createFiber();

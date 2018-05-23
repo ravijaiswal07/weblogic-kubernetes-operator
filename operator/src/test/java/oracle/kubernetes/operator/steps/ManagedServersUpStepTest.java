@@ -168,7 +168,7 @@ public class ManagedServersUpStepTest {
   @Test
   public void addClusteredServer_isAdminServer() {
     WlsDomainConfig wlsDomainConfig = createWLSDomainConfig(JSON_STRING_1_CLUSTER);
-    WlsClusterConfig wlsClusterConfig = wlsDomainConfig.getClusterConfig(CLUSTER1);
+    WlsClusterConfig wlsClusterConfig = wlsDomainConfig.getWlsClusterConfig(CLUSTER1);
     DomainConfig domainConfig = createDomainConfig(3);
     ClusterConfig clusterConfig = domainConfig.getClusters().get(CLUSTER1);
     ClusteredServerConfig clusteredServerConfig = clusterConfig.getServers().get(SERVER0);
@@ -193,7 +193,7 @@ public class ManagedServersUpStepTest {
   @Test
   public void addClusteredServer_containsServerName() {
     WlsDomainConfig wlsDomainConfig = createWLSDomainConfig(JSON_STRING_1_CLUSTER);
-    WlsClusterConfig wlsClusterConfig = wlsDomainConfig.getClusterConfig(CLUSTER1);
+    WlsClusterConfig wlsClusterConfig = wlsDomainConfig.getWlsClusterConfig(CLUSTER1);
     DomainConfig domainConfig = createDomainConfig(3);
     ClusterConfig clusterConfig = domainConfig.getClusters().get(CLUSTER1);
     ClusteredServerConfig clusteredServerConfig = clusterConfig.getServers().get(SERVER0);
@@ -220,7 +220,7 @@ public class ManagedServersUpStepTest {
   @Test
   public void addClusteredServer_startAdminMode() {
     WlsDomainConfig wlsDomainConfig = createWLSDomainConfig(JSON_STRING_1_CLUSTER);
-    WlsClusterConfig wlsClusterConfig = wlsDomainConfig.getClusterConfig(CLUSTER1);
+    WlsClusterConfig wlsClusterConfig = wlsDomainConfig.getWlsClusterConfig(CLUSTER1);
     DomainConfig domainConfig = createDomainConfig(3);
     ClusterConfig clusterConfig = domainConfig.getClusters().get(CLUSTER1);
     ClusteredServerConfig clusteredServerConfig = clusterConfig.getServers().get(SERVER1);

@@ -143,7 +143,8 @@ public class DomainStatusUpdater {
                   .withServerName(serverName)
                   .withHealth(serverHealth.get(serverName));
           outer:
-          for (Map.Entry<String, WlsClusterConfig> cluster : scan.getClusterConfigs().entrySet()) {
+          for (Map.Entry<String, WlsClusterConfig> cluster :
+              scan.getWlsClusterConfigs().entrySet()) {
             for (WlsServerConfig sic : cluster.getValue().getServerConfigs()) {
               if (serverName.equals(sic.getName())) {
                 ss.setClusterName(cluster.getKey());

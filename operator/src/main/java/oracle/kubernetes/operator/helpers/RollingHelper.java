@@ -199,7 +199,7 @@ public class RollingHelper {
         if (it.hasNext()) {
           // we are already pending a restart of one server, so start count at -1
           int countReady = -1;
-          WlsClusterConfig cluster = info.getScan().getClusterConfig(clusterName);
+          WlsClusterConfig cluster = info.getScan().getWlsClusterConfig(clusterName);
           if (cluster != null) {
             List<WlsServerConfig> serversConfigs = cluster.getServerConfigs();
             if (serversConfigs != null) {

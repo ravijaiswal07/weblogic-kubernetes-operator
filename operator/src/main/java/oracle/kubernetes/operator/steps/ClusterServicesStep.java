@@ -33,7 +33,7 @@ public class ClusterServicesStep extends Step {
     // Add cluster services
     WlsDomainConfig scan = info.getScan();
     if (scan != null) {
-      for (Map.Entry<String, WlsClusterConfig> entry : scan.getClusterConfigs().entrySet()) {
+      for (Map.Entry<String, WlsClusterConfig> entry : scan.getWlsClusterConfigs().entrySet()) {
         Packet p = packet.clone();
         WlsClusterConfig clusterConfig = entry.getValue();
         p.put(ProcessingConstants.CLUSTER_SCAN, clusterConfig);

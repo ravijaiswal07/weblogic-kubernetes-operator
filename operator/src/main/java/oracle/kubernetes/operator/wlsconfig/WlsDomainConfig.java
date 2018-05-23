@@ -5,17 +5,18 @@
 package oracle.kubernetes.operator.wlsconfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import oracle.kubernetes.operator.helpers.ClusterConfig;
+import oracle.kubernetes.operator.helpers.DomainConfig;
+import oracle.kubernetes.operator.helpers.LifeCycleHelper;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
-import oracle.kubernetes.weblogic.domain.v1.ClusterStartup;
-import oracle.kubernetes.weblogic.domain.v1.DomainSpec;
+import oracle.kubernetes.weblogic.domain.v1.Domain;
 
 /** Contains a snapshot of configuration for a WebLogic Domain */
 public class WlsDomainConfig {
@@ -96,7 +97,7 @@ public class WlsDomainConfig {
    * @return A Map of WlsClusterConfig, keyed by name, containing server configurations for all
    *     clusters found in the WLS domain
    */
-  public synchronized Map<String, WlsClusterConfig> getClusterConfigs() {
+  public synchronized Map<String, WlsClusterConfig> getWlsClusterConfigs() {
     return wlsClusterConfigs;
   }
 
@@ -144,7 +145,7 @@ public class WlsDomainConfig {
    *     name. This methods return an empty WlsClusterConfig object even if no WLS configuration is
    *     found for the given cluster name.
    */
-  public synchronized WlsClusterConfig getClusterConfig(String clusterName) {
+  public synchronized WlsClusterConfig getWlsClusterConfig(String clusterName) {
     WlsClusterConfig result = null;
     if (clusterName != null) {
       result = wlsClusterConfigs.get(clusterName);
@@ -312,51 +313,37 @@ public class WlsDomainConfig {
     return null;
   }
 
-  public boolean validate(DomainSpec domainSpec) {
-    return validate(domainSpec, null);
+  public boolean validate(Domain domain) {
+    DomainConfig domainConfig =
+        LifeCycleHelper.instance()
+            .getEffectiveDomainConfig(domain, getServerConfigs().keySet(), getClusters());
+    return validate(domainConfig, null);
   }
 
   /**
    * Checks the provided k8s domain spec to see if it is consistent with the configuration of the
    * WLS domain. The method also logs warning if inconsistent WLS configurations are found.
    *
-   * @param domainSpec The DomainSpec to be validated against the WLS configuration
+   * @param domainConfig The effective Domain to be validated against the WLS configuration
    * @param suggestedConfigUpdates a List of ConfigUpdate objects containing suggested WebLogic
    *     config updates that are necessary to make the WebLogic domain consistent with the
    *     DomainSpec. Optional.
    * @return true if the DomainSpec has been updated, false otherwise
    */
-  public boolean validate(DomainSpec domainSpec, List<ConfigUpdate> suggestedConfigUpdates) {
+  public boolean validate(DomainConfig domainConfig, List<ConfigUpdate> suggestedConfigUpdates) {
 
     LOGGER.entering();
 
     boolean updated = false;
-    List<ClusterStartup> clusterStartupList = domainSpec.getClusterStartup();
+    Map<String, ClusterConfig> clusterMap = domainConfig.getClusters();
 
-    // check each ClusterStartup if specified in the DomainSpec
-    if (clusterStartupList != null) {
-      for (ClusterStartup clusterStartup : clusterStartupList) {
-        String clusterName = clusterStartup.getClusterName();
-        if (clusterName != null) {
-          WlsClusterConfig wlsClusterConfig = getClusterConfig(clusterName);
-          updated |=
-              wlsClusterConfig.validateClusterStartup(clusterStartup, suggestedConfigUpdates);
-        }
-      }
-    }
-
-    // validate replicas in DomainSpec if specified
-    if (domainSpec.getReplicas() != null) {
-      Collection<WlsClusterConfig> clusterConfigs = getClusterConfigs().values();
-      // WLS domain contains only one cluster
-      if (clusterConfigs != null && clusterConfigs.size() == 1) {
-        for (WlsClusterConfig wlsClusterConfig : clusterConfigs) {
-          wlsClusterConfig.validateReplicas(
-              domainSpec.getReplicas(), "domainSpec", suggestedConfigUpdates);
-        }
-      } else {
-        // log info message if replicas is specified but number of WLS clusters in domain is not 1
-        LOGGER.info(MessageKeys.DOMAIN_REPLICAS_IGNORED);
+    // check each ClusterConfig for the Domain
+    if (clusterMap != null) {
+      for (Map.Entry<String, ClusterConfig> entry : clusterMap.entrySet()) {
+        String clusterName = entry.getKey();
+        ClusterConfig clusterConfig = entry.getValue();
+        WlsClusterConfig wlsClusterConfig = getWlsClusterConfig(clusterName);
+        updated |= wlsClusterConfig.validateClusterConfig(clusterConfig, suggestedConfigUpdates);
       }
     }
 

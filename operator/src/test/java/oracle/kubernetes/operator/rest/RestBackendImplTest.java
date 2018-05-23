@@ -161,7 +161,6 @@ public class RestBackendImplTest {
     Domain domain = createV1Domain();
     boolean isReplicaCountUpdated =
         restBackend.isReplicaCountUpdated(WEBLOGIC_DOMAIN, domain, CLUSTER1, 2);
-    System.out.println("isReplicaCountUpdated: " + isReplicaCountUpdated);
     assertTrue(isReplicaCountUpdated);
   }
 
@@ -276,7 +275,7 @@ public class RestBackendImplTest {
         String namespace, String cluster, String adminServerServiceName, String adminSecretName) {
       WlsDomainConfig wlsDomainConfig =
           getWlsDomainConfig(namespace, adminServerServiceName, adminSecretName);
-      return wlsDomainConfig.getClusterConfig(cluster);
+      return wlsDomainConfig.getWlsClusterConfig(cluster);
     }
 
     protected WlsDomainConfig getWlsDomainConfig(

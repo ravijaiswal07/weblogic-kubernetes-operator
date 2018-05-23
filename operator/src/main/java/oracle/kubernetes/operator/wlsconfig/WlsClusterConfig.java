@@ -9,11 +9,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import oracle.kubernetes.operator.helpers.ClusterConfig;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
 import oracle.kubernetes.operator.work.Step;
-import oracle.kubernetes.weblogic.domain.v1.ClusterStartup;
 
 /** Contains configuration of a WLS cluster */
 public class WlsClusterConfig {
@@ -223,8 +223,8 @@ public class WlsClusterConfig {
    *     filled in by this method. Optional.
    * @return true if the DomainSpec has been updated, false otherwise
    */
-  public boolean validateClusterStartup(
-      ClusterStartup clusterStartup, List<ConfigUpdate> suggestedConfigUpdates) {
+  public boolean validateClusterConfig(
+      ClusterConfig clusterConfig, List<ConfigUpdate> suggestedConfigUpdates) {
     LOGGER.entering();
 
     boolean modified = false;
@@ -235,7 +235,7 @@ public class WlsClusterConfig {
     }
 
     // Warns if replicas is larger than the number of servers configured in the cluster
-    validateReplicas(clusterStartup.getReplicas(), "clusterStartup", suggestedConfigUpdates);
+    validateReplicas(clusterConfig.getReplicas(), "Clusters", suggestedConfigUpdates);
 
     LOGGER.exiting(modified);
 
