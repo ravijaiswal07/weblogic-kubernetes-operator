@@ -58,10 +58,12 @@ spec:
             value: '{{ .Values.domainUID }}-cluster-{{ .Values.clusterName | lower }}:{{ .Values.managedServerPort }}'
           - name: LOCATION
             value: '{{ .Values.loadBalancerAppPrepath }}'
-          #- name: WEBLOGIC_HOST
-          #  value: '{{ .Values.domainUID }}-{{ .Values.adminServerName }}'
-          #- name: WEBLOGIC_PORT
-          #  value: '{{ .Values.adminPort }}'
+          {{- if .Values.loadBalancerExposeAdminPort }}
+          - name: WEBLOGIC_HOST
+            value: '{{ .Values.domainUID }}-{{ .Values.adminServerName }}'
+          - name: WEBLOGIC_PORT
+            value: '{{ .Values.adminPort }}'
+          {{- end }}
         readinessProbe:
           tcpSocket:
             port: 80

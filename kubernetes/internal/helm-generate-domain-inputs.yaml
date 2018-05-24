@@ -103,6 +103,9 @@ loadBalancerAppPrepath: "{{ .Values.loadBalancerAppPrepath }}"
 # path and put your own custom_mod_wl_apache.conf file under this path.
 loadBalancerVolumePath: "{{ .Values.loadBalancerVolumePath }}"
 
+# Boolean to indicate if the admin port is going to be exposed for APACHE. By default, it is false.
+loadBalancerExposeAdminPort: "{{ .Values.loadBalancerExposeAdminPort }}"
+
 # Load balancer web port
 loadBalancerWebPort: "{{ .Values.loadBalancerWebPort }}"
 
@@ -119,6 +122,7 @@ helmIfLoadbalancerTraefik: "{{- if eq .Values.loadBalancer \"TRAEFIK\" }}"
 helmIfLoadbalancerApache: "{{- if eq .Values.loadBalancer \"APACHE\" }}"
 helmIfLoadbalancerVoyager: "{{- if eq .Values.loadBalancer \"VOYAGER\" }}"
 helmIfLoadbalancerVolumePath: "{{- if .Values.loadBalancerVolumePath }}"
+helmIfLoadbalancerExposeAdminPort: "{{- if .Values.loadBalancerExposeAdminPort }}"
 helmIfExposeAdminNodePort: "{{- if .Values.exposeAdminNodePort }}"
 helmIfExposeAdminT3Channel: "{{- if .Values.exposeAdminT3Channel }}"
 helmIfWeblogicImagePullSecretsName: "{{- if .Values.weblogicImagePullSecretName }}"

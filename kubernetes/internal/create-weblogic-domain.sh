@@ -619,7 +619,7 @@ function createYamlFiles {
     echo Generating ${apacheOutput}
 
     # This part needs to be done before substitution of %DOMAIN_UID%, %ADMIN_SERVER_NAME% and %ADMIN_PORT%
-    if [ "${loadBalancerExposeAdminPort}" = "true" ]; then
+    if [ "${loadBalancerExposeAdminPort}" = "true" ] || [ "${generateHelm}" = true ] ; then
       sed -i -e "s|# - name: WEBLOGIC_HOST|  - name: WEBLOGIC_HOST|g" ${apacheOutput}
       sed -i -e "s|#   value: '%DOMAIN_UID%-%ADMIN_SERVER_NAME%'|    value: '%DOMAIN_UID%-%ADMIN_SERVER_NAME%'|g" ${apacheOutput}
       sed -i -e "s|# - name: WEBLOGIC_PORT|  - name: WEBLOGIC_PORT|g" ${apacheOutput}
@@ -636,7 +636,8 @@ function createYamlFiles {
     sed -i -e "s:%LOAD_BALANCER_WEB_PORT%:$loadBalancerWebPort:g" ${apacheOutput}
     sed -i -e "s:%WEB_APP_PREPATH%:$loadBalancerAppPrepath:g" ${apacheOutput}
     sed -i -e "s:%IF_LOADBALANCER_APACHE%:${helmIfLoadbalancerApache}:g" ${apacheOutput}
-    sed -i -e "s:%IF_LOAD_BALANCER_VOLUME_PATH%:${helmIfLoadbalancerVolumePath}:g" ${apacheOutput}
+    sed -i -e "s:%IF_LOADBALANCER_VOLUME_PATH%:${helmIfLoadbalancerVolumePath}:g" ${apacheOutput}
+    sed -i -e "s:%IF_LOADBALANCER_EXPOSE_ADMIN_PORT%:${helmIfLoadbalancerExposeAdminPort}:g" ${apacheOutput}
     sed -i -e "s:%END_IF%:${helmEndIf}:g" ${apacheOutput}
 
     if [ ! -z "${loadBalancerVolumePath}" ]; then
