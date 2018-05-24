@@ -654,14 +654,13 @@ public class PodHelper {
 
   protected static ServerConfig getAdminServerConfig(Packet packet) {
     // TBD - add some notes about clustered admin server limitations / bad practice ... && WDT ...
-    return (ServerConfig) packet.get(ProcessingConstants.SERVER_CONFIG);
 
-    // DomainSpec domainSpec = packet.getSPI(DomainPresenceInfo.class).getDomain().getSpec();
-    // String adminServerName = domainSpec.getAsName();
+    DomainSpec domainSpec = packet.getSPI(DomainPresenceInfo.class).getDomain().getSpec();
+    String adminServerName = domainSpec.getAsName();
 
-    // return LifeCycleHelper.instance()
-    // .getEffectiveNonClusteredServerConfig(
-    // packet.getSPI(DomainPresenceInfo.class).getDomain(), adminServerName);
+    return LifeCycleHelper.instance()
+        .getEffectiveNonClusteredServerConfig(
+            packet.getSPI(DomainPresenceInfo.class).getDomain(), adminServerName);
   }
 
   protected static ServerConfig getManagedServerConfig(Packet packet) {
