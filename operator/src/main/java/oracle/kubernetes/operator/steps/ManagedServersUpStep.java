@@ -215,7 +215,6 @@ public class ManagedServersUpStep extends Step {
   // This method stops any running servers that should not be running.
   // For example, when a cluster is scaled down, this method will stop
   // any extra running servers for that cluster.
-  // TBD - split this into smaller unit testable methods ...
   private static Step stopServersThatShouldNotBeRunning(
       DomainPresenceInfo info,
       DomainConfig domainConfig,
@@ -250,7 +249,7 @@ public class ManagedServersUpStep extends Step {
 
   protected static boolean shouldStopAdminServer(
       String adminServerName, DomainConfig domainConfig) {
-    // TBD - the admin server could be a managed server
+    // TBD - the admin server could be clustered
     NonClusteredServerConfig asServerConfig = domainConfig.getServers().get(adminServerName);
     if (asServerConfig != null
         && asServerConfig
@@ -266,8 +265,8 @@ public class ManagedServersUpStep extends Step {
       String adminServerName,
       boolean shouldStopAdminServer,
       Collection<String> managedServersThatShouldBeRunning) {
-    if (adminServerName.equals(serverName) && shouldStopAdminServer) {
-      return true;
+    if (adminServerName.equals(serverName)) {
+      return shouldStopAdminServer;
     }
     if (!managedServersThatShouldBeRunning.contains(serverName)) {
       return true;
