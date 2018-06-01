@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    prometheus.io/path: /wls-exporter/metrics
+    prometheus.io/port: "7100"
+    prometheus.io/scrape: "true"
+  labels:
+    weblogic.createdByOperator: "true"
+    weblogic.domainName: poc-domain
+    weblogic.domainUID: poc-duid
+    weblogic.resourceVersion: domain-v1
+    weblogic.serverName: as
+  name: poc-duid-as
+  namespace: poc-d-ns
+spec:
+  containers:
+  - command:
+    - /weblogic-operator/scripts/startServer.sh
+    - poc-duid
+    - as
+    - poc-domain
+    env:
+    - name: JAVA_OPTIONS
+      value: -Dweblogic.StdoutDebugEnabled=false
+    - name: USER_MEM_ARGS
+      value: '-Xms64m -Xmx256m '
+    - name: INTERNAL_OPERATOR_CERT
+      value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR0RENDQXB5Z0F3SUJBZ0lFZUZLY3NEQU5CZ2txaGtpRzl3MEJBUXNGQURBY01Sb3dHQVlEVlFRREV4RjMNClpXSnNiMmRwWXkxdmNHVnlZWFJ2Y2pBZUZ3MHhPREExTXpFeE5UUXpNREphRncweU9EQTFNamd4TlRRek1ESmENCk1Cd3hHakFZQmdOVkJBTVRFWGRsWW14dloybGpMVzl3WlhKaGRHOXlNSUlCSWpBTkJna3Foa2lHOXcwQkFRRUYNCkFBT0NBUThBTUlJQkNnS0NBUUVBd2podjMyeU5RSjZ4djZvbzZDUXVYVU5JQ1VFUTh0QjdvQVlHYTMzKzFUMlkNCk1JSjFrS0ZqY3JNUTVHaUtrODB1dFJEcHFodVdGUEIzaWVXSGtGTURmcDlJWCsxMkZ2QnlOM0JldXlmOTR5Y3oNCmFqcXNaUFQ2REpDK2lNTnBseElQRlNFd2t5SWl4eUxSdStOQ0ZBaHRyaEtzSDlLRXJzWGoyVWkwRWlLZWovWVUNCmFBdlBpWDQrWmE3Vm5qa0dYRUV4R2hNSnQ2cGErdGlzUjhNVXVuUnpTelBRQjhQUmhFTTlLbDRVQ1J0LzJjTzMNCndEeHhrREUxditKaHlaaWZ0VVRFaW4vZTByK01MTUxSZVB2YlNLbkEyQSsyU1BwYmhvZEtDYnNwUE1yenhtZVgNClBSd2UwRzl4d096SDR5UTBSZ09hQ2J3R1hRTjBzWE5VeU01L2I4N2V3d0lEQVFBQm80SDlNSUg2TUFzR0ExVWQNCkR3UUVBd0lEK0RDQnl3WURWUjBSQklIRE1JSEFnaDVwYm5SbGNtNWhiQzEzWldKc2IyZHBZeTF2Y0dWeVlYUnYNCmNpMXpkbU9DTEdsdWRHVnlibUZzTFhkbFlteHZaMmxqTFc5d1pYSmhkRzl5TFhOMll5NTBiVzl5WldGMUxXOXcNCkxXNXpnakJwYm5SbGNtNWhiQzEzWldKc2IyZHBZeTF2Y0dWeVlYUnZjaTF6ZG1NdWRHMXZjbVZoZFMxdmNDMXUNCmN5NXpkbU9DUG1sdWRHVnlibUZzTFhkbFlteHZaMmxqTFc5d1pYSmhkRzl5TFhOMll5NTBiVzl5WldGMUxXOXcNCkxXNXpMbk4yWXk1amJIVnpkR1Z5TG14dlkyRnNNQjBHQTFVZERnUVdCQlJoTFc1V243SlpKV3JRT2U1OHA0UWsNCitqMSs1ekFOQmdrcWhraUc5dzBCQVFzRkFBT0NBUUVBZnZzRFFPT3FkdWF6cVRLdDhxdkFHM2hucS9nVzhGcmUNCjFnOHhDSDhxK3hEMG03ekJPK1gwN09GelNJWlpLTS9mZVh0b2FwWW1aYnQwWTlmK3VEamNuVStFdFhoMUo2NS8NCjJWT1NiMVdSSnVhOFlRZ2xRaXF0ZmcyN2ZldEphSFEyYWZHN3ZnaS8xWXBsalpTQklTQ0xmTzFPVFY1aEc3SCsNCnZzU045ZGFhaFNlTWRmSEVrNkg0YUN2OHdNSTFadFZPUTAydlgzbnM2VUxXeGNiQ1pVY2VzNG9oNmxEenczMTgNCmZOMi83aFpyLzBHMVprdnN5U3ZhMHQxdFhHZWxkNFRFbWM2cWdsS2N5OFRnenV0ditvODVMTzhCT1QrL0ZvRSsNClk3NWtKczY3V3pWcjd1TXhsYnNsK3FSeE43RnQzUFQrNEVKNXJzdUlOZU5QU3FXTXJUL2d5Zz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    - name: DOMAIN_NAME
+      value: poc-domain
+    - name: DOMAIN_HOME
+      value: /domain-home
+    - name: ADMIN_NAME
+      value: as
+    - name: ADMIN_PORT
+      value: "7100"
+    - name: SERVER_NAME
+      value: as
+    - name: ADMIN_USERNAME
+    - name: ADMIN_PASSWORD
+    image: store/oracle/weblogic:12.2.1.3
+    imagePullPolicy: IfNotPresent
+    lifecycle:
+      preStop:
+        exec:
+          command:
+          - /weblogic-operator/scripts/stopServer.sh
+          - poc-duid
+          - as
+          - poc-domain
+    livenessProbe:
+      exec:
+        command:
+        - /weblogic-operator/scripts/livenessProbe.sh
+        - poc-domain
+        - as
+      failureThreshold: 1
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+    name: weblogic-server
+    ports:
+    - containerPort: 7100
+      protocol: TCP
+    readinessProbe:
+      exec:
+        command:
+        - /weblogic-operator/scripts/readinessProbe.sh
+        - poc-domain
+        - as
+      failureThreshold: 1
+      initialDelaySeconds: 2
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 5
+    volumeMounts:
+    - mountPath: /domain-home
+      name: weblogic-domain-home-storage-volume
+    - mountPath: /domain-logs
+      name: weblogic-domain-logs-storage-volume
+    - mountPath: /weblogic-operator/secrets
+      name: weblogic-credentials-volume
+      readOnly: true
+    - mountPath: /weblogic-operator/scripts
+      name: weblogic-domain-cm-volume
+      readOnly: true
+  hostname: poc-duid-as
+  volumes:
+  - name: weblogic-domain-home-storage-volume
+    persistentVolumeClaim:
+      claimName: poc-duid-weblogic-domain-home-pvc
+  - name: weblogic-domain-logs-storage-volume
+    persistentVolumeClaim:
+      claimName: poc-duid-weblogic-domain-logs-pvc
+  - name: weblogic-credentials-volume
+    secret:
+      defaultMode: 420
+      secretName: poc-d-creds
+  - configMap:
+      defaultMode: 365
+      name: weblogic-domain-cm
+    name: weblogic-domain-cm-volume

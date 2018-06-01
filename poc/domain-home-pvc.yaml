@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    weblogic.domainName: poc-domain
+    weblogic.domainUID: poc-duid
+    weblogic.resourceVersion: domain-v1
+  name: poc-duid-weblogic-domain-home-pvc
+  namespace: poc-d-ns
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: poc-duid-weblogic-domain-home-storage-class
+  volumeName: poc-duid-weblogic-domain-home-pv

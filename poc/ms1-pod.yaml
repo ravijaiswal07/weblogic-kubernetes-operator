@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    prometheus.io/path: /wls-exporter/metrics
+    prometheus.io/port: "8001"
+    prometheus.io/scrape: "true"
+  labels:
+    weblogic.clusterName: cluster
+    weblogic.createdByOperator: "true"
+    weblogic.domainName: poc-domain
+    weblogic.domainUID: poc-duid
+    weblogic.resourceVersion: domain-v1
+    weblogic.serverName: ms1
+  name: poc-duid-ms1
+  namespace: poc-d-ns
+spec:
+  containers:
+  - command:
+    - /weblogic-operator/scripts/startServer.sh
+    - poc-duid
+    - ms1
+    - poc-domain
+    - as
+    - "7100"
+    env:
+    - name: JAVA_OPTIONS
+      value: -Dweblogic.StdoutDebugEnabled=false
+    - name: USER_MEM_ARGS
+      value: '-Xms64m -Xmx256m '
+    - name: DOMAIN_NAME
+      value: poc-domain
+    - name: DOMAIN_HOME
+      value: /domain-home
+    - name: ADMIN_NAME
+      value: as
+    - name: ADMIN_PORT
+      value: "7100"
+    - name: SERVER_NAME
+      value: ms1
+    - name: ADMIN_USERNAME
+    - name: ADMIN_PASSWORD
+    image: store/oracle/weblogic:12.2.1.3
+    imagePullPolicy: IfNotPresent
+    lifecycle:
+      preStop:
+        exec:
+          command:
+          - /weblogic-operator/scripts/stopServer.sh
+          - poc-duid
+          - ms1
+          - poc-domain
+    livenessProbe:
+      exec:
+        command:
+        - /weblogic-operator/scripts/livenessProbe.sh
+        - poc-domain
+        - ms1
+      failureThreshold: 1
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+    name: weblogic-server
+    ports:
+    - containerPort: 8001
+      protocol: TCP
+    readinessProbe:
+      exec:
+        command:
+        - /weblogic-operator/scripts/readinessProbe.sh
+        - poc-domain
+        - ms1
+      failureThreshold: 1
+      initialDelaySeconds: 2
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 5
+    volumeMounts:
+    - mountPath: /domain-home
+      name: weblogic-domain-home-storage-volume
+    - mountPath: /domain-logs
+      name: weblogic-domain-logs-storage-volume
+    - mountPath: /weblogic-operator/secrets
+      name: weblogic-credentials-volume
+      readOnly: true
+    - mountPath: /weblogic-operator/scripts
+      name: weblogic-domain-cm-volume
+      readOnly: true
+  volumes:
+  - name: weblogic-domain-home-storage-volume
+    persistentVolumeClaim:
+      claimName: poc-duid-weblogic-domain-home-pvc
+  - name: weblogic-domain-logs-storage-volume
+    persistentVolumeClaim:
+      claimName: poc-duid-weblogic-domain-logs-pvc
+  - name: weblogic-credentials-volume
+    secret:
+      defaultMode: 420
+      secretName: poc-d-creds
+  - configMap:
+      defaultMode: 365
+      name: weblogic-domain-cm
+    name: weblogic-domain-cm-volume

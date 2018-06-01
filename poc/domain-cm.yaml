@@ -1,0 +1,336 @@
+apiVersion: v1
+data:
+  livenessProbe.sh: |
+    #!/bin/bash
+    # Kubernetes periodically calls this liveness probe script to determine whether
+    # the pod should be restarted. The script checks a WebLogic Server state file which
+    # is updated by the node manager.
+    DN=${DOMAIN_NAME:-$1}
+    SN=${SERVER_NAME:-$2}
+    STATEFILE=/domain-home/servers/${SN}/data/nodemanager/${SN}.state
+    if [ `jps -l | grep -c " weblogic.NodeManager"` -eq 0 ]; then
+      echo "Error: WebLogic NodeManager process not found."
+      exit 1
+    fi
+    if [ -f ${STATEFILE} ] && [ `grep -c "FAILED_NOT_RESTARTABLE" ${STATEFILE}` -eq 1 ]; then
+      echo "Error: WebLogic Server state is FAILED_NOT_RESTARTABLE."
+      exit 1
+    fi
+    exit 0
+  readState.sh: |
+    #!/bin/bash
+
+    # Reads the current state of a server. The script checks a WebLogic Server state
+    # file which is updated by the node manager.
+
+    DN=${DOMAIN_NAME:-$1}
+    SN=${SERVER_NAME:-$2}
+    STATEFILE=/domain-home/servers/${SN}/data/nodemanager/${SN}.state
+
+    if [ `jps -l | grep -c " weblogic.NodeManager"` -eq 0 ]; then
+      echo "Error: WebLogic NodeManager process not found."
+      exit 1
+    fi
+
+    if [ ! -f ${STATEFILE} ]; then
+      echo "Error: WebLogic Server state file not found."
+      exit 2
+    fi
+
+    cat ${STATEFILE} | cut -f 1 -d ':'
+    exit 0
+  readinessProbe.sh: |
+    #!/bin/bash
+
+    # Kubernetes periodically calls this readiness probe script to determine whether
+    # the pod should be included in load balancing. The script checks a WebLogic Server state
+    # file which is updated by the node manager.
+
+    DN=${DOMAIN_NAME:-$1}
+    SN=${SERVER_NAME:-$2}
+    STATEFILE=/domain-home/servers/${SN}/data/nodemanager/${SN}.state
+
+    if [ `jps -l | grep -c " weblogic.NodeManager"` -eq 0 ]; then
+      echo "Error: WebLogic NodeManager process not found."
+      exit 1
+    fi
+
+    if [ ! -f ${STATEFILE} ]; then
+      echo "Error: WebLogic Server state file not found."
+      exit 2
+    fi
+
+    state=$(cat ${STATEFILE} | cut -f 1 -d ':')
+    if [ "$state" != "RUNNING" ]; then
+      echo "Not ready: WebLogic Server state: ${state}"
+      exit 3
+    fi
+    exit 0
+  start-server.py: |+
+    import sys;
+    #
+    # +++ Start of common code for reading domain secrets
+
+    # Read username secret
+    file = open('/weblogic-operator/secrets/username', 'r')
+    admin_username = file.read()
+    file.close()
+    print('admin_username=' + admin_username)
+
+    # Read password secret
+    file = open('/weblogic-operator/secrets/password', 'r')
+    admin_password = file.read()
+    file.close()
+    print('admin_password=' + admin_password)
+
+    # +++ End of common code for reading domain secrets
+    #
+    domain_uid = sys.argv[1]
+    server_name = sys.argv[2]
+    domain_name = sys.argv[3]
+    if (len(sys.argv) == 5):
+      admin_server_url = sys.argv[4]
+    else:
+      admin_server_url = None
+
+    domain_path='/domain-home'
+
+    print 'admin username is %s' % admin_username
+    print 'admin password is %s' % admin_password
+    print 'domain path is %s' % domain_path
+    print 'server name is %s' % server_name
+    print 'admin server url is %s' % admin_server_url
+
+    # Encrypt the admin username and password
+    adminUsernameEncrypted=encrypt(admin_username, domain_path)
+    adminPasswordEncrypted=encrypt(admin_password, domain_path)
+
+    print 'Create boot.properties files for this server'
+
+    # Define the folder path
+    secdir='%s/servers/%s/security' % (domain_path, server_name)
+
+    # Create the security folder (if it does not already exist)
+    try:
+      os.makedirs(secdir)
+    except OSError:
+      if not os.path.isdir(secdir):
+        raise
+
+    print 'writing boot.properties to %s/servers/%s/security/boot.properties' % (domain_path, server_name)
+
+    bpFile=open('%s/servers/%s/security/boot.properties' % (domain_path, server_name), 'w+')
+    # bpFile.write("username=%s\n" % adminUsernameEncrypted)
+    # bpFile.write("password=%s\n" % adminPasswordEncrypted)
+    bpFile.write("username=%s\n" % admin_username)
+    bpFile.write("password=%s\n" % admin_password)
+    bpFile.close()
+
+    service_name = domain_uid + "-" + server_name
+
+    # Connect to nodemanager and start server
+    try:
+      nmConnect(admin_username, admin_password, service_name,  '5556', domain_name, domain_path, 'plain')
+      nmStart(server_name)
+      nmDisconnect()
+    except WLSTException, e:
+      nmDisconnect()
+      print e
+
+    # Exit WLST
+    exit()
+
+  startServer.sh: |+
+    #!/bin/bash
+
+    domain_uid=$1
+    server_name=$2
+    domain_name=$3
+    as_name=$4
+    as_port=$5
+    as_hostname=$1-$4
+
+    echo "debug arguments are $1 $2 $3 $4 $5"
+
+    nmProp="/u01/nodemanager/nodemanager.properties"
+
+    # TODO: parameterize shared home and domain name
+    export DOMAIN_HOME=/domain-home
+
+    #
+    # Create a folder
+    # $1 - path of folder to create
+    function createFolder {
+      mkdir -m 777 -p $1
+      if [ ! -d $1 ]; then
+        fail "Unable to create folder $1"
+      fi
+    }
+
+    # Function to create server specific scripts and properties (e.g startup.properties, etc)
+    # $1 - Domain UID
+    # $2 - Server Name
+    # $3 - Domain Name
+    # $4 - Admin Server Hostname (only passed for managed servers)
+    # $5 - Admin Server port (only passed for managed servers)
+    function createServerScriptsProperties() {
+
+      # Create nodemanager home for the server
+      srvr_nmdir=/u01/nodemanager
+      createFolder ${srvr_nmdir}
+      cp /domain-home/nodemanager/nodemanager.domains ${srvr_nmdir}
+      cp /domain-home/bin/startNodeManager.sh ${srvr_nmdir}
+
+      # Edit the start nodemanager script to use the home for the server
+      sed -i -e "s:/domain-home/nodemanager:/u01/nodemanager:g" ${srvr_nmdir}/startNodeManager.sh
+
+      # Create startup.properties file
+      datadir=${DOMAIN_HOME}/servers/$2/data/nodemanager
+      nmdir=${DOMAIN_HOME}/nodemgr_home
+      stateFile=${datadir}/$2.state
+      startProp=${datadir}/startup.properties
+      if [ -f "$startProp" ]; then
+        echo "startup.properties already exists"
+        return 0
+      fi
+
+      createFolder ${datadir}
+      echo "# Server startup properties" > ${startProp}
+      echo "AutoRestart=true" >> ${startProp}
+      if [ -n "$4" ]; then
+        echo "AdminURL=http\://$4\:$5" >> ${startProp}
+      fi
+      echo "RestartMax=2" >> ${startProp}
+      echo "RotateLogOnStartup=false" >> ${startProp}
+      echo "RotationType=bySize" >> ${startProp}
+      echo "RotationTimeStart=00\:00" >> ${startProp}
+      echo "RotatedFileCount=100" >> ${startProp}
+      echo "RestartDelaySeconds=0" >> ${startProp}
+      echo "FileSizeKB=5000" >> ${startProp}
+      echo "FileTimeSpanFactor=3600000" >> ${startProp}
+      echo "RestartInterval=3600" >> ${startProp}
+      echo "NumberOfFilesLimited=true" >> ${startProp}
+      echo "FileTimeSpan=24" >> ${startProp}
+      echo "NMHostName=$1-$2" >> ${startProp}
+    }
+
+    # Check for stale state file and remove if found"
+    if [ -f "$stateFile" ]; then
+      echo "Removing stale file $stateFile"
+      rm ${stateFile}
+    fi
+
+    # Create nodemanager home directory that is local to the k8s node
+    mkdir -p /u01/nodemanager
+    cp ${DOMAIN_HOME}/nodemanager/* /u01/nodemanager/
+
+    # Edit the nodemanager properties file to use the home for the server
+    sed -i -e "s:DomainsFile=.*:DomainsFile=/u01/nodemanager/nodemanager.domains:g" /u01/nodemanager/nodemanager.properties
+    sed -i -e "s:NodeManagerHome=.*:NodeManagerHome=/u01/nodemanager:g" /u01/nodemanager/nodemanager.properties
+    sed -i -e "s:ListenAddress=.*:ListenAddress=$1-$2:g" /u01/nodemanager/nodemanager.properties
+    sed -i -e "s:LogFile=.*:LogFile=/domain-logs/nodemanager-$2.log:g" /u01/nodemanager/nodemanager.properties
+
+    export JAVA_PROPERTIES="-DLogFile=/domain-logs/nodemanager-$server_name.log -DNodeManagerHome=/u01/nodemanager"
+    export NODEMGR_HOME="/u01/nodemanager"
+
+
+    # Create startup.properties
+    echo "Create startup.properties"
+    if [ -n "$4" ]; then
+      echo "this is managed server"
+      createServerScriptsProperties $domain_uid $server_name $domain_name $as_hostname $as_port
+    else
+      echo "this is admin server"
+      createServerScriptsProperties $domain_uid $server_name $domain_name
+    fi
+
+    echo "Start the nodemanager"
+    . ${NODEMGR_HOME}/startNodeManager.sh &
+
+    echo "Allow the nodemanager some time to start before attempting to connect"
+    sleep 15
+    echo "Finished waiting for the nodemanager to start"
+
+    echo "Update JVM arguments"
+    echo "Arguments=${USER_MEM_ARGS} -XX\:+UnlockExperimentalVMOptions -XX\:+UseCGroupMemoryLimitForHeap ${JAVA_OPTIONS}" >> ${startProp}
+
+    admin_server_t3_url=
+    if [ -n "$4" ]; then
+      admin_server_t3_url=t3://$domain_uid-$as_name:$as_port
+    fi
+
+    echo "Start the server"
+    wlst.sh -skipWLSModuleScanning /weblogic-operator/scripts/start-server.py $domain_uid $server_name $domain_name $admin_server_t3_url
+
+    cat ${DOMAIN_HOME}/servers/${2}/security/boot.properties
+
+    echo "Wait indefinitely so that the Kubernetes pod does not exit and try to restart"
+    while true; do sleep 60; done
+
+  stop-server.py: |+
+    #
+    # +++ Start of common code for reading domain secrets
+
+    # Read username secret
+    file = open('/weblogic-operator/secrets/username', 'r')
+    admin_username = file.read()
+    file.close()
+
+    # Read password secret
+    file = open('/weblogic-operator/secrets/password', 'r')
+    admin_password = file.read()
+    file.close()
+
+    # +++ End of common code for reading domain secrets
+    #
+    domain_uid = sys.argv[1]
+    server_name = sys.argv[2]
+    domain_name = sys.argv[3]
+
+    service_name = domain_uid + "-" + server_name
+    domain_path='/domain-home'
+
+    # Connect to nodemanager and stop server
+    try:
+      nmConnect(admin_username, admin_password, service_name,  '5556', domain_name, domain_path, 'plain')
+    except:
+      print('Failed to connect to the NodeManager')
+      exit(exitcode=2)
+
+    # Kill the server
+    try:
+      nmKill(server_name)
+    except:
+      print('Connected to the NodeManager, but failed to stop the server')
+      exit(exitcode=2)
+
+    # Exit WLST
+    nmDisconnect()
+    exit()
+
+  stopServer.sh: |+
+    #!/bin/bash
+
+    echo "Stop the server"
+
+    wlst.sh -skipWLSModuleScanning /weblogic-operator/scripts/stop-server.py $1 $2 $3
+
+    # Return status of 2 means failed to stop a server through the NodeManager.
+    # Look to see if there is a server process that can be killed.
+    if [ $? -eq 2 ]; then
+      pid=$(jps -v | grep '[D]weblogic.Name=$2' | awk '{print $1}')
+      if [ ! -z $pid ]; then
+        echo "Killing the server process $pid"
+        kill -15 $pid
+      fi
+    fi
+
+
+kind: ConfigMap
+metadata:
+  labels:
+    weblogic.createdByOperator: "true"
+    weblogic.operatorName: poc-o-ns
+    weblogic.resourceVersion: domain-v1
+  name: weblogic-domain-cm
+  namespace: poc-d-ns

@@ -1,0 +1,73 @@
+setup
+
+  doublesync src122130 and devenv.sh
+    (since we're going to use WLST to create the domain)
+
+  mkdir -m 777 -p /scratch/k8s-dir
+    (i.e. the parent directory for persistent volumes)
+
+poc source files
+
+  domain-cm.yaml
+    - create the config map for the domain that has the start/stop/probe scripts
+
+  domain-home-pv.yaml & domain-home-pvc.yaml
+    - create a pv for the domain home (stored under /scratch/k8s-dir/poc_duid/domain-home)
+    - we're not going to need these once the domain home moves into the image
+
+  domain-logs-pv.yaml & domain-logs-pvc.yaml
+    - create a pv for the domain logs (stored under /scratch/k8s-dir/poc_duid/domain-logs)
+    - we're still going to need these aonce the domain home moves into the image
+
+  as-pod.yaml, ms1-pod.yaml, ms2-pod.yaml
+    - create the server pods
+
+  pocenv.sh
+    - all the names of the wls and k8s resources and persistent volume dirs live here
+    - the yaml files MUST and env.sh MUST match
+      (i.e. I didn't write a scripts to customize the yaml files to match env.sh)
+
+  create-domain.sh
+    runs:
+
+      create-domain-home.sh
+        uses WLST to create a domain directory, stored under ./poc-domain
+
+      create-domain-pvs.sh
+        creates the on-disk directories for the domain home and logs:
+          /scratch/k8s-dir/poc_duid/domain-logs is an empty dir
+          copies ./poc-domain to /scratch/k8s-dir/poc_duid/domain-home
+
+      create-domain-resources.sh
+        create a namespace for the domain (poc-d-ns)
+        creates a secret w/ the domain admin credentials
+        loads the yaml files to create the domain config map and the domain home and logs pvs & pvcs
+        should be enhanced to wait for them to complete
+
+x  delete-domain.sh
+x    runs:
+
+      delete-domain-resources.sh
+        removes the domain's namespace and pvs
+        tbd - returns immediately, need to wait before continuing on to the next step!
+
+      delete-domain-pvs.sh
+        removes the on-disk directories for the domain's volumes: /scratch/k8s-dir/poc_duid
+
+  start-server.sh <servername> (e.g. as, ms1 or ms2)
+    loads the yaml file to create the pod for the server and returns immediately
+
+  server-log.sh <servername>
+    print's the server's log to stdout
+
+  server-nm-log.sh <servername>
+    print's the nodemanager's log for that server to stdout
+
+  server-nm-state.sh <servername>
+    print the nodemanager's state file for that server
+
+  server-pod-log.sh <servername>
+    print the log for that server's pod
+
+  server-pod-state.sh <servername>
+    print the k8s status of the pod
