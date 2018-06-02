@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+  labels:
+    weblogic.createdByOperator: "true"
+    weblogic.domainName: poc-domain
+    weblogic.domainUID: poc-duid
+    weblogic.resourceVersion: domain-v1
+    weblogic.serverName: as
+  name: poc-duid-as
+  namespace: poc-d-ns
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - nodePort: 30901
+    port: 7100
+    protocol: TCP
+    targetPort: 7100
+  publishNotReadyAddresses: true
+  selector:
+    weblogic.createdByOperator: "true"
+    weblogic.domainUID: poc-duid
+    weblogic.serverName: as
+  type: NodePort

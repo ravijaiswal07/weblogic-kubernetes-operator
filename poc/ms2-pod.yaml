@@ -3,7 +3,7 @@ kind: Pod
 metadata:
   annotations:
     prometheus.io/path: /wls-exporter/metrics
-    prometheus.io/port: "8001"
+    prometheus.io/port: "8100"
     prometheus.io/scrape: "true"
   labels:
     weblogic.clusterName: cluster
@@ -63,7 +63,7 @@ spec:
       timeoutSeconds: 5
     name: weblogic-server
     ports:
-    - containerPort: 8001
+    - containerPort: 8100
       protocol: TCP
     readinessProbe:
       exec:

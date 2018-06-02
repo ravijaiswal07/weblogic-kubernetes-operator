@@ -6,6 +6,13 @@ setup
   mkdir -m 777 -p /scratch/k8s-dir
     (i.e. the parent directory for persistent volumes)
 
+  make sure to get rid your old setup:
+  (I had problems getting stuff to run until I got rid of this stuff)
+    operator and domain namespaces
+    persistent volumes
+    cluster roles & cluster role bindings
+    maybe /scratch/k8s_dir
+
 poc source files
 
   domain-cm.yaml
@@ -21,6 +28,14 @@ poc source files
 
   as-pod.yaml, ms1-pod.yaml, ms2-pod.yaml
     - create the server pods
+
+  as-service.yaml, ms1-service.yaml, ms2-service.yaml
+    - create the server services
+
+  as-t3-service.yaml
+    - create the admin server t3 channel service (haven't tried it yet)
+
+  todo - all the load balancer yaml files
 
   pocenv.sh
     - all the names of the wls and k8s resources and persistent volume dirs live here
@@ -44,7 +59,7 @@ poc source files
         loads the yaml files to create the domain config map and the domain home and logs pvs & pvcs
         should be enhanced to wait for them to complete
 
-x  delete-domain.sh
+x  delete-domain.sh - don't run this - run these instead:
 x    runs:
 
       delete-domain-resources.sh
@@ -55,7 +70,7 @@ x    runs:
         removes the on-disk directories for the domain's volumes: /scratch/k8s-dir/poc_duid
 
   start-server.sh <servername> (e.g. as, ms1 or ms2)
-    loads the yaml file to create the pod for the server and returns immediately
+    loads the yaml files to create the pod and service for the server and returns immediately
 
   server-log.sh <servername>
     print's the server's log to stdout
