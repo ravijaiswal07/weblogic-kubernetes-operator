@@ -17,9 +17,6 @@ spec:
   containers:
   - command:
     - /weblogic-operator/scripts/startServer.sh
-    - poc-duid
-    - as
-    - poc-domain
     env:
     - name: JAVA_OPTIONS
       value: -Dweblogic.StdoutDebugEnabled=false
@@ -27,10 +24,14 @@ spec:
       value: '-Xms64m -Xmx256m '
     - name: INTERNAL_OPERATOR_CERT
       value: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR0RENDQXB5Z0F3SUJBZ0lFZUZLY3NEQU5CZ2txaGtpRzl3MEJBUXNGQURBY01Sb3dHQVlEVlFRREV4RjMNClpXSnNiMmRwWXkxdmNHVnlZWFJ2Y2pBZUZ3MHhPREExTXpFeE5UUXpNREphRncweU9EQTFNamd4TlRRek1ESmENCk1Cd3hHakFZQmdOVkJBTVRFWGRsWW14dloybGpMVzl3WlhKaGRHOXlNSUlCSWpBTkJna3Foa2lHOXcwQkFRRUYNCkFBT0NBUThBTUlJQkNnS0NBUUVBd2podjMyeU5RSjZ4djZvbzZDUXVYVU5JQ1VFUTh0QjdvQVlHYTMzKzFUMlkNCk1JSjFrS0ZqY3JNUTVHaUtrODB1dFJEcHFodVdGUEIzaWVXSGtGTURmcDlJWCsxMkZ2QnlOM0JldXlmOTR5Y3oNCmFqcXNaUFQ2REpDK2lNTnBseElQRlNFd2t5SWl4eUxSdStOQ0ZBaHRyaEtzSDlLRXJzWGoyVWkwRWlLZWovWVUNCmFBdlBpWDQrWmE3Vm5qa0dYRUV4R2hNSnQ2cGErdGlzUjhNVXVuUnpTelBRQjhQUmhFTTlLbDRVQ1J0LzJjTzMNCndEeHhrREUxditKaHlaaWZ0VVRFaW4vZTByK01MTUxSZVB2YlNLbkEyQSsyU1BwYmhvZEtDYnNwUE1yenhtZVgNClBSd2UwRzl4d096SDR5UTBSZ09hQ2J3R1hRTjBzWE5VeU01L2I4N2V3d0lEQVFBQm80SDlNSUg2TUFzR0ExVWQNCkR3UUVBd0lEK0RDQnl3WURWUjBSQklIRE1JSEFnaDVwYm5SbGNtNWhiQzEzWldKc2IyZHBZeTF2Y0dWeVlYUnYNCmNpMXpkbU9DTEdsdWRHVnlibUZzTFhkbFlteHZaMmxqTFc5d1pYSmhkRzl5TFhOMll5NTBiVzl5WldGMUxXOXcNCkxXNXpnakJwYm5SbGNtNWhiQzEzWldKc2IyZHBZeTF2Y0dWeVlYUnZjaTF6ZG1NdWRHMXZjbVZoZFMxdmNDMXUNCmN5NXpkbU9DUG1sdWRHVnlibUZzTFhkbFlteHZaMmxqTFc5d1pYSmhkRzl5TFhOMll5NTBiVzl5WldGMUxXOXcNCkxXNXpMbk4yWXk1amJIVnpkR1Z5TG14dlkyRnNNQjBHQTFVZERnUVdCQlJoTFc1V243SlpKV3JRT2U1OHA0UWsNCitqMSs1ekFOQmdrcWhraUc5dzBCQVFzRkFBT0NBUUVBZnZzRFFPT3FkdWF6cVRLdDhxdkFHM2hucS9nVzhGcmUNCjFnOHhDSDhxK3hEMG03ekJPK1gwN09GelNJWlpLTS9mZVh0b2FwWW1aYnQwWTlmK3VEamNuVStFdFhoMUo2NS8NCjJWT1NiMVdSSnVhOFlRZ2xRaXF0ZmcyN2ZldEphSFEyYWZHN3ZnaS8xWXBsalpTQklTQ0xmTzFPVFY1aEc3SCsNCnZzU045ZGFhaFNlTWRmSEVrNkg0YUN2OHdNSTFadFZPUTAydlgzbnM2VUxXeGNiQ1pVY2VzNG9oNmxEenczMTgNCmZOMi83aFpyLzBHMVprdnN5U3ZhMHQxdFhHZWxkNFRFbWM2cWdsS2N5OFRnenV0ditvODVMTzhCT1QrL0ZvRSsNClk3NWtKczY3V3pWcjd1TXhsYnNsK3FSeE43RnQzUFQrNEVKNXJzdUlOZU5QU3FXTXJUL2d5Zz09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    - name: DOMAIN_UID
+      value: poc-duid
     - name: DOMAIN_NAME
       value: poc-domain
     - name: DOMAIN_HOME
       value: /domain-home
+    - name: DOMAIN_LOGS
+      value: /domain-logs
     - name: ADMIN_NAME
       value: as
     - name: ADMIN_PORT
@@ -46,15 +47,10 @@ spec:
         exec:
           command:
           - /weblogic-operator/scripts/stopServer.sh
-          - poc-duid
-          - as
-          - poc-domain
     livenessProbe:
       exec:
         command:
         - /weblogic-operator/scripts/livenessProbe.sh
-        - poc-domain
-        - as
       failureThreshold: 1
       initialDelaySeconds: 10
       periodSeconds: 10
@@ -68,8 +64,6 @@ spec:
       exec:
         command:
         - /weblogic-operator/scripts/readinessProbe.sh
-        - poc-domain
-        - as
       failureThreshold: 1
       initialDelaySeconds: 2
       periodSeconds: 5

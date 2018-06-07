@@ -3,4 +3,4 @@
 . pocenv.sh
 set -x
 
-rm -r ${DOMAIN_PVS_DIR}
+rm -rf ${DOMAIN_PVS_DIR}

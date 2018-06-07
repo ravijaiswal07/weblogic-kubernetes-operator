@@ -18,20 +18,19 @@ spec:
   containers:
   - command:
     - /weblogic-operator/scripts/startServer.sh
-    - poc-duid
-    - ms2
-    - poc-domain
-    - as
-    - "7100"
     env:
     - name: JAVA_OPTIONS
       value: -Dweblogic.StdoutDebugEnabled=false
     - name: USER_MEM_ARGS
       value: '-Xms64m -Xmx256m '
+    - name: DOMAIN_UID
+      value: poc-duid
     - name: DOMAIN_NAME
       value: poc-domain
     - name: DOMAIN_HOME
       value: /domain-home
+    - name: DOMAIN_LOGS
+      value: /domain-logs
     - name: ADMIN_NAME
       value: as
     - name: ADMIN_PORT
@@ -47,15 +46,9 @@ spec:
         exec:
           command:
           - /weblogic-operator/scripts/stopServer.sh
-          - poc-duid
-          - ms2
-          - poc-domain
     livenessProbe:
       exec:
         command:
-        - /weblogic-operator/scripts/livenessProbe.sh
-        - poc-domain
-        - ms2
       failureThreshold: 1
       initialDelaySeconds: 10
       periodSeconds: 10
@@ -69,8 +62,6 @@ spec:
       exec:
         command:
         - /weblogic-operator/scripts/readinessProbe.sh
-        - poc-domain
-        - ms2
       failureThreshold: 1
       initialDelaySeconds: 2
       periodSeconds: 5
