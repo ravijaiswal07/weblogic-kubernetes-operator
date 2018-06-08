@@ -33,38 +33,21 @@ loadTemplates()
 cd('/')
 cmo.setName(domain_name)
 setOption('DomainName', domain_name)
-# TBD - remove from here and move to the operator generated situational config file:
-# log=create(domain_name, 'Log')
-# log.setFileName(logs_dir + '/' + domain_name + '.log')
 
 cd('/Security/' + domain_name + '/User/weblogic')
 cmo.setName(admin_username)
 cmo.setPassword(admin_password)
 
-# TBD - everything seems to work without setting the domain's nodemanager creds.
-# do they default to the domain's creds?
-#cd('/SecurityConfiguration/base_domain')
-#cmo.setNodeManagerUsername(admin_username)
-#cmo.setNodeManagerPasswordEncrypted(admin_password)
-
 # configure the admin server
 cd('/Servers/AdminServer')
 cmo.setName(admin_server_name)
 cmo.setListenPort(admin_server_port)
-# TBD - remove from here and move to the operator generated situational config file:
-cmo.setListenAddress(domain_uid + '-' + admin_server_name)
 
-# TBD - remove from here and move to the operator generated situational config file:
-#log=create(admin_server_name, 'Log')
-#log.setFileName(logs_dir + '/' + admin_server_name + '.log')
-
+# TBD - who should configure this? i.e. should it move to sit config?
 nap=create('T3Channel', 'NetworkAccessPoint')
 nap.setPublicPort(t3_channel_port)
 nap.setPublicAddress(t3_public_address)
 nap.setListenPort(t3_channel_port)
-
-# TBD - remove from here and move to the operator generated situational config file:
-nap.setListenAddress(domain_uid + '-' + admin_server_name)
 
 # create the cluster
 cd('/')
@@ -73,11 +56,10 @@ cl=create(cluster_name, 'Cluster')
 for index in range(1, number_of_ms+1):
   name = managed_server_base_name + str(index)
   ms=create(name, 'Server')
-  ms.setListenAddress(domain_uid + '-' + name)
+  ms.setCluster(cl)
   ms.setListenPort(managed_server_port)
   ms.setNumOfRetriesBeforeMSIMode(0)
   ms.setRetryIntervalBeforeMSIMode(1)
-  ms.setCluster(cl)
 
 #template_name = cluster_name + "-template"
 #st=create(template_name, 'ServerTemplate')
@@ -86,11 +68,6 @@ for index in range(1, number_of_ms+1):
 
 ## TBD - remove from here and move to operator generated situational config file:
 #st.setListenAddress(domain_uid + '-' + managed_server_base_name + '\${id}')
-
-## TBD - remove from here and move to the operator generated situational config file:
-#cd('/ServerTemplates/' + template_name)
-#log=create(template_name, 'Log')
-#log.setFileName(logs_dir + '/' + managed_server_base_name + '\${id}.log')
 
 #cd('/Clusters/' + cluster_name)
 #ds=create(cluster_name, 'DynamicServers')

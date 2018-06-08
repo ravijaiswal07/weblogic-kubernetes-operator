@@ -155,12 +155,13 @@ def customizeServer(os, domain_uid, admin_server_name, server):
   writeln(os, "    <d:log f:combine-mode=\"replace\">")
   writeln(os, "      <d:file-name>/domain-logs/" + name + ".log</d:file-name>")
   writeln(os, "    </d:log>")
-  #writeln(os, "    <d:listen-address>" + domain_uid + "-" + name + "</d:listen-address>")
-  #if name == admin_server_name:
-  #  writeln(os, "    <d:network-access-point>")
-  #  writeln(os, "      <d:name>T3Channel</d:name>") # TBD - needs to be discovered!
-  #  writeln(os, "      <d:listen-address> f:combine-mode=\"replace\"" + domain_uid + "-" + name + "</d:listen-address>")
-  #  writeln(os, "    </d:network-access-point>")
+  writeln(os, "    <d:listen-address f:combine-mode=\"replace\">" + domain_uid + "-" + name + "</d:listen-address>")
+  if name == admin_server_name:
+    # TBD - find the t3 channel, and if it exists, customize its listen address
+    writeln(os, "    <d:network-access-point>")
+    writeln(os, "      <d:name>T3Channel</d:name>") # TBD - needs to be discovered, v.s. depending on a fixed name
+    writeln(os, "      <d:listen-address f:combine-mode=\"replace\">" + domain_uid + "-" + name + "</d:listen-address>")
+    writeln(os, "    </d:network-access-point>")
   writeln(os, "  </d:server>")
 
 def customizeServerTemplate(os, domain_uid, template):
