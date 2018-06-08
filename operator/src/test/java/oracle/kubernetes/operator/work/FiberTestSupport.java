@@ -2,6 +2,7 @@ package oracle.kubernetes.operator.work;
 
 import static com.meterware.simplestub.Stub.createStrictStub;
 import static com.meterware.simplestub.Stub.createStub;
+import static oracle.kubernetes.operator.ProcessingConstants.DOMAIN_COMPONENT_NAME;
 
 import java.util.ArrayDeque;
 import java.util.Collections;
@@ -15,6 +16,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import oracle.kubernetes.operator.helpers.DomainPresenceInfo;
 
 /**
  * Support for writing unit tests that use a fiber to run steps. Such tests can call #runStep to
@@ -26,6 +28,7 @@ import javax.annotation.Nullable;
  * <p>The components in the packet used by the embedded fiber may be access via
  * #getPacketComponents.
  */
+@SuppressWarnings("UnusedReturnValue")
 public class FiberTestSupport {
   private CompletionCallbackStub completionCallback = new CompletionCallbackStub();
   private ScheduledExecutorStub schedule = ScheduledExecutorStub.create();
@@ -33,6 +36,11 @@ public class FiberTestSupport {
   private Engine engine = new Engine(schedule);
   private Fiber fiber = engine.createFiber();
   private Packet packet = new Packet();
+
+  /** Creates a single-threaded FiberGate instance. */
+  public FiberGate createFiberGateStub() {
+    return new FiberGate(engine);
+  }
 
   /**
    * Schedules a runnable to run immediately. In practice, it will run as soon as all previously
@@ -68,6 +76,21 @@ public class FiberTestSupport {
   /** Returns an unmodificable map of the components in the test packet. */
   public Map<String, Component> getPacketComponents() {
     return Collections.unmodifiableMap(packet.getComponents());
+  }
+
+  public FiberTestSupport addToPacket(String key, Object value) {
+    packet.put(key, value);
+    return this;
+  }
+
+  public FiberTestSupport removeFromPacket(String key) {
+    packet.put(key, null);
+    return this;
+  }
+
+  public FiberTestSupport addDomainPresenceInfo(DomainPresenceInfo info) {
+    packet.getComponents().put(DOMAIN_COMPONENT_NAME, Component.createFor(info));
+    return this;
   }
 
   /**
@@ -129,8 +152,7 @@ public class FiberTestSupport {
     }
 
     private void runNextRunnable() {
-      while (queue.peek() != null) {
-        current = queue.poll();
+      while (null != (current = queue.poll())) {
         current.run();
         current = null;
       }
