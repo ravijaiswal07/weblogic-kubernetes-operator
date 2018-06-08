@@ -13,4 +13,5 @@ kubectl apply -f domain-home-pv.yaml
 kubectl apply -f domain-home-pvc.yaml
 kubectl apply -f domain-logs-pv.yaml
 kubectl apply -f domain-logs-pvc.yaml
+kubectl apply -f domain-bindings-cm.yaml
 # TBD - wait for them to be created

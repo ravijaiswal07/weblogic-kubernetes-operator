@@ -68,28 +68,35 @@ spec:
       successThreshold: 1
       timeoutSeconds: 5
     volumeMounts:
-    - mountPath: /domain-home
-      name: weblogic-domain-home-storage-volume
-    - mountPath: /domain-logs
-      name: weblogic-domain-logs-storage-volume
-    - mountPath: /weblogic-operator/secrets
-      name: weblogic-credentials-volume
+    - name: weblogic-credentials-volume
+      mountPath: /weblogic-operator/secrets
       readOnly: true
-    - mountPath: /weblogic-operator/scripts
-      name: weblogic-domain-cm-volume
+    - name: weblogic-domain-cm-volume
+      mountPath: /weblogic-operator/scripts
       readOnly: true
+    - name: weblogic-domain-bindings-cm-volume
+      mountPath: /weblogic-operator/domain-bindings
+      readOnly: true
+    - name: weblogic-domain-logs-storage-volume
+      mountPath: /domain-logs
+    - name: weblogic-domain-home-storage-volume
+      mountPath: /domain-home
   volumes:
-  - name: weblogic-domain-home-storage-volume
-    persistentVolumeClaim:
-      claimName: poc-duid-weblogic-domain-home-pvc
-  - name: weblogic-domain-logs-storage-volume
-    persistentVolumeClaim:
-      claimName: poc-duid-weblogic-domain-logs-pvc
   - name: weblogic-credentials-volume
     secret:
       defaultMode: 420
       secretName: poc-d-creds
-  - configMap:
+  - name: weblogic-domain-cm-volume
+    configMap:
       defaultMode: 365
-      name: weblogic-domain-cm
-    name: weblogic-domain-cm-volume
+      name: weblogic-domain-cm 
+  - name: weblogic-domain-bindings-cm-volume
+    configMap:
+      defaultMode: 365
+      name: poc-duid-weblogic-domain-bindings-cm
+  - name: weblogic-domain-logs-storage-volume
+    persistentVolumeClaim:
+      claimName: poc-duid-weblogic-domain-logs-pvc
+  - name: weblogic-domain-home-storage-volume
+    persistentVolumeClaim:
+      claimName: poc-duid-weblogic-domain-home-pvc
