@@ -7,13 +7,12 @@ package oracle.kubernetes.operator.helpers;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import io.kubernetes.client.ApiException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import oracle.kubernetes.operator.calls.CallResponse;
 import oracle.kubernetes.operator.work.Engine;
 import oracle.kubernetes.operator.work.Fiber.CompletionCallback;
 import oracle.kubernetes.operator.work.NextAction;
@@ -45,7 +44,7 @@ public class CallBuilderTest {
     Packet p = new Packet();
 
     Semaphore signal = new Semaphore(0);
-    List<Throwable> throwables = Collections.synchronizedList(new ArrayList<Throwable>());
+    List<Throwable> throwables = Collections.synchronizedList(new ArrayList<>());
     p.put(THROW, throwables);
 
     engine
@@ -76,7 +75,7 @@ public class CallBuilderTest {
 
   public static class SetupStep extends Step {
 
-    public SetupStep(Step next) {
+    SetupStep(Step next) {
       super(next);
     }
 
@@ -95,23 +94,17 @@ public class CallBuilderTest {
                     @SuppressWarnings("unchecked")
                     @Override
                     public NextAction onFailure(
-                        Packet packet,
-                        ApiException e,
-                        int statusCode,
-                        Map<String, List<String>> responseHeaders) {
-                      if (e != null) {
-                        ((List<Throwable>) packet.get(THROW)).add(e);
+                        Packet packet, CallResponse<DomainList> callResponse) {
+                      if (callResponse.getE() != null) {
+                        ((List<Throwable>) packet.get(THROW)).add(callResponse.getE());
                       }
-                      return super.onFailure(packet, e, statusCode, responseHeaders);
+                      return super.onFailure(packet, callResponse);
                     }
 
                     @Override
                     public NextAction onSuccess(
-                        Packet packet,
-                        DomainList result,
-                        int statusCode,
-                        Map<String, List<String>> responseHeaders) {
-                      packet.put(KEY, result);
+                        Packet packet, CallResponse<DomainList> callResponse) {
+                      packet.put(KEY, callResponse.getResult());
                       return doNext(packet);
                     }
                   });
