@@ -235,6 +235,7 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod> {
                                 return super.onFailure(packet, e, statusCode, responseHeaders);
                               }
 
+                              @SuppressWarnings("deprecation")
                               @Override
                               public NextAction onSuccess(
                                   Packet packet,

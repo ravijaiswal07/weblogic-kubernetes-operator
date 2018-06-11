@@ -34,7 +34,7 @@ public class ServiceWatcherTest extends WatcherTestBase implements WatchListener
   }
 
   @Test
-  public void initialRequest_specifiesStartingResourceVersionAndLabelSelector() throws Exception {
+  public void initialRequest_specifiesStartingResourceVersionAndLabelSelector() {
     sendInitialRequest(INITIAL_RESOURCE_VERSION);
 
     assertThat(
@@ -59,14 +59,14 @@ public class ServiceWatcherTest extends WatcherTestBase implements WatchListener
   }
 
   @Test
-  public void whenServiceHasNoDomainUid_returnNull() throws Exception {
+  public void whenServiceHasNoDomainUid_returnNull() {
     V1Service service = new V1Service().metadata(new V1ObjectMeta());
 
     assertThat(ServiceWatcher.getServiceDomainUID(service), nullValue());
   }
 
   @Test
-  public void whenServiceHasDomainUid_returnIt() throws Exception {
+  public void whenServiceHasDomainUid_returnIt() {
     V1Service service =
         new V1Service()
             .metadata(new V1ObjectMeta().labels(ImmutableMap.of(DOMAINUID_LABEL, "domain1")));
@@ -75,14 +75,14 @@ public class ServiceWatcherTest extends WatcherTestBase implements WatchListener
   }
 
   @Test
-  public void whenServiceHasNoServerName_returnNull() throws Exception {
+  public void whenServiceHasNoServerName_returnNull() {
     V1Service service = new V1Service().metadata(new V1ObjectMeta());
 
     assertThat(ServiceWatcher.getServiceServerName(service), nullValue());
   }
 
   @Test
-  public void whenServiceHasServerName_returnIt() throws Exception {
+  public void whenServiceHasServerName_returnIt() {
     V1Service service =
         new V1Service()
             .metadata(new V1ObjectMeta().labels(ImmutableMap.of(SERVERNAME_LABEL, "myserver")));
@@ -91,14 +91,14 @@ public class ServiceWatcherTest extends WatcherTestBase implements WatchListener
   }
 
   @Test
-  public void whenServiceHasNoChannelName_returnNull() throws Exception {
+  public void whenServiceHasNoChannelName_returnNull() {
     V1Service service = new V1Service().metadata(new V1ObjectMeta());
 
     assertThat(ServiceWatcher.getServiceChannelName(service), nullValue());
   }
 
   @Test
-  public void whenServiceHasChannelName_returnIt() throws Exception {
+  public void whenServiceHasChannelName_returnIt() {
     V1Service service =
         new V1Service()
             .metadata(new V1ObjectMeta().labels(ImmutableMap.of(CHANNELNAME_LABEL, "channel1")));
