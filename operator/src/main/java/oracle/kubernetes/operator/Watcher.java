@@ -19,6 +19,7 @@ import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
 import oracle.kubernetes.operator.watcher.WatchListener;
+import oracle.kubernetes.operator.work.ThreadFactorySingleton;
 
 /**
  * This class handles the Watching interface and drives the watch support for a specific type of
@@ -26,28 +27,16 @@ import oracle.kubernetes.operator.watcher.WatchListener;
  *
  * @param <T> The type of the object to be watched.
  */
-abstract class Watcher<T> {
+public abstract class Watcher<T> {
   static final String HAS_NEXT_EXCEPTION_MESSAGE = "IO Exception during hasNext method.";
   private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
   private static final String IGNORED_RESOURCE_VERSION = "0";
 
+  private static final RunSupportFactory RUN_SUPPORT_FACTORY = new RunSupportFactoryImpl();
   private final AtomicBoolean isDraining = new AtomicBoolean(false);
   private String resourceVersion;
-  private AtomicBoolean stopping;
   private WatchListener<T> listener;
-  private Thread thread = null;
-
-  /**
-   * Constructs a watcher without specifying a listener. Needed when the listener is the watch
-   * subclass itself.
-   *
-   * @param resourceVersion the oldest version to return for this watch
-   * @param stopping an atomic boolean to watch to determine when to stop the watcher
-   */
-  Watcher(String resourceVersion, AtomicBoolean stopping) {
-    this.resourceVersion = resourceVersion;
-    this.stopping = stopping;
-  }
+  private RunSupport support;
 
   /**
    * Constructs a watcher with a separate listener.
@@ -57,33 +46,14 @@ abstract class Watcher<T> {
    * @param listener a listener to which to dispatch watch events
    */
   Watcher(String resourceVersion, AtomicBoolean stopping, WatchListener<T> listener) {
-    this(resourceVersion, stopping);
+    this.resourceVersion = resourceVersion;
     this.listener = listener;
-  }
-
-  /** Waits for this watcher's thread to exit. For unit testing only. */
-  void waitForExit() {
-    try {
-      if (thread != null) {
-        thread.join();
-      }
-    } catch (InterruptedException ignored) {
-    }
-  }
-
-  /**
-   * Sets the listener for watch events.
-   *
-   * @param listener the instance which should receive watch events
-   */
-  void setListener(WatchListener<T> listener) {
-    this.listener = listener;
+    this.support = RUN_SUPPORT_FACTORY.createRunSupport(stopping);
   }
 
   /** Kick off the watcher processing that runs in a separate thread. */
-  void start(ThreadFactory factory) {
-    thread = factory.newThread(this::doWatch);
-    thread.start();
+  void start() {
+    support.startWatching(this::doWatch);
   }
 
   private void doWatch() {
@@ -106,7 +76,7 @@ abstract class Watcher<T> {
   }
 
   protected boolean isStopping() {
-    return stopping.get();
+    return support.isStopping();
   }
 
   private void watchForEvents() {
@@ -195,5 +165,27 @@ abstract class Watcher<T> {
 
   private static boolean isNullOrEmptyString(String s) {
     return s == null || s.equals("");
+  }
+
+  static class RunSupportFactoryImpl implements RunSupportFactory {
+
+    @Override
+    public RunSupport createRunSupport(AtomicBoolean stopping) {
+      return new RunSupport() {
+        @Override
+        public boolean isStopping() {
+          return stopping.get();
+        }
+
+        @Override
+        public void startWatching(Runnable runnable) {
+          getThreadFactory().newThread(runnable).start();
+        }
+
+        ThreadFactory getThreadFactory() {
+          return ThreadFactorySingleton.getInstance();
+        }
+      };
+    }
   }
 }

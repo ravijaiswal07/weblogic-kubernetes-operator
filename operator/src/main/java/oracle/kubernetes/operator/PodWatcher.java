@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import oracle.kubernetes.operator.builders.WatchBuilder;
 import oracle.kubernetes.operator.builders.WatchI;
@@ -27,7 +26,6 @@ import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
 import oracle.kubernetes.operator.watcher.WatchListener;
-import oracle.kubernetes.operator.work.Container;
 import oracle.kubernetes.operator.work.ContainerResolver;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
@@ -47,7 +45,6 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod> {
   /**
    * Factory for PodWatcher
    *
-   * @param factory thread factory
    * @param ns Namespace
    * @param initialResourceVersion Initial resource version or empty string
    * @param listener Callback for watch events
@@ -55,13 +52,12 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod> {
    * @return Pod watcher for the namespace
    */
   public static PodWatcher create(
-      ThreadFactory factory,
       String ns,
       String initialResourceVersion,
       WatchListener<V1Pod> listener,
       AtomicBoolean isStopping) {
     PodWatcher watcher = new PodWatcher(ns, initialResourceVersion, listener, isStopping);
-    watcher.start(factory);
+    watcher.start();
     return watcher;
   }
 
@@ -70,8 +66,7 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod> {
       String initialResourceVersion,
       WatchListener<V1Pod> listener,
       AtomicBoolean isStopping) {
-    super(initialResourceVersion, isStopping);
-    setListener(this);
+    super(initialResourceVersion, isStopping, listener);
     this.ns = ns;
     this.listener = listener;
   }
@@ -92,7 +87,6 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod> {
         V1Pod pod = item.object;
         Boolean isReady = isReady(pod);
         String podName = pod.getMetadata().getName();
-        Container c = ContainerResolver.getInstance().getContainer();
         ServerKubernetesObjects sko = ServerKubernetesObjectsManager.lookup(podName);
         if (sko != null) {
           sko.getLastKnownStatus().set(isReady ? WebLogicConstants.RUNNING_STATE : null);

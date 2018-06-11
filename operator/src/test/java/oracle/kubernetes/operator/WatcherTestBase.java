@@ -59,6 +59,7 @@ public abstract class WatcherTestBase extends ThreadFactoryTestBase
   public void setUp() throws Exception {
     mementos.add(TestUtils.silenceOperatorLogger().ignoringLoggedExceptions(hasNextException));
     mementos.add(StubWatchFactory.install());
+    mementos.add(StubWatchFactory.installThreadlessRunSupport());
     StubWatchFactory.setListener(this);
   }
 
@@ -185,10 +186,5 @@ public abstract class WatcherTestBase extends ThreadFactoryTestBase
     return Integer.toString(resourceVersion++);
   }
 
-  private void createAndRunWatcher(String nameSpace, AtomicBoolean stopping, int resourceVersion) {
-    Watcher<?> watcher = createWatcher(nameSpace, stopping, resourceVersion);
-    watcher.waitForExit();
-  }
-
-  protected abstract Watcher<?> createWatcher(String ns, AtomicBoolean stopping, int rv);
+  protected abstract void createAndRunWatcher(String ns, AtomicBoolean stopping, int rv);
 }

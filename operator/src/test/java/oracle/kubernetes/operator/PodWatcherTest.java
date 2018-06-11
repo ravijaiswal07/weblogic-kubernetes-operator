@@ -69,8 +69,8 @@ public class PodWatcherTest extends WatcherTestBase implements WatchListener<V1P
   }
 
   @Override
-  protected PodWatcher createWatcher(String ns, AtomicBoolean stopping, int rv) {
-    return PodWatcher.create(this, ns, Integer.toString(rv), this, stopping);
+  protected void createAndRunWatcher(String ns, AtomicBoolean stopping, int rv) {
+    PodWatcher.create(ns, Integer.toString(rv), this, stopping);
   }
 
   @Test
@@ -169,7 +169,7 @@ public class PodWatcherTest extends WatcherTestBase implements WatchListener<V1P
   public void waitForReady_returnsAStep() {
     AtomicBoolean stopping = new AtomicBoolean(true);
     PodWatcher watcher =
-        PodWatcher.create(this, "ns", Integer.toString(INITIAL_RESOURCE_VERSION), this, stopping);
+        PodWatcher.create("ns", Integer.toString(INITIAL_RESOURCE_VERSION), this, stopping);
 
     assertThat(watcher.waitForReady(pod, null), Matchers.instanceOf(Step.class));
   }
@@ -178,7 +178,7 @@ public class PodWatcherTest extends WatcherTestBase implements WatchListener<V1P
   public void WhenWaitForReadyAppliedToReadyPod_performNextStep() {
     AtomicBoolean stopping = new AtomicBoolean(false);
     PodWatcher watcher =
-        PodWatcher.create(this, "ns", Integer.toString(INITIAL_RESOURCE_VERSION), this, stopping);
+        PodWatcher.create("ns", Integer.toString(INITIAL_RESOURCE_VERSION), this, stopping);
 
     makePodReady(pod);
 

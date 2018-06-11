@@ -41,7 +41,7 @@ public class DomainWatcherTest extends WatcherTestBase implements WatchListener<
   }
 
   @Override
-  protected DomainWatcher createWatcher(String ns, AtomicBoolean stopping, int rv) {
-    return DomainWatcher.create(this, ns, Integer.toString(rv), this, stopping);
+  protected void createAndRunWatcher(String ns, AtomicBoolean stopping, int rv) {
+    DomainWatcher.create(ns, Integer.toString(rv), this, stopping);
   }
 }

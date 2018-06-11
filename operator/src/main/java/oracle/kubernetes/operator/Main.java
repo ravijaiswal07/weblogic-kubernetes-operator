@@ -742,7 +742,6 @@ public class Main {
 
   private static EventWatcher createEventWatcher(String namespace, String initialResourceVersion) {
     return EventWatcher.create(
-        getThreadFactory(),
         namespace,
         READINESS_PROBE_FAILURE_EVENT_FILTER,
         initialResourceVersion,
@@ -783,8 +782,7 @@ public class Main {
   }
 
   private static PodWatcher createPodWatcher(String namespace, String initialResourceVersion) {
-    return PodWatcher.create(
-        getThreadFactory(), namespace, initialResourceVersion, Main::dispatchPodWatch, stopping);
+    return PodWatcher.create(namespace, initialResourceVersion, Main::dispatchPodWatch, stopping);
   }
 
   private static void dispatchPodWatch(Watch.Response<V1Pod> item) {
@@ -834,11 +832,7 @@ public class Main {
   private static ServiceWatcher createServiceWatcher(
       String namespace, String initialResourceVersion) {
     return ServiceWatcher.create(
-        getThreadFactory(),
-        namespace,
-        initialResourceVersion,
-        Main::dispatchServiceWatch,
-        stopping);
+        namespace, initialResourceVersion, Main::dispatchServiceWatch, stopping);
   }
 
   private static void dispatchServiceWatch(Watch.Response<V1Service> item) {
@@ -938,11 +932,7 @@ public class Main {
   private static IngressWatcher createIngressWatcher(
       String namespace, String initialResourceVersion) {
     return IngressWatcher.create(
-        getThreadFactory(),
-        namespace,
-        initialResourceVersion,
-        Main::dispatchIngressWatch,
-        stopping);
+        namespace, initialResourceVersion, Main::dispatchIngressWatch, stopping);
   }
 
   private static void dispatchIngressWatch(Watch.Response<V1beta1Ingress> item) {
@@ -1106,11 +1096,7 @@ public class Main {
     private static DomainWatcher createDomainWatcher(
         String namespace, String initialResourceVersion) {
       return DomainWatcher.create(
-          getThreadFactory(),
-          namespace,
-          initialResourceVersion,
-          Main::dispatchDomainWatch,
-          stopping);
+          namespace, initialResourceVersion, Main::dispatchDomainWatch, stopping);
     }
   }
 

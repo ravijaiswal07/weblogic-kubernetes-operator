@@ -20,7 +20,6 @@ import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import oracle.kubernetes.TestUtils;
 import oracle.kubernetes.operator.helpers.ClientPool;
@@ -139,9 +138,8 @@ public class AsyncRequestStepTest {
     }
 
     @Override
-    public NextAction onSuccess(
-        Packet packet, Integer result, int statusCode, Map<String, List<String>> responseHeaders) {
-      this.result = result;
+    public NextAction onSuccess(Packet packet, CallResponse<Integer> callResponse) {
+      result = callResponse.getResult();
       return null;
     }
   }

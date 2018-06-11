@@ -8,7 +8,6 @@ import io.kubernetes.client.ApiException;
 import io.kubernetes.client.models.V1ObjectMeta;
 import io.kubernetes.client.models.V1beta1Ingress;
 import java.util.Map;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import oracle.kubernetes.operator.builders.WatchBuilder;
 import oracle.kubernetes.operator.builders.WatchI;
@@ -22,13 +21,12 @@ public class IngressWatcher extends Watcher<V1beta1Ingress> {
   private final String ns;
 
   public static IngressWatcher create(
-      ThreadFactory factory,
       String ns,
       String initialResourceVersion,
       WatchListener<V1beta1Ingress> listener,
       AtomicBoolean isStopping) {
     IngressWatcher watcher = new IngressWatcher(ns, initialResourceVersion, listener, isStopping);
-    watcher.start(factory);
+    watcher.start();
     return watcher;
   }
 

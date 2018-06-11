@@ -87,7 +87,7 @@ public class IngressWatcherTest extends WatcherTestBase implements WatchListener
   }
 
   @Override
-  protected IngressWatcher createWatcher(String ns, AtomicBoolean stopping, int rv) {
-    return IngressWatcher.create(this, ns, Integer.toString(rv), this, stopping);
+  protected void createAndRunWatcher(String ns, AtomicBoolean stopping, int rv) {
+    IngressWatcher.create(ns, Integer.toString(rv), this, stopping);
   }
 }

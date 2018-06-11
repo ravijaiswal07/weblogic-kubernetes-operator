@@ -17,8 +17,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import javax.annotation.Nonnull;
+import oracle.kubernetes.operator.RunSupport;
+import oracle.kubernetes.operator.RunSupportFactory;
+import oracle.kubernetes.operator.Watcher;
 import oracle.kubernetes.operator.helpers.Pool;
 
 /**
@@ -35,6 +39,7 @@ public class StubWatchFactory implements WatchBuilder.WatchFactory {
 
   private List<List<Watch.Response<Object>>> calls = new ArrayList<>();
   private int numCloseCalls;
+  private boolean outOfData;
 
   public static Memento install() throws NoSuchFieldException {
     factory = new StubWatchFactory();
@@ -42,6 +47,20 @@ public class StubWatchFactory implements WatchBuilder.WatchFactory {
     exceptionOnNext = null;
 
     return StaticStubSupport.install(WatchBuilder.class, "FACTORY", factory);
+  }
+
+  /**
+   * Installs a test version of the RunSupportFactory that does not use threads, and automatically
+   * terminates processing when it runs out of preprogrammed calls.
+   *
+   * @throws NoSuchFieldException if the specified field name does not exist.
+   */
+  public static Memento installThreadlessRunSupport() throws NoSuchFieldException {
+    return StaticStubSupport.install(Watcher.class, "RUN_SUPPORT_FACTORY", newRunSupportFactory());
+  }
+
+  private static RunSupportFactory newRunSupportFactory() {
+    return factory.createRunSupportFactory();
   }
 
   /**
@@ -77,7 +96,7 @@ public class StubWatchFactory implements WatchBuilder.WatchFactory {
       Map<String, String> recordedParams = recordedParams(callParams);
       addRecordedParameters(recordedParams);
 
-      if (nothingToDo()) return new WatchStub<>(Collections.emptyList());
+      if (nothingToDo()) return createNullWatch();
       else if (exceptionOnNext == null) return new WatchStub<T>((List) calls.remove(0));
       else
         try {
@@ -89,6 +108,11 @@ public class StubWatchFactory implements WatchBuilder.WatchFactory {
       System.out.println("Failed in thread " + Thread.currentThread());
       throw e;
     }
+  }
+
+  private <T> WatchStub<T> createNullWatch() {
+    this.outOfData = true;
+    return new WatchStub<>(Collections.emptyList());
   }
 
   private void addRecordedParameters(Map<String, String> recordedParams) {
@@ -116,6 +140,10 @@ public class StubWatchFactory implements WatchBuilder.WatchFactory {
 
   public static void throwExceptionOnNext(RuntimeException e) {
     exceptionOnNext = e;
+  }
+
+  private RunSupportFactory createRunSupportFactory() {
+    return new TestRunSupportFactory();
   }
 
   public interface AllWatchesClosedListener {
@@ -169,6 +197,26 @@ public class StubWatchFactory implements WatchBuilder.WatchFactory {
     @Override
     public Response<T> next() {
       throw exception;
+    }
+  }
+
+  class TestRunSupportFactory implements RunSupportFactory {
+    private AtomicBoolean stopping;
+
+    @Override
+    public RunSupport createRunSupport(AtomicBoolean stopping) {
+      this.stopping = stopping;
+      return new RunSupport() {
+        @Override
+        public boolean isStopping() {
+          return stopping.get() || StubWatchFactory.this.outOfData;
+        }
+
+        @Override
+        public void startWatching(Runnable runnable) {
+          runnable.run();
+        }
+      };
     }
   }
 }
