@@ -420,10 +420,7 @@ public class HealthCheckHelper {
     }
   }
 
-  /**
-   * Perform health checks against a running Admin server.
-   *
-   */
+  /** Perform health checks against a running Admin server. */
   private void verifyAdminServer(HashMap<String, Domain> domainUIDMap) {
 
     for (Domain domain : domainUIDMap.values()) {
