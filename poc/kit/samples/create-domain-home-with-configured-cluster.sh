@@ -1,15 +1,14 @@
 #!/bin/bash
 
-. pocenv.sh
 set -x
 
-rm -rf ${DOMAIN_NAME}
+rm -rf ${DOMAIN_PATH}
 
 java weblogic.WLST << EOF
 
 domain_uid               = "${DOMAIN_UID}"
 domain_name              = "${DOMAIN_NAME}"
-domain_path              = domain_name
+domain_path              = "${DOMAIN_PATH}"
 admin_username           = "${ADMIN_USERNAME}"
 admin_password           = "${ADMIN_PASSWORD}"
 production_mode_enabled  = true
@@ -60,23 +59,6 @@ for index in range(1, number_of_ms+1):
   ms.setListenPort(managed_server_port)
   ms.setNumOfRetriesBeforeMSIMode(0)
   ms.setRetryIntervalBeforeMSIMode(1)
-
-#template_name = cluster_name + "-template"
-#st=create(template_name, 'ServerTemplate')
-#st.setCluster(cl)
-#st.setListenPort(managed_server_port)
-
-## TBD - remove from here and move to operator generated situational config file:
-#st.setListenAddress(domain_uid + '-' + managed_server_base_name + '\${id}')
-
-#cd('/Clusters/' + cluster_name)
-#ds=create(cluster_name, 'DynamicServers')
-#ds.setServerTemplate(st)
-#ds.setServerNamePrefix(managed_server_base_name)
-#ds.setDynamicClusterSize(number_of_ms)
-#ds.setMaxDynamicClusterSize(number_of_ms)
-#ds.setCalculatedListenPorts(false)
-#ds.setIgnoreSessionsDuringShutdown(true)
 
 # write out the domain
 setOption('OverwriteDomain', 'true')

@@ -1,7 +1,8 @@
 #!/bin/bash
 
-. pocenv.sh
-set -x
+. %SETUP_ENV_SCRIPT%
+
+#set -x
 
 SERVER_NAME="${1}"
 

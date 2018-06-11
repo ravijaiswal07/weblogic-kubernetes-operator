@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+  labels:
+    weblogic.createdByOperator: "true"
+    weblogic.domainName: %DOMAIN_NAME%
+    weblogic.domainUID: %DOMAIN_UID%
+    weblogic.resourceVersion: domain-v1
+    weblogic.serverName: %MANAGED_SERVER_NAME%
+  name: %DOMAIN_UID%-%MANAGED_SERVER_NAME%
+  namespace: %DOMAIN_NAMESPACE%
+spec:
+  ports:
+  - port: %MANAGED_SERVER_PORT%
+    protocol: TCP
+    targetPort: %MANAGED_SERVER_PORT%
+  publishNotReadyAddresses: true
+  selector:
+    weblogic.createdByOperator: "true"
+    weblogic.domainUID: %DOMAIN_UID%
+    weblogic.serverName: %MANAGED_SERVER_NAME%
+  type: ClusterIP

@@ -4,12 +4,12 @@ metadata:
   labels:
     weblogic.channelName: T3Channel
     weblogic.createdByOperator: "true"
-    weblogic.domainName: poc-domain
-    weblogic.domainUID: poc-duid
+    weblogic.domainName: %DOMAIN_NAME%
+    weblogic.domainUID: %DOMAIN_UID%
     weblogic.resourceVersion: domain-v1
-    weblogic.serverName: as
-  name: poc-duid-as-extchannel-t3channel
-  namespace: poc-d-ns
+    weblogic.serverName: %ADMIN_SERVER_NAME%
+  name: %DOMAIN_UID%-as-extchannel-t3channel
+  namespace: %OPERATOR_NAMESPACE%
 spec:
   externalTrafficPolicy: Cluster
   ports:
@@ -19,6 +19,6 @@ spec:
     targetPort: 30212
   selector:
     weblogic.createdByOperator: "true"
-    weblogic.domainUID: poc-duid
-    weblogic.serverName: as
+    weblogic.domainUID: %DOMAIN_UID%
+    weblogic.serverName: %ADMIN_SERVER_NAME%
   type: NodePort

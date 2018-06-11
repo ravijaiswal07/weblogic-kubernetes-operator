@@ -13,95 +13,168 @@ setup
     cluster roles & cluster role bindings
     maybe /scratch/k8s_dir
 
+how to run demo1
+
+  cd demo1
+  create-domain.sh
+  generated/start-server.sh as
+  generated/server-pod-state.sh as  # until it shows 1/1
+  generated/start-server.sh ms1
+  generated/server-pod-state.sh ms1 # until it shows 1/1
+  delete-domain.sh
+
 poc source files
 
-  domain-cm.yaml
-    - create the config map for the domain that has the start/stop/probe scripts
+  demo1/
+    uses offline wlst to create a domain with a configured cluster
+    uses a domain persistent volume
 
-  domain-home-pv.yaml & domain-home-pvc.yaml
-    - create a pv for the domain home (stored under /scratch/k8s-dir/poc_duid/domain-home)
-    - we're not going to need these once the domain home moves into the image
+    demoenv.sh
+      - sets up a bunch of environment variables describing the domain,
+        e.g. its domain name, domain home, server names and ports, where to put
+        persistent volumes on disk
+      - TODO - do we need a sample env.sh file on the kit that a custom can copy and
+        modify or do we expect them to start with one of the demos?
 
-  domain-logs-pv.yaml & domain-logs-pvc.yaml
-    - create a pv for the domain logs (stored under /scratch/k8s-dir/poc_duid/domain-logs)
-    - we're still going to need these aonce the domain home moves into the image
+    create-domain.sh
+      - create the domain and corresponding domain wide kubernetes resources
+      - TODO - there's a lot of logic in this script that the demos want to share,
+        seems like customers might want to do it too ...
 
-  as-pod.yaml, ms1-pod.yaml, ms2-pod.yaml
-    - create the server pods
+    delete-domain.sh
+      - create the domain and corresponding domain wide kubernetes resources
+ 
+  kit/
+    represents the files in an operator kit
 
-  as-service.yaml, ms1-service.yaml, ms2-service.yaml
-    - create the server services
+    templates/
+      template yaml files that the customer must copy and customize
 
-  as-t3-service.yaml
-    - create the admin server t3 channel service (haven't tried it yet)
+      domain-cm.yamlt - template config map containing the operator's server pod lifecycle scripts
+      admin-server-pod.yamlt - admin server's pod template
+      admin-server-service.yamlt - admin server's service template
+      admin-server-t3-service.yamlt - admin server's t3 service template
+      managed-server-pod.yamlt - managed server pod template
+      managed-server-service.yamlt - managed server service template
+
+    runtime/
+      operator runtime functionality, not normally visible to customers
+      (the demo exposes it since we don't have an operator,
+      thus need to do its work by hand)
+
+      bind-domain.sh
+        - uses offline wlst to introspect the domain and create a config map containing
+          a situational configuration file for the domain that customizes the listen
+          addresses and log file locations
+
+    samples/
+      sample template files that a customer may copy and customize
+
+      create-domain-home-with-configured-cluster.sh
+      create-domain-home-with-dynamic-cluster.sh
+        - use offline wlst to create a local domain home
+          it can be booted locally (i.e. no pod needed)
+
+      patch-domain-home.sh
+        - converts the domain home, java home and mw home pathnames that are baked into
+          the files generated create-domain-home-...sh to the pathnames that are used
+          when the domain home is used by a pod
+
+      domain-logs-pv.yamlt
+      domain-logs-pvc.yamlt
+      domain-home-pv.yamlt
+      domain-home-pvc.yamlt
+        - template yaml files for creating the kubernetes persistent volumes and claims
+          for the domain logs persistent volume and domain home persistent volume
+        - samples that use in-image domains don't use domain-home-pv/c.yamlt
+
+      start-server.sh
+      stop-server.sh
+      server-pod-desc.sh
+      server-pod-state.sh
+      server-pod-log.sh
+      server-log.sh
+      server-out.sh
+      server-nm-log.sh
+      server-nm-state.sh
+        - template scripts for managing servers (see description under the 'demo1' section)
+
+      customize-property.sh
+      customize.sh
+        - scripts that expand/customize a template file
+          the caller needs to have set up a bunch of environment variables
+          containing the desired values (e.g. demo1/demoenv.sh)
+        - the demos copy various templates from the kit/samples and kit/templates
+          directories into the demos' 'generated' directories then use customize.sh
+          to customize the copies to the demo
 
   todo - all the load balancer yaml files
 
-  pocenv.sh
-    - all the names of the wls and k8s resources and persistent volume dirs live here
-    - the yaml files MUST and env.sh MUST match
-      (i.e. I didn't write a scripts to customize the yaml files to match env.sh)
+poc generated files
 
-  create-domain.sh
-    runs:
+    demo1/generated/
+        - generated yaml files and scripts for this demo
 
-      create-domain-home.sh
-        uses WLST to create a domain directory, stored under ./poc-domain,
-        that is directly runnable
+        start-server.sh     - manually starts a server by creating its kubernetes resources
+        stop-server.sh      - manually stops a server by deleting its kubernetes resources
+        server-pod-desc.sh  - describes a server's pod
+        server-pod-state.sh - gets a server's pod's state
+        server-pod-log.sh   - prints a server's pod's log
+        server-out.sh       - prints a server stdout file
+        server-log.sh       - prints a server's log
+        server-nm-log.sh    - prints a server's node manager log
+        server-nm-state.sh  - gets the state that the node manager thinks a server is in
+          all per-server scripts the name of a server (as, ms1, ms2 or ms3)
+            e.g. generated/start-server.sh as
 
-        currently the domain uses configured clusters instead of dynamic clusters
-        to temporarily work around 12.2.1.3 situational config issues with dynamic clusters
+        domain-home
+          - contains the generated domain, before its pathnames have been patched
+          - this means you can 'cd' there and run startWeblogicServer.sh
+          - it also means that it cannot be directly used by a pod since the
+            pathnames in the generated files are based on the shell that ran
+            create-domain-home.sh, instead of the ones that are needed in a pod
 
-      patch-domain-home.sh
-        changes the domain home, jdk home and wl home pathnames in the domain created
-        create-domain-home.sh to use the in-pod pathnames so that the domain home
-        can be run in a pod
+        domain-cm.yaml - config map of server pod lifecycle scripts for this domain namespace
+        domain-bindings-cm.yaml - config map with a situational config for this domain
 
-      create-domain-pvs.sh
-        creates the on-disk directories for the domain home and logs:
-          /scratch/k8s-dir/poc_duid/domain-logs is an empty dir
-          copies ./poc-domain to /scratch/k8s-dir/poc_duid/domain-home
+        domain-logs-pv.yaml
+        domain-logs-pvc.yaml
+        domain-home-pv.yaml
+        domain-home-pvc.yaml
+          persistent volumes and claims for the domain logs and domain home persistent volumes
 
-      create-domain-resources.sh
-        create a namespace for the domain (poc-d-ns)
-        creates a secret w/ the domain admin credentials
-        loads the yaml files to create the domain config map and the domain home and logs pvs & pvcs
-        should be enhanced to wait for them to complete
+        admin-server-pod.yamlt
+        admin-server-service.yamlt
+        admin-server-t3-service.yamlt
+        managed-server-pod.yamlt
+        managed-server-service.yamlt
+          templates for creating pods and services for the servers in this domain
+          (normally we'd put them in the domain crd so that the operator runtime could
+          use them as it needs to create and delete per-server pods)
 
-x  delete-domain.sh - don't run this - run these instead:
-x    runs:
+        as-pod.yaml
+        as-service.yaml
+        as-t3-service.yaml
+        ms1-pod.yaml
+        ms1-service.yaml
+        ms2-pod.yaml
+        ms2-service.yaml
+        ms3-pod.yaml
+        ms3-service.yaml
+          actual pods and services for all the servers in this domain
+          (since we don't have an operator ...)
+          TBD - could create them in start-server.sh and stop-server.sh instead,
+          just as the operator runtime would
 
-      delete-domain-resources.sh
-        removes the domain's namespace and pvs
-        waits for the namespace to be deleted, but could time out
+    /scratch/k8s-dir/demo1-domain-uid
+      contains the persistent volumes for demo1's domain
 
-      delete-domain-pvs.sh
-        removes the on-disk directories for the domain's volumes: /scratch/k8s-dir/poc_duid
+      domain-logs/
+         - contains the domain, node manager and server logs
 
-  start-server.sh <servername> (e.g. as, ms1 or ms2)
-    loads the yaml files to create the pod and service for the server and returns immediately
-
-  stop-server.sh <servername>
-    deletes the pod and service for the server and returns immediately
-
-  server-log.sh <servername>
-    prints the server's log to stdout
-
-  server-out.sh <servername>
-    prints the server's .out file to stdout
-
-  server-nm-log.sh <servername>
-    prints the nodemanager's log for that server to stdout
-
-  server-nm-state.sh <servername>
-    print the nodemanager's state file for that server
-
-  server-pod-log.sh <servername>
-    print the log for that server's pod
-
-  server-pod-state.sh <servername>
-    print the k8s status of the pod
-
-  server-pod-desc.sh <servername>
-    describe's the server's pod
+      domain-home/
+        - contains the domain home that the pods use
+        - the pathnames in the files have been patched so that the pods can use them
+          (e.g. domain home, java home and mw home have been changed to the values
+          that should be used inside the pod)
 

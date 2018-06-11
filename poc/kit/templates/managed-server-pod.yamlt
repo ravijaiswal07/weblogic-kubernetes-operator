@@ -3,17 +3,17 @@ kind: Pod
 metadata:
   annotations:
     prometheus.io/path: /wls-exporter/metrics
-    prometheus.io/port: "8100"
+    prometheus.io/port: "%MANAGED_SERVER_PORT%"
     prometheus.io/scrape: "true"
   labels:
     weblogic.clusterName: cluster
     weblogic.createdByOperator: "true"
-    weblogic.domainName: poc-domain
-    weblogic.domainUID: poc-duid
+    weblogic.domainName: %DOMAIN_NAME%
+    weblogic.domainUID: %DOMAIN_UID%
     weblogic.resourceVersion: domain-v1
-    weblogic.serverName: ms1
-  name: poc-duid-ms1
-  namespace: poc-d-ns
+    weblogic.serverName: %MANAGED_SERVER_NAME%
+  name: %DOMAIN_UID%-%MANAGED_SERVER_NAME%
+  namespace: %DOMAIN_NAMESPACE%
 spec:
   containers:
   - command:
@@ -24,19 +24,19 @@ spec:
     - name: USER_MEM_ARGS
       value: '-Xms64m -Xmx256m '
     - name: DOMAIN_UID
-      value: poc-duid
+      value: %DOMAIN_UID%
     - name: DOMAIN_NAME
-      value: poc-domain
+      value: %DOMAIN_NAME%
     - name: DOMAIN_HOME
-      value: /domain-home
+      value: %POD_DOMAIN_HOME_DIR%
     - name: DOMAIN_LOGS
-      value: /domain-logs
+      value: %POD_DOMAIN_LOGS_DIR%
     - name: ADMIN_NAME
-      value: as
+      value: %ADMIN_SERVER_NAME%
     - name: ADMIN_PORT
-      value: "7100"
+      value: "%ADMIN_SERVER_PORT%"
     - name: SERVER_NAME
-      value: ms1
+      value: %MANAGED_SERVER_NAME%
     - name: ADMIN_USERNAME
     - name: ADMIN_PASSWORD
     image: store/oracle/weblogic:12.2.1.3
@@ -57,7 +57,7 @@ spec:
       timeoutSeconds: 5
     name: weblogic-server
     ports:
-    - containerPort: 8100
+    - containerPort: %MANAGED_SERVER_PORT%
       protocol: TCP
     readinessProbe:
       exec:
@@ -79,14 +79,12 @@ spec:
       mountPath: /weblogic-operator/domain-bindings
       readOnly: true
     - name: weblogic-domain-logs-storage-volume
-      mountPath: /domain-logs
-    - name: weblogic-domain-home-storage-volume
-      mountPath: /domain-home
+      mountPath: %POD_DOMAIN_LOGS_DIR%
   volumes:
   - name: weblogic-credentials-volume
     secret:
       defaultMode: 420
-      secretName: poc-d-creds
+      secretName:  %DOMAIN_CREDENTIALS_SECRET_NAME%
   - name: weblogic-domain-cm-volume
     configMap:
       defaultMode: 365
@@ -94,10 +92,7 @@ spec:
   - name: weblogic-domain-bindings-cm-volume
     configMap:
       defaultMode: 365
-      name: poc-duid-weblogic-domain-bindings-cm
+      name: %DOMAIN_UID%-weblogic-domain-bindings-cm
   - name: weblogic-domain-logs-storage-volume
     persistentVolumeClaim:
-      claimName: poc-duid-weblogic-domain-logs-pvc
-  - name: weblogic-domain-home-storage-volume
-    persistentVolumeClaim:
-      claimName: poc-duid-weblogic-domain-home-pvc
+      claimName: %DOMAIN_UID%-weblogic-domain-logs-pvc

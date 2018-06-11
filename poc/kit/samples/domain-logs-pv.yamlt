@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    weblogic.domainName: %DOMAIN_NAME%
+    weblogic.domainUID: %DOMAIN_UID%
+    weblogic.resourceVersion: domain-v1
+  name: %DOMAIN_UID%-weblogic-domain-logs-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: %DOMAIN_UID%-weblogic-domain-logs-pvc
+    namespace: %DOMAIN_NAMESPACE%
+  hostPath:
+    path: %DOMAIN_LOGS_PV_DIR%
+    type: ""
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: %DOMAIN_UID%-weblogic-domain-logs-storage-class

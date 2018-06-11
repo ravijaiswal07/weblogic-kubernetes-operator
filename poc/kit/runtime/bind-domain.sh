@@ -1,8 +1,9 @@
 #!/bin/bash
 
-. pocenv.sh
+DOMAIN_HOME_DIR=${1}
+OUTPUT_DIR=${2}
 
-CONFIG_MAP=domain-bindings-cm.yaml
+CONFIG_MAP=${OUTPUT_DIR}/domain-bindings-cm.yaml
 rm -f ${CONFIG_MAP}
 
 #set -x
@@ -233,7 +234,7 @@ def createConfigMap():
   os.close()
 
 def main():
-  domain_home="${DOMAIN_HOME_PV_DIR}"
+  domain_home="${DOMAIN_HOME_DIR}"
   readDomain(domain_home)
   if validateDomain() == True:
     createConfigMap()
@@ -243,5 +244,3 @@ def main():
 main()
 
 EOF
-
-cat ${CONFIG_MAP}
