@@ -1,5 +1,6 @@
 apiVersion: v1
 data:
+
   livenessProbe.sh: |
     #!/bin/bash
     # Kubernetes periodically calls this liveness probe script to determine whether
@@ -15,6 +16,7 @@ data:
       exit 1
     fi
     exit 0
+
   readState.sh: |
     #!/bin/bash
 
@@ -35,6 +37,7 @@ data:
 
     cat ${STATEFILE} | cut -f 1 -d ':'
     exit 0
+
   readinessProbe.sh: |
     #!/bin/bash
 
@@ -60,6 +63,7 @@ data:
       exit 3
     fi
     exit 0
+
   start-server.py: |+
     import sys;
     #
@@ -320,6 +324,300 @@ data:
       fi
     fi
 
+  introspect-domain.py: |+
+
+    #
+    # +++ Start of common utilities
+
+    def writeln(f, v):
+      f.write(v + "\n")
+
+    # +++ Start of common utilities
+    #
+
+
+    #
+    # +++ Start of domain validation
+
+    def validateDomain():
+      # TBD - move the assertions below from creating topology here
+      # and print errors to a file and return false if anything is wrong
+      # TBD - should we write it to the topology file instead?
+      # TBD - is it really just true/false, or do we print warnings and ignore?
+      return True
+
+    # +++ Start of domain validation
+    #
+
+    #
+    # +++ Start of topology generation
+
+    def addAdminServerTopology(f):
+      admin_name=cmo.getAdminServerName()
+      admin_server=None
+      for server in cmo.getServers():
+        if admin_name == server.getName():
+          admin_server = server
+          # TBD - assert that the admin server is not clustered
+          break
+      # TBD - assertion for admin_server is not None ?
+      writeln(f, "      adminServer: \"" + admin_server.getName() + "\"")
+
+    def findDynamicClusterServerTemplate(f, cluster):
+      # find the server template for this cluster
+      server_template=None
+      for template in cmo.getServerTemplates():
+        if template.getCluster() is cluster:
+          # assert that there is only server template for this cluster
+          assert server_template is None
+          server_template = template
+      assert server_template is not None
+      return server_template
+
+    def addDynamicClusterTopology(f, cluster):
+      # make sure that there are no servers using this cluster
+      for server in cmo.getServers():
+        assert server.getCluster() is not cluster
+      dyn_servers = cluster.getDynamicServers()
+      assert dyn_servers.isCalculatedListenPorts() == False
+      server_template = findDynamicClusterServerTemplate(f, cluster)
+      writeln(f, "      - name: \"" + cluster.getName() + "\"")
+      writeln(f, "        port: " + str(server_template.getListenPort()))
+      writeln(f, "        maxServers: " + str(dyn_servers.getMaxDynamicClusterSize()))
+      writeln(f, "        baseServerName: \"" + dyn_servers.getServerNamePrefix() + "\"")
+
+    def addDynamicClustersTopology(f):
+      writeln(f, "      dynamicClusters:")
+      for cluster in cmo.getClusters():
+        if cluster.getDynamicServers() is not None:
+          addDynamicClusterTopology(f, cluster)
+
+    # all the servers in the non-dynamic cluster must have the same port number
+    # TBD - can/should we support per-server port numbers?
+    def findNonDynamicClusterPort(f, cluster):
+      cluster_port=None
+      for server in cmo.getServers():
+        if server.getCluster() is cluster:
+          port=server.getListenPort()
+          if cluster_port is None:
+            cluster_port=port
+          else:
+            assert port == cluster_port
+      assert cluster_port is not None # i.e. that we have at least one server in the cluster
+      return cluster_port
+
+    def addClusteredServerTopology(f, server):
+      writeln(f, "        - name: \"" + server.getName() + "\"")
+
+    def addNonDynamicClusterTopology(f, cluster):
+      # make sure that there are no server templates using this cluster
+      for template in cmo.getServerTemplates():
+        assert template.getCluster() is not cluster
+      writeln(f, "      - name: \"" + cluster.getName() + "\"")
+      writeln(f, "        port: \"" + str(findNonDynamicClusterPort(f, cluster)))
+      writeln(f, "        servers:")
+      for server in cmo.getServers():
+        if server.getCluster() is cluster:
+          addClusteredServerTopology(f, server)
+
+    def addNonDynamicClustersTopology(f):
+      writeln(f, "      nonDynamicClusters:")
+      for cluster in cmo.getClusters():
+        if cluster.getDynamicServers() is None:
+          addNonDynamicClusterTopology(f, cluster)
+
+    def addNonClusteredServerTopology(f, server):
+      writeln(f, "      - name: \"" + server.getName() + "\"")
+      writeln(f, "        port: " + str(server.getListenPort()))
+
+    def addNonClusteredServersTopology(f):
+      writeln(f, "      servers:")
+      for server in cmo.getServers():
+        if server.getCluster() is None:
+          addNonClusteredServerTopology(f, server)
+
+    def addDomainTopology(f):
+      writeln(f, "    domain")
+      writeln(f, "      name: \"" + cmo.getName() + "\"")
+
+    def createTopology(f):
+      cd('/')
+      addDomainTopology(f)
+      addAdminServerTopology(f)
+      addDynamicClustersTopology(f)
+      addNonDynamicClustersTopology(f)
+      addNonClusteredServersTopology(f)
+
+    # +++ End of topology generation
+    #
+
+    #
+    # +++ Start of situational configuration generation
+
+    def readSecret(path):
+      file = open(path, 'r')
+      secret = file.read()
+      file.close()
+      return secret
+
+    def readAndEncryptSecret(path):
+      secret = readSecret(path)
+      domain_home=os.environ['DOMAIN_HOME']
+      return encrypt(secret, domain_home)
+
+    def beginDomain(f):
+      writeln(f, "    <?xml version='1.0' encoding='UTF-8'?>")
+      writeln(f, "    <d:domain xmlns:d=\"http://xmlns.oracle.com/weblogic/domain\" xmlns:f=\"http://xmlns.oracle.com/weblogic/domain-fragment\" xmlns:s=\"http://xmlns.oracle.com/weblogic/situational-config\">")
+      writeln(f, "      <s:expiration> 2020-07-16T19:20+01:00 </s:expiration>")
+      # TODO - get this working:
+      #admin_username = readSecret('/weblogic-operator/secrets/username')
+      #admin_password = readAndEncryptSecret('/weblogic-operator/secrets/password')
+      #writeln(f, "      <d:security-configuration>")
+      #writeln(f, "        <d:node-manager-user-name f:combine-mode=\"replace\">" + admin_username + "</d:node-manager-user-name>")
+      #writeln(f, "        <d:node-manager-password-encrypted f:combine-mode=\"replace\">" + admin_password + "</d:node-manager-password-encrypted>")
+      #writeln(f, "      <d:/security-configuration>")
+      domain_name=cmo.getName()
+      writeln(f, "      <d:log f:combine-mode=\"replace\">")
+      writeln(f, "        <d:file-name>/domain-logs/" + domain_name + ".log</d:file-name>")
+      writeln(f, "      </d:log>")
+
+    def endDomain(f):
+      writeln(f, "    </d:domain>")
+
+    def customizeServer(f, domain_uid, admin_server_name, server):
+      name=server.getName()
+      writeln(f, "      <d:server>")
+      writeln(f, "        <d:name>" + name + "</d:name>")
+      writeln(f, "        <d:log f:combine-mode=\"replace\">")
+      writeln(f, "          <d:file-name>/domain-logs/" + name + ".log</d:file-name>")
+      writeln(f, "        </d:log>")
+      writeln(f, "        <d:listen-address f:combine-mode=\"replace\">" + domain_uid + "-" + name + "</d:listen-address>")
+      if name == admin_server_name:
+        # TBD - find the t3 channel, and if it exists, customize its listen address
+        writeln(f, "        <d:network-access-point>")
+        writeln(f, "          <d:name>T3Channel</d:name>") # TBD - needs to be discovered, v.s. depending on a fixed name
+        writeln(f, "          <d:listen-address f:combine-mode=\"replace\">" + domain_uid + "-" + name + "</d:listen-address>")
+        writeln(f, "        </d:network-access-point>")
+      writeln(f, "      </d:server>")
+
+    def customizeServerTemplate(f, domain_uid, template):
+      name=template.getName()
+      server_name_prefix=template.getCluster().getDynamicServers().getServerNamePrefix()
+      writeln(f, "      <d:server-template>")
+      writeln(f, "        <d:name>" + name + "</d:name>")
+      writeln(f, "        <d:log f:combine-mode=\"replace\">")
+      writeln(f, "          <d:file-name>/domain-logs/" + server_name_prefix + "\${i}.log</d:file-name>")
+      writeln(f, "        </d:log>")
+      #writeln(f, "        <d:listen-address f:combine-mode=\"replace\">" + domain_uid + "-" + server_name_prefix + "\${i}</d:listen-address>")
+      writeln(f, "      </d:server-template>")
+
+    def createSitConfig(f):
+      domain_uid=os.environ['DOMAIN_UID']
+      cd('/')
+      admin_server_name=cmo.getAdminServerName()
+      beginDomain(f)
+      for server in cmo.getServers():
+        customizeServer(f, domain_uid, admin_server_name, server)
+      for template in cmo.getServerTemplates():
+        customizeServerTemplate(f, domain_uid, template)
+      endDomain(f)
+
+    # +++ End of situational configuration generation
+    #
+
+    # +++ Start of overall config map generation
+
+    def addConfigMapHeader(f):
+      domain_uid=os.environ['DOMAIN_UID']
+      domain_name=cmo.getName()
+      writeln(f, "apiVersion: v1")
+      writeln(f, "kind: ConfigMap")
+      writeln(f, "metadata:")
+      writeln(f, "  labels:")
+      writeln(f, "    weblogic.createdByOperator: \"true\"")
+      writeln(f, "    weblogic.domainName: " + domain_name)
+      writeln(f, "    weblogic.domainUID: " + domain_uid)
+      writeln(f, "    weblogic.resourceVersion: domain-v1")
+      writeln(f, "  name: " + domain_uid + "-weblogic-domain-bindings-cm")
+      writeln(f, "  namespace: %DOMAIN_NAMESPACE%")
+
+    def endConfigMap(f):
+      undent()
+
+    def addFileHeaderToConfigMap(f, name):
+      writeln(f, "  " + name + ": |")
+
+    def addTopologyToConfigMap(f):
+      addFileHeaderToConfigMap(f, "topology.yaml")
+      createTopology(f)
+
+    def addSitConfigToConfigMap(f):
+      addFileHeaderToConfigMap(f, "operator-situational-config.xml")
+      createSitConfig(f)
+
+    def addFilesToConfigMap(f):
+      writeln(f, "data:")
+      addTopologyToConfigMap(f)
+      addSitConfigToConfigMap(f)
+
+    def createConfigMap():
+      config_map_path=sys.argv[1]
+      f=open(config_map_path, 'w+')
+      addConfigMapHeader(f)
+      addFilesToConfigMap(f)
+      f.close()
+
+    def main():
+      domain_home=os.environ['DOMAIN_HOME']
+      readDomain(domain_home)
+      if validateDomain() == True:
+        createConfigMap()
+      closeDomain()
+      exit()
+
+    main()
+
+  introspectDomain.sh: |+
+    #!/bin/bash
+    echo "Introspect the domain"
+    CONFIG_MAP="/u01/domain-introspection-results.yaml"
+    rm -f ${CONFIG_MAP}
+    wlst.sh -skipWLSModuleScanning /weblogic-operator/scripts/introspect-domain.py $CONFIG_MAP
+
+    echo "Wait indefinitely so that the Kubernetes pod does not exit and try to restart"
+    while true; do sleep 60; done
+    exit 0
+
+  introspectionReadinessProbe.sh: |+
+    #!/bin/bash
+    CONFIG_MAP="/u01/domain-introspection-results.yaml"
+    if [ -f $CONFIG_MAP ]; then
+      exit 0
+    else
+      echo "Not ready : ${CONFIG_MAP} not found."
+      exit 1
+    fi
+
+  introspectionLivenessProbe.sh: |+
+    #!/bin/bash
+    CONFIG_MAP="/u01/domain-introspection-results.yaml"
+    if [ -f $CONFIG_MAP ]; then
+      exit 0
+    else
+      echo "Error : ${CONFIG_MAP} not found."
+      exit 1
+    fi
+
+  getIntrospectionResults.sh: |+
+    #!/bin/bash
+    CONFIG_MAP="/u01/domain-introspection-results.yaml"
+    if [ -f ${CONFIG_MAP} ]; then
+      cat ${CONFIG_MAP}
+      exit 0
+    else
+      echo "Error : ${CONFIG_MAP} not found."
+      exit 1
+    fi
 
 kind: ConfigMap
 metadata:

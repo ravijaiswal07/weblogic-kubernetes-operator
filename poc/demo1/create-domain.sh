@@ -29,6 +29,10 @@ function createDomainLogsYamls {
   copyAndCustomize ${OPERATOR_SAMPLES}/domain-logs-pvc.yamlt ${GENERATED_FILES}/domain-logs-pvc.yaml
 }
 
+function createDomainIntrospectionTemplateYaml {
+  copyAndCustomize ${OPERATOR_TEMPLATES}/introspect-domain-pod.yamlt ${GENERATED_FILES}/introspect-domain-pod.yamlt
+}
+
 function createAdminServerTemplateYamls {
   copyAndCustomize ${OPERATOR_TEMPLATES}/admin-server-pod.yamlt        ${GENERATED_FILES}/admin-server-pod.yamlt
   copyAndCustomize ${OPERATOR_TEMPLATES}/admin-server-service.yamlt    ${GENERATED_FILES}/admin-server-service.yamlt
@@ -50,11 +54,13 @@ function createServerScripts {
   copyAndCustomizeServerScript server-pod-state.sh
   copyAndCustomizeServerScript start-server.sh
   copyAndCustomizeServerScript stop-server.sh
+  copyAndCustomizeServerScript wait-for-server-to-start.sh
 }
 
 function copyAndCustomizeTemplatesBase {
   createDomainNamespaceScriptsYaml
   createDomainLogsYamls
+  createDomainIntrospectionTemplateYaml
   createAdminServerTemplateYamls
   createManagedServerTemplateYamls
   createServerScripts
@@ -73,16 +79,45 @@ function createDomainWideKubernetesResourcesBase {
   kubectl apply -f ${GENERATED_FILES}/domain-logs-pvc.yaml
 }
 
-function simulateOperatorRuntime {
-  domain_home_dir=${1}
+function waitForIntrospectionToComplete {
+  pod=${DOMAIN_UID}-introspect-domain
+  readyHave="false"
+  readyWant="true"
+  iter=1
+  while [ "${readyHave}" != "${readyWant}" -a ${iter} -lt 101 ] ; do
+    readyHave=`kubectl get pod -n ${DOMAIN_NAMESPACE} ${pod} -o jsonpath='{.status.containerStatuses[0].ready}'`
+    echo readyHave=${readyHave}
+    if [ "${readyHave}" != "${readyWant}" ] ; then
+      echo "waiting for ${pod} ready, attempt ${iter} : ready=${readyHave}"
+      iter=`expr $iter + 1`
+      sleep 10
+    else
+      echo "${pod} is ready"
+    fi
+  done
+  if [ "${readyHave}" != "${readyWant}" ] ; then
+    echo "warning: ${pod} still is not ready: ready=${readyHave}"
+  fi
+}
 
-  # introspect the domain home and create a situational config that fixes the listen addresses
-  # and redirects the server and domain logs.  put it in a config map so that the start server
-  # script (which runs in the pod) can copy it to the domain home so that the the domain's
-  # config gets customized
-  # TBD - move this to the server start script in the pod
-  ${OPERATOR_RUNTIME}/bind-domain.sh ${domain_home_dir} ${GENERATED_FILES}
+function downloadIntrospectionResults {
+  kubectl exec -n ${DOMAIN_NAMESPACE} ${DOMAIN_UID}-introspect-domain /weblogic-operator/scripts/getIntrospectionResults.sh > ${GENERATED_FILES}/domain-bindings-cm.yaml
+}
+
+function applyIntrospectionResults {
   kubectl apply -f ${GENERATED_FILES}/domain-bindings-cm.yaml
+}
+
+function introspectDomain {
+  kubectl apply -f ${GENERATED_FILES}/introspect-domain-pod.yaml
+  waitForIntrospectionToComplete
+  downloadIntrospectionResults
+  applyIntrospectionResults
+}
+
+function simulateOperatorRuntime {
+  # create yaml files for introspecting the domain
+  copyAndCustomize ${GENERATED_FILES}/introspect-domain-pod.yamlt ${GENERATED_FILES}/introspect-domain-pod.yaml
 
   # create yaml files for creating the admin server pod and services
   copyAndCustomize ${GENERATED_FILES}/admin-server-pod.yamlt        ${GENERATED_FILES}/${ADMIN_SERVER_NAME}-pod.yaml
@@ -96,6 +131,8 @@ function simulateOperatorRuntime {
     copyAndCustomize ${GENERATED_FILES}/managed-server-service.yamlt ${GENERATED_FILES}/${MANAGED_SERVER_NAME}-service.yaml
   done
   export MANAGED_SERVER_NAME=""
+
+  introspectDomain
 }
 
 function ensureDomainNamespaceExists {
@@ -135,6 +172,7 @@ function addDomainHomePersistentVolumeToPodTemplate {
 }
 
 function addDomainHomePersistentVolumeToPods {
+  addDomainHomePersistentVolumeToPodTemplate ${GENERATED_FILES}/introspect-domain-pod.yamlt
   addDomainHomePersistentVolumeToPodTemplate ${GENERATED_FILES}/admin-server-pod.yamlt
   addDomainHomePersistentVolumeToPodTemplate ${GENERATED_FILES}/managed-server-pod.yamlt
 }
@@ -170,7 +208,7 @@ function main {
   ensureDomainNamespaceExists
   createDomainCredentialsSecret
   createDomainWideKubernetesResources
-  simulateOperatorRuntime ${DOMAIN_PATH}
+  simulateOperatorRuntime
 }
 
 main

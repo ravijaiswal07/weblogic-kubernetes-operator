@@ -18,9 +18,9 @@ how to run demo1
   cd demo1
   create-domain.sh
   generated/start-server.sh as
-  generated/server-pod-state.sh as  # until it shows 1/1
+  generated/wait-for-server-to-start.sh as
   generated/start-server.sh ms1
-  generated/server-pod-state.sh ms1 # until it shows 1/1
+  generated/wait-for-server-to-start.sh ms1
   delete-domain.sh
 
 poc source files
@@ -57,15 +57,10 @@ poc source files
       managed-server-pod.yamlt - managed server pod template
       managed-server-service.yamlt - managed server service template
 
-    runtime/
-      operator runtime functionality, not normally visible to customers
-      (the demo exposes it since we don't have an operator,
-      thus need to do its work by hand)
-
-      bind-domain.sh
-        - uses offline wlst to introspect the domain and create a config map containing
-          a situational configuration file for the domain that customizes the listen
-          addresses and log file locations
+      introspect-domain-pod.yamlt - pod template for introspecting the domain image
+        validates that the domain can be used by the operator
+        generates server and cluster topology info that the operator runtime needs
+        create a situational configuration file binding the domain to the operator
 
     samples/
       sample template files that a customer may copy and customize
@@ -97,6 +92,7 @@ poc source files
       server-out.sh
       server-nm-log.sh
       server-nm-state.sh
+      wait-for-server-to-start.sh as
         - template scripts for managing servers (see description under the 'demo1' section)
 
       customize-property.sh
@@ -115,15 +111,16 @@ poc generated files
     demo1/generated/
         - generated yaml files and scripts for this demo
 
-        start-server.sh     - manually starts a server by creating its kubernetes resources
-        stop-server.sh      - manually stops a server by deleting its kubernetes resources
-        server-pod-desc.sh  - describes a server's pod
-        server-pod-state.sh - gets a server's pod's state
-        server-pod-log.sh   - prints a server's pod's log
-        server-out.sh       - prints a server stdout file
-        server-log.sh       - prints a server's log
-        server-nm-log.sh    - prints a server's node manager log
-        server-nm-state.sh  - gets the state that the node manager thinks a server is in
+        start-server.sh             - manually starts a server by creating its kubernetes resources
+        stop-server.sh              - manually stops a server by deleting its kubernetes resources
+        server-pod-desc.sh          - describes a server's pod
+        server-pod-state.sh         - gets a server's pod's state
+        server-pod-log.sh           - prints a server's pod's log
+        server-out.sh               - prints a server stdout file
+        server-log.sh               - prints a server's log
+        server-nm-log.sh            - prints a server's node manager log
+        server-nm-state.sh          - gets the state that the node manager thinks a server is in
+        wait-for-server-to-start.sh - waits for the server to start
           all per-server scripts the name of a server (as, ms1, ms2 or ms3)
             e.g. generated/start-server.sh as
 
@@ -143,6 +140,7 @@ poc generated files
         domain-home-pvc.yaml
           persistent volumes and claims for the domain logs and domain home persistent volumes
 
+        introspect-domain-pod.yamlt
         admin-server-pod.yamlt
         admin-server-service.yamlt
         admin-server-t3-service.yamlt
@@ -152,6 +150,7 @@ poc generated files
           (normally we'd put them in the domain crd so that the operator runtime could
           use them as it needs to create and delete per-server pods)
 
+        introspect-domain-pod.yaml
         as-pod.yaml
         as-service.yaml
         as-t3-service.yaml
@@ -163,8 +162,8 @@ poc generated files
         ms3-service.yaml
           actual pods and services for all the servers in this domain
           (since we don't have an operator ...)
-          TBD - could create them in start-server.sh and stop-server.sh instead,
-          just as the operator runtime would
+          TBD - could create them created and deleted by start-server.sh and
+          stop-server.sh instead, just as the operator runtime would
 
     /scratch/k8s-dir/demo1-domain-uid
       contains the persistent volumes for demo1's domain
