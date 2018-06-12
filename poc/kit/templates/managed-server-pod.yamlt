@@ -39,8 +39,8 @@ spec:
       value: %MANAGED_SERVER_NAME%
     - name: ADMIN_USERNAME
     - name: ADMIN_PASSWORD
-    image: store/oracle/weblogic:12.2.1.3
-    imagePullPolicy: IfNotPresent
+    image: %WEBLOGIC_IMAGE%
+    imagePullPolicy: %WEBLOGIC_IMAGE_PULL_POLICY%
     lifecycle:
       preStop:
         exec:

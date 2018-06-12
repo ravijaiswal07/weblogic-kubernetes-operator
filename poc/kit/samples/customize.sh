@@ -13,6 +13,8 @@ customize-property SETUP_ENV_SCRIPT
 customize-property OPERATOR_NAMESPACE
 customize-property DOMAIN_NAMESPACE
 customize-property DOMAIN_UID
+customize-property WEBLOGIC_IMAGE
+customize-property WEBLOGIC_IMAGE_PULL_POLICY
 customize-property DOMAIN_NAME
 customize-property ADMIN_USERNAME
 customize-property ADMIN_PASSWORD
