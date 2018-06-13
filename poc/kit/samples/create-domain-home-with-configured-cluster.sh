@@ -23,8 +23,6 @@ number_of_ms             = ${MANAGED_SERVER_COUNT}
 managed_server_port      = ${MANAGED_SERVER_PORT}
 managed_server_base_name = "${MANAGED_SERVER_BASE_NAME}"
 
-logs_dir                 = "${POD_DOMAIN_LOGS_DIR}"
-
 selectTemplate('Basic WebLogic Server Domain', '12.2.1.3.0')
 loadTemplates()
 

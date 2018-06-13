@@ -18,6 +18,8 @@ spec:
       value: %DOMAIN_UID%
     - name: DOMAIN_HOME
       value: %POD_DOMAIN_HOME_DIR%
+    - name: DOMAIN_LOGS
+      value: "%POD_DOMAIN_LOGS_DIR%"
     image: %WEBLOGIC_IMAGE%
     imagePullPolicy: %WEBLOGIC_IMAGE_PULL_POLICY%
     livenessProbe:
@@ -53,11 +55,8 @@ spec:
   - name: weblogic-credentials-volume
     secret:
       defaultMode: 420
-      secretName: %DOMAIN_CREDENTIALS_SECRET_NAME%
+      secretName:  %DOMAIN_CREDENTIALS_SECRET_NAME%
   - name: weblogic-domain-cm-volume
     configMap:
       defaultMode: 365
       name: weblogic-domain-cm 
-  - name: weblogic-domain-logs-storage-volume
-    persistentVolumeClaim:
-      claimName: %DOMAIN_UID%-weblogic-domain-logs-pvc

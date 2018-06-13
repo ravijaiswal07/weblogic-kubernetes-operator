@@ -24,11 +24,6 @@ function createDomainNamespaceScriptsYaml {
   copyAndCustomize ${OPERATOR_TEMPLATES}/domain-cm.yamlt ${GENERATED_FILES}/domain-cm.yaml
 }
 
-function createDomainLogsYamls {
-  copyAndCustomize ${OPERATOR_SAMPLES}/domain-logs-pv.yamlt  ${GENERATED_FILES}/domain-logs-pv.yaml
-  copyAndCustomize ${OPERATOR_SAMPLES}/domain-logs-pvc.yamlt ${GENERATED_FILES}/domain-logs-pvc.yaml
-}
-
 function createDomainIntrospectionTemplateYaml {
   copyAndCustomize ${OPERATOR_TEMPLATES}/introspect-domain-pod.yamlt ${GENERATED_FILES}/introspect-domain-pod.yamlt
 }
@@ -59,25 +54,29 @@ function createServerScripts {
 
 function copyAndCustomizeTemplatesBase {
   createDomainNamespaceScriptsYaml
-  createDomainLogsYamls
   createDomainIntrospectionTemplateYaml
   createAdminServerTemplateYamls
   createManagedServerTemplateYamls
   createServerScripts
 }
 
-function createPersistentVolumesBase {
-  mkdir -p ${DOMAIN_PVS_DIR}
-  mkdir -p ${DOMAIN_LOGS_PV_DIR}
-}
-
 function createDomainWideKubernetesResourcesBase {
   # create the kubernetes namespace and domain wide resources for this domain
   # don't create the ones the operator would create at runtime
   kubectl apply -f ${GENERATED_FILES}/domain-cm.yaml
-  kubectl apply -f ${GENERATED_FILES}/domain-logs-pv.yaml
-  kubectl apply -f ${GENERATED_FILES}/domain-logs-pvc.yaml
 }
+
+function ensureDomainNamespaceExists {
+  kubectl create ns ${DOMAIN_NAMESPACE}
+}
+
+function createDomainCredentialsSecret {
+  kubectl -n ${DOMAIN_NAMESPACE} create secret generic ${DOMAIN_CREDENTIALS_SECRET_NAME} --from-literal=username=${ADMIN_USERNAME} --from-literal=password=${ADMIN_PASSWORD}
+}
+
+#----------------------------------------------------------------------------------------
+# Simulate the operator runtime - this is not domain specific
+#----------------------------------------------------------------------------------------
 
 function waitForIntrospectionToComplete {
   pod=${DOMAIN_UID}-introspect-domain
@@ -135,40 +134,52 @@ function simulateOperatorRuntime {
   introspectDomain
 }
 
-function ensureDomainNamespaceExists {
-  kubectl create ns ${DOMAIN_NAMESPACE}
-}
-
-function createDomainCredentialsSecret {
-  kubectl -n ${DOMAIN_NAMESPACE} create secret generic ${DOMAIN_CREDENTIALS_SECRET_NAME} --from-literal=username=${ADMIN_USERNAME} --from-literal=password=${ADMIN_PASSWORD}
-}
-
 #----------------------------------------------------------------------------------------
 # Functionality specific to this domain
 #----------------------------------------------------------------------------------------
+
+function createDomainLogsYamls {
+  copyAndCustomize ${OPERATOR_SAMPLES}/domain-logs-pv.yamlt  ${GENERATED_FILES}/domain-logs-pv.yaml
+  copyAndCustomize ${OPERATOR_SAMPLES}/domain-logs-pvc.yamlt ${GENERATED_FILES}/domain-logs-pvc.yaml
+}
 
 function createDomainHomeYamls {
   copyAndCustomize ${OPERATOR_SAMPLES}/domain-home-pv.yamlt  ${GENERATED_FILES}/domain-home-pv.yaml
   copyAndCustomize ${OPERATOR_SAMPLES}/domain-home-pvc.yamlt ${GENERATED_FILES}/domain-home-pvc.yaml
 }
 
-function addDomainHomePersistentVolumeToPodTemplate {
+function addPersistentVolumeToPodTemplate {
   template=$1
-  awk '
+  name=$2
+  path=$3
+  awk "
   { print }
 /    volumeMounts:/ {
-    print "    - name: weblogic-domain-home-storage-volume"
-    print "      mountPath: %POD_DOMAIN_HOME_DIR%"
+    print \"    - name: ${name}-storage-volume\"
+    print \"      mountPath: ${path}\"
 }
 /  volumes:/ {
-    print "  - name: weblogic-domain-home-storage-volume"
-    print "    persistentVolumeClaim:"
-    print "      claimName: %DOMAIN_UID%-weblogic-domain-home-pvc"
+    print \"  - name: ${name}-storage-volume\"
+    print \"    persistentVolumeClaim:\"
+    print \"      claimName: ${DOMAIN_UID}-${name}-pvc\"
 }
-' $template > $template.bak
+" $template > $template.bak
   rm $template
   mv $template.bak $template
-  ${OPERATOR_SAMPLES}/customize.sh $template
+}
+
+function addDomainLogsPersistentVolumeToPodTemplate {
+  addPersistentVolumeToPodTemplate ${1} weblogic-domain-logs ${POD_DOMAIN_LOGS_DIR}
+}
+
+function addDomainHomePersistentVolumeToPodTemplate {
+  addPersistentVolumeToPodTemplate ${1} weblogic-domain-home ${POD_DOMAIN_HOME_DIR}
+}
+
+function addDomainLogsPersistentVolumeToPods {
+  # note: the introspect pod doesn't need the logs pv since it doesn't write to any logs
+  addDomainLogsPersistentVolumeToPodTemplate ${GENERATED_FILES}/admin-server-pod.yamlt
+  addDomainLogsPersistentVolumeToPodTemplate ${GENERATED_FILES}/managed-server-pod.yamlt
 }
 
 function addDomainHomePersistentVolumeToPods {
@@ -179,7 +190,9 @@ function addDomainHomePersistentVolumeToPods {
 
 function copyAndCustomizeTemplates {
   copyAndCustomizeTemplatesBase
+  createDomainLogsYamls
   createDomainHomeYamls
+  addDomainLogsPersistentVolumeToPods
   addDomainHomePersistentVolumeToPods
 }
 
@@ -187,18 +200,37 @@ function createDomainHome {
   ${OPERATOR_SAMPLES}/create-domain-home-with-configured-cluster.sh
 }
 
-function createPersistentVolumes {
-  createPersistentVolumesBase
+function createDomainLogsPersistentVolume {
+  mkdir -p ${DOMAIN_LOGS_PV_DIR}
+}
+
+function createDomainHomePersistentVolume {
   cp -r ${DOMAIN_PATH} ${DOMAIN_HOME_PV_DIR}
   ${OPERATOR_SAMPLES}/patch-domain-home.sh ${DOMAIN_HOME_PV_DIR}
+}
+
+function createPersistentVolumes {
+  mkdir -p ${DOMAIN_PVS_DIR}
+  createDomainLogsPersistentVolume
+  createDomainHomePersistentVolume
+}
+
+function createDomainLogsResources {
+  kubectl apply -f ${GENERATED_FILES}/domain-logs-pv.yaml
+  kubectl apply -f ${GENERATED_FILES}/domain-logs-pvc.yaml
+}
+
+function createDomainHomeResources {
+  kubectl apply -f ${GENERATED_FILES}/domain-home-pv.yaml
+  kubectl apply -f ${GENERATED_FILES}/domain-home-pvc.yaml
 }
 
 function createDomainWideKubernetesResources {
   createDomainWideKubernetesResourcesBase
   # create the kubernetes namespace and domain wide resources for this domain
   # don't create the ones the operator would create at runtime
-  kubectl apply -f ${GENERATED_FILES}/domain-home-pv.yaml
-  kubectl apply -f ${GENERATED_FILES}/domain-home-pvc.yaml
+  createDomainLogsResources
+  createDomainHomeResources
 }
 
 function main {

@@ -83,12 +83,12 @@ data:
 
     # +++ End of common code for reading domain secrets
     #
-    server_name = os.environ['SERVER_NAME']
-    domain_uid = os.environ['DOMAIN_UID']
-    domain_name = os.environ['DOMAIN_NAME']
-    domain_home = os.environ['DOMAIN_HOME']
-    admin_name = os.environ['ADMIN_NAME']
-    admin_port = os.environ['ADMIN_PORT']
+    server_name = os.getenv('SERVER_NAME')
+    domain_uid = os.getenv('DOMAIN_UID')
+    domain_name = os.getenv('DOMAIN_NAME')
+    domain_home = os.getenv('DOMAIN_HOME')
+    admin_name = os.getenv('ADMIN_NAME')
+    admin_port = os.getenv('ADMIN_PORT')
 
     print 'admin username is %s' % admin_username
     print 'admin password is %s' % admin_password
@@ -218,7 +218,10 @@ data:
       echo "StateCheckInterval=500" >> ${nm_props}
       echo "CrashRecoveryEnabled=true" >> ${nm_props}
       echo "weblogic.StartScriptEnabled=false" >> ${nm_props}
-      echo "LogFile=${DOMAIN_LOGS}/nodemanager-${SERVER_NAME}.log" >> ${nm_props}
+      if [ ${DOMAIN_LOGS} != "null" ]; then
+        # redirect the per-server node manager log if the user asked us to:
+        echo "LogFile=${DOMAIN_LOGS}/nodemanager-${SERVER_NAME}.log" >> ${nm_props}
+      fi
       echo "LogFormatter=weblogic.nodemanager.server.LogFormatter" >> ${nm_props}
       echo "ListenBacklog=50" >> ${nm_props}
 
@@ -237,7 +240,11 @@ data:
 
     # Create a node manager home local to this pod
     createLocalNodeManagerHome ${local_nmdir}
-    export JAVA_PROPERTIES="-DLogFile=${DOMAIN_LOGS}/nodemanager-${SERVER_NAME}.log -DNodeManagerHome=${local_nmdir}"
+    export JAVA_PROPERTIES="-DNodeManagerHome=${local_nmdir}"
+    if [ ${DOMAIN_LOGS} != "null" ]; then
+      # redirect the per-server node manager log if the user asked us to:
+      export JAVA_PROPERTIES="-DLogFile=${DOMAIN_LOGS}/nodemanager-${SERVER_NAME}.log ${JAVA_PROPERTIES}"
+    fi
     export NODEMGR_HOME="${local_nmdir}"
 
     # Create startup.properties
@@ -282,10 +289,10 @@ data:
 
     # +++ End of common code for reading domain secrets
     #
-    server_name = os.environ['SERVER_NAME']
-    domain_uid = os.environ['DOMAIN_UID']
-    domain_name = os.environ['DOMAIN_NAME']
-    domain_home = os.environ['DOMAIN_HOME']
+    server_name = os.getenv('SERVER_NAME')
+    domain_uid = os.getenv('DOMAIN_UID')
+    domain_name = os.getenv('DOMAIN_NAME')
+    domain_home = os.getenv('DOMAIN_HOME')
 
     service_name = domain_uid + "-" + server_name
 
@@ -460,9 +467,16 @@ data:
       file.close()
       return secret
 
+    def getDomainLogs():
+      domain_logs = os.getenv('DOMAIN_LOGS')
+      if domain_logs == "null":
+        return None
+      else:
+        return domain_logs
+
     def readAndEncryptSecret(path):
       secret = readSecret(path)
-      domain_home=os.environ['DOMAIN_HOME']
+      domain_home=os.getenv('DOMAIN_HOME')
       return encrypt(secret, domain_home)
 
     def beginDomain(f):
@@ -475,10 +489,12 @@ data:
       writeln(f, "        <d:node-manager-user-name f:combine-mode=\"replace\">" + admin_username + "</d:node-manager-user-name>")
       writeln(f, "        <d:node-manager-password-encrypted f:combine-mode=\"replace\">" + admin_password + "</d:node-manager-password-encrypted>")
       writeln(f, "      </d:security-configuration>")
-      domain_name=cmo.getName()
-      writeln(f, "      <d:log f:combine-mode=\"replace\">")
-      writeln(f, "        <d:file-name>/domain-logs/" + domain_name + ".log</d:file-name>")
-      writeln(f, "      </d:log>")
+      domain_logs = getDomainLogs()
+      if domain_logs is not None:
+        domain_name=cmo.getName()
+        writeln(f, "      <d:log f:combine-mode=\"replace\">")
+        writeln(f, "        <d:file-name>" + domain_logs + "/" + domain_name + ".log</d:file-name>")
+        writeln(f, "      </d:log>")
 
     def endDomain(f):
       writeln(f, "    </d:domain>")
@@ -487,9 +503,11 @@ data:
       name=server.getName()
       writeln(f, "      <d:server>")
       writeln(f, "        <d:name>" + name + "</d:name>")
-      writeln(f, "        <d:log f:combine-mode=\"replace\">")
-      writeln(f, "          <d:file-name>/domain-logs/" + name + ".log</d:file-name>")
-      writeln(f, "        </d:log>")
+      domain_logs = getDomainLogs()
+      if domain_logs is not None:
+        writeln(f, "        <d:log f:combine-mode=\"replace\">")
+        writeln(f, "          <d:file-name>" + domain_logs + "/" + name + ".log</d:file-name>")
+        writeln(f, "        </d:log>")
       writeln(f, "        <d:listen-address f:combine-mode=\"replace\">" + domain_uid + "-" + name + "</d:listen-address>")
       if name == admin_server_name:
         # TBD - find the t3 channel, and if it exists, customize its listen address
@@ -504,14 +522,16 @@ data:
       server_name_prefix=template.getCluster().getDynamicServers().getServerNamePrefix()
       writeln(f, "      <d:server-template>")
       writeln(f, "        <d:name>" + name + "</d:name>")
-      writeln(f, "        <d:log f:combine-mode=\"replace\">")
-      writeln(f, "          <d:file-name>/domain-logs/" + server_name_prefix + "\${i}.log</d:file-name>")
-      writeln(f, "        </d:log>")
+      domain_logs = getDomainLogs()
+      if domain_logs is not None:
+        writeln(f, "        <d:log f:combine-mode=\"replace\">")
+        writeln(f, "          <d:file-name>/domain-logs/" + server_name_prefix + "\${i}.log</d:file-name>")
+        writeln(f, "        </d:log>")
       #writeln(f, "        <d:listen-address f:combine-mode=\"replace\">" + domain_uid + "-" + server_name_prefix + "\${i}</d:listen-address>")
       writeln(f, "      </d:server-template>")
 
     def createSitConfig(f):
-      domain_uid=os.environ['DOMAIN_UID']
+      domain_uid=os.getenv('DOMAIN_UID')
       cd('/')
       admin_server_name=cmo.getAdminServerName()
       beginDomain(f)
@@ -527,7 +547,7 @@ data:
     # +++ Start of overall config map generation
 
     def addConfigMapHeader(f):
-      domain_uid=os.environ['DOMAIN_UID']
+      domain_uid=os.getenv('DOMAIN_UID')
       domain_name=cmo.getName()
       writeln(f, "apiVersion: v1")
       writeln(f, "kind: ConfigMap")
@@ -567,7 +587,7 @@ data:
       f.close()
 
     def main():
-      domain_home=os.environ['DOMAIN_HOME']
+      domain_home=os.getenv('DOMAIN_HOME')
       readDomain(domain_home)
       if validateDomain() == True:
         createConfigMap()

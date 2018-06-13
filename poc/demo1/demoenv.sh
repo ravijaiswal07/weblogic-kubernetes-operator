@@ -28,7 +28,7 @@ export T3_PUBLIC_ADDRESS="localhost"
 export MANAGED_SERVER_BASE_NAME="ms"
 export MANAGED_SERVER_PORT="8100"
 export MANAGED_SERVER_COUNT="3"
-export DOMAIN_CREDENTIALS_SECRET_NAME="${DEMO_NAME}-domain-creds"
+export DOMAIN_CREDENTIALS_SECRET_NAME="${DOMAIN_UID}-domain-creds"
 export POD_DOMAIN_HOME_DIR="/domain-home" # TBD - should the customer be able to control this?
 export POD_DOMAIN_LOGS_DIR="/domain-logs" # TBD - should the customer be able to control this?
 

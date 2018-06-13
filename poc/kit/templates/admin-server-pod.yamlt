@@ -31,7 +31,7 @@ spec:
     - name: DOMAIN_HOME
       value: %POD_DOMAIN_HOME_DIR%
     - name: DOMAIN_LOGS
-      value: %POD_DOMAIN_LOGS_DIR%
+      value: "%POD_DOMAIN_LOGS_DIR%"
     - name: ADMIN_NAME
       value: %ADMIN_SERVER_NAME%
     - name: ADMIN_PORT
@@ -79,8 +79,6 @@ spec:
     - name: weblogic-domain-bindings-cm-volume
       mountPath: /weblogic-operator/domain-bindings
       readOnly: true
-    - name: weblogic-domain-logs-storage-volume
-      mountPath: %POD_DOMAIN_LOGS_DIR%
   hostname: %DOMAIN_UID%-%ADMIN_SERVER_NAME%
   volumes:
   - name: weblogic-credentials-volume
@@ -95,6 +93,3 @@ spec:
     configMap:
       defaultMode: 365
       name: %DOMAIN_UID%-weblogic-domain-bindings-cm
-  - name: weblogic-domain-logs-storage-volume
-    persistentVolumeClaim:
-      claimName: %DOMAIN_UID%-weblogic-domain-logs-pvc

@@ -6,4 +6,8 @@
 
 SERVER_NAME="${1}"
 
-cat ${DOMAIN_LOGS_PV_DIR}/nodemanager-${SERVER_NAME}.log
+if [ ${POD_DOMAIN_LOGS_DIR} != "null" ]; then
+  cat ${DOMAIN_LOGS_PV_DIR}/nodemanager-${SERVER_NAME}.log
+else
+  kubectl exec -n ${DOMAIN_NAMESPACE} ${DOMAIN_UID}-${SERVER_NAME} cat /u01/nodemanager/nodemanager.log
+fi
