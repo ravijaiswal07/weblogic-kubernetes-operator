@@ -558,7 +558,7 @@ data:
       writeln(f, "    weblogic.domainUID: " + domain_uid)
       writeln(f, "    weblogic.resourceVersion: domain-v1")
       writeln(f, "  name: " + domain_uid + "-weblogic-domain-bindings-cm")
-      writeln(f, "  namespace: %DOMAIN_NAMESPACE%")
+      writeln(f, "  namespace: %DOMAINS_NAMESPACE%")
 
     def endConfigMap(f):
       undent()
@@ -645,4 +645,4 @@ metadata:
     weblogic.operatorName: %OPERATOR_NAMESPACE%
     weblogic.resourceVersion: domain-v1
   name: weblogic-domain-cm
-  namespace: %DOMAIN_NAMESPACE%
+  namespace: %DOMAINS_NAMESPACE%

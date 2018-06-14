@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. %SETUP_ENV_SCRIPT%
+. %SETUP_SCRIPT_ENV_SCRIPT%
 
 #set -x
 

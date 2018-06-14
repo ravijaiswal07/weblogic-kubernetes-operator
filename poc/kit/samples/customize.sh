@@ -9,9 +9,9 @@ function customize-property {
   ${OPERATOR_SAMPLES}/customize-property.sh ${fileToCustomize} ${propertyName}
 }
 
-customize-property SETUP_ENV_SCRIPT
+customize-property SETUP_SCRIPT_ENV_SCRIPT
 customize-property OPERATOR_NAMESPACE
-customize-property DOMAIN_NAMESPACE
+customize-property DOMAINS_NAMESPACE
 customize-property DOMAIN_UID
 customize-property WEBLOGIC_IMAGE
 customize-property WEBLOGIC_IMAGE_PULL_POLICY

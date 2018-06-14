@@ -15,7 +15,7 @@ spec:
     apiVersion: v1
     kind: PersistentVolumeClaim
     name: %DOMAIN_UID%-weblogic-domain-logs-pvc
-    namespace: %DOMAIN_NAMESPACE%
+    namespace: %DOMAINS_NAMESPACE%
   hostPath:
     path: %DOMAIN_LOGS_PV_DIR%
     type: ""

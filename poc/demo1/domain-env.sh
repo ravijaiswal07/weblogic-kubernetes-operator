@@ -1,19 +1,7 @@
 #!/bin/bash
 
-export DEMO_HOME=`pwd` # this means that you need to run the sample from this directory!
-export SETUP_ENV_SCRIPT="${DEMO_HOME}/demoenv.sh"
+. ./domains-ns-env.sh
 
-export OPERATOR_HOME="${DEMO_HOME}/../kit"
-export OPERATOR_SAMPLES="${OPERATOR_HOME}/samples"
-export OPERATOR_TEMPLATES="${OPERATOR_HOME}/templates"
-export OPERATOR_RUNTIME="${OPERATOR_HOME}/runtime"
-export GENERATED_FILES="${DEMO_HOME}/generated"
-export PVS_DIR="/scratch/k8s-dir"
-
-export DEMO_NAME="demo1"
-
-export OPERATOR_NAMESPACE="demo-o-ns"
-export DOMAIN_NAMESPACE="demo-d-ns"
 export DOMAIN_UID="${DEMO_NAME}-domain-uid"
 export WEBLOGIC_IMAGE="store/oracle/weblogic:12.2.1.3"
 export WEBLOGIC_IMAGE_PULL_POLICY="IfNotPresent"

@@ -16,12 +16,15 @@ setup
 how to run demo1
 
   cd demo1
+  create-domains-ns.sh
   create-domain.sh
+  simulate-operator-runtime.sh
   generated/start-server.sh as
   generated/wait-for-server-to-start.sh as
   generated/start-server.sh ms1
   generated/wait-for-server-to-start.sh ms1
   delete-domain.sh
+  delete-domains-ns.sh
 
 poc source files
 
@@ -29,87 +32,118 @@ poc source files
     uses offline wlst to create a domain with a configured cluster
     uses a domain persistent volume
 
-    demoenv.sh
-      - sets up a bunch of environment variables describing the domain,
-        e.g. its domain name, domain home, server names and ports, where to put
-        persistent volumes on disk
-      - TODO - do we need a sample env.sh file on the kit that a custom can copy and
-        modify or do we expect them to start with one of the demos?
+    domain-ns-env.sh
+      - sets up a bunch of environment variables needed for the domain namespace level
+
+    domain-env.sh
+      - sets up a bunch of environment variables that are needed for the domain level,
+        imports domain-ns-env.sh too
+
+    create-domains-ns.sh
+      - create the domains namespace and namespace wide kubernetes resources
+
+    delete-domains-ns.sh
+      - removes the domains namespace and its namespace wide kubernetes resources
+      - NOTE: don't call this unless you've called delete-domain.sh first!
 
     create-domain.sh
-      - create the domain and corresponding domain wide kubernetes resources
-      - TODO - there's a lot of logic in this script that the demos want to share,
-        seems like customers might want to do it too ...
+      - create the domain and corresponding domain wide kubernetes resources and persistent volumes
+      - NOTE: don't call this unless you've called create-domains-ns.sh first!
 
     delete-domain.sh
-      - create the domain and corresponding domain wide kubernetes resources
+      - create the domain and corresponding domain wide kubernetes resources and persistent volumes
+      - NOTE: don't call this unless you've called create-domains-ns.sh first!
  
+    simulate-operator-runtime.sh
+      - creates a pod that introspects the domain image and creates and loads a config map
+        that contains the domain's topology as well as a situation config file for the domain
+        that gets mounted into the server pods
+      - also creates yaml files for all of the server pods and services
+      - NOTE: don't call this unless you've called create-domain.sh first
+
   kit/
     represents the files in an operator kit
 
     templates/
       template yaml files that the customer must copy and customize
 
-      domain-cm.yamlt - template config map containing the operator's server pod lifecycle scripts
-      admin-server-pod.yamlt - admin server's pod template
-      admin-server-service.yamlt - admin server's service template
-      admin-server-t3-service.yamlt - admin server's t3 service template
-      managed-server-pod.yamlt - managed server pod template
-      managed-server-service.yamlt - managed server service template
+      utilities level:
+        none (yet)
 
-      introspect-domain-pod.yamlt - pod template for introspecting the domain image
-        validates that the domain can be used by the operator
-        generates server and cluster topology info that the operator runtime needs
-        create a situational configuration file binding the domain to the operator
+      domain namespace level:
+        domain-cm.yamlt - template config map containing the operator's server pod lifecycle scripts
+
+      domain level:
+        admin-server-pod.yamlt - admin server's pod template
+        admin-server-service.yamlt - admin server's service template
+        admin-server-t3-service.yamlt - admin server's t3 service template
+        managed-server-pod.yamlt - managed server pod template
+        managed-server-service.yamlt - managed server service template
+
+        introspect-domain-pod.yamlt - pod template for introspecting the domain image
+          validates that the domain can be used by the operator
+          generates server and cluster topology info that the operator runtime needs
+          create a situational configuration file binding the domain to the operator
 
     samples/
       sample template files that a customer may copy and customize
 
-      create-domain-home-with-configured-cluster.sh
-      create-domain-home-with-dynamic-cluster.sh
-        - use offline wlst to create a local domain home
-          it can be booted locally (i.e. no pod needed)
+      utilities level:
 
-      patch-domain-home.sh
-        - converts the domain home, java home and mw home pathnames that are baked into
-          the files generated create-domain-home-...sh to the pathnames that are used
-          when the domain home is used by a pod
+        customize-property.sh
+        customize.sh
+          - scripts that expand/customize a template file
+            the caller needs to have set up a bunch of environment variables
+            containing the desired values (e.g. demo1/demoenv.sh)
+          - the demos copy various templates from the kit/samples and kit/templates
+            directories into the demos' 'generated' directories then use customize.sh
+            to customize the copies to the demo
 
-      domain-logs-pv.yamlt
-      domain-logs-pvc.yamlt
-      domain-home-pv.yamlt
-      domain-home-pvc.yamlt
-        - template yaml files for creating the kubernetes persistent volumes and claims
-          for the domain logs persistent volume and domain home persistent volume
-        - samples that use in-image domains don't use domain-home-pv/c.yamlt
+      domain namespace level:
+        none (yet)
 
-      start-server.sh
-      stop-server.sh
-      server-pod-desc.sh
-      server-pod-state.sh
-      server-pod-log.sh
-      server-log.sh
-      server-out.sh
-      server-nm-log.sh
-      server-nm-state.sh
-      wait-for-server-to-start.sh as
-        - template scripts for managing servers (see description under the 'demo1' section)
+      domain level:
+        create-domain-home-with-configured-cluster.sh
+        create-domain-home-with-dynamic-cluster.sh
+          - use offline wlst to create a local domain home
+            it can be booted locally (i.e. no pod needed)
 
-      customize-property.sh
-      customize.sh
-        - scripts that expand/customize a template file
-          the caller needs to have set up a bunch of environment variables
-          containing the desired values (e.g. demo1/demoenv.sh)
-        - the demos copy various templates from the kit/samples and kit/templates
-          directories into the demos' 'generated' directories then use customize.sh
-          to customize the copies to the demo
+        patch-domain-home.sh
+          - converts the domain home, java home and mw home pathnames that are baked into
+            the files generated create-domain-home-...sh to the pathnames that are used
+            when the domain home is used by a pod
 
-  todo - all the load balancer yaml files
+        domain-logs-pv.yamlt
+        domain-logs-pvc.yamlt
+        domain-home-pv.yamlt
+        domain-home-pvc.yamlt
+          - template yaml files for creating the kubernetes persistent volumes and claims
+            for the domain logs persistent volume and domain home persistent volume
+          - samples that use in-image domains don't use domain-home-pv/c.yamlt
+
+        start-server.sh
+        stop-server.sh
+        server-pod-desc.sh
+        server-pod-state.sh
+        server-pod-log.sh
+        server-log.sh
+        server-out.sh
+        server-nm-log.sh
+        server-nm-state.sh
+        wait-for-server-to-start.sh as
+          - template scripts for managing servers (see description under the 'demo1' section)
 
 poc generated files
 
     demo1/generated/
-        - generated yaml files and scripts for this demo
+
+      - generated yaml files and scripts for this demo
+
+      domains namespace level:
+
+        domain-cm.yaml - config map of server pod lifecycle scripts for this domain namespace
+
+      domain level:
 
         start-server.sh             - manually starts a server by creating its kubernetes resources
         stop-server.sh              - manually stops a server by deleting its kubernetes resources
@@ -131,7 +165,6 @@ poc generated files
             pathnames in the generated files are based on the shell that ran
             create-domain-home.sh, instead of the ones that are needed in a pod
 
-        domain-cm.yaml - config map of server pod lifecycle scripts for this domain namespace
         domain-bindings-cm.yaml - config map with a situational config for this domain
 
         domain-logs-pv.yaml

@@ -12,7 +12,7 @@ metadata:
     weblogic.resourceVersion: domain-v1
     weblogic.serverName: %ADMIN_SERVER_NAME%
   name: %DOMAIN_UID%-%ADMIN_SERVER_NAME%
-  namespace: %DOMAIN_NAMESPACE%
+  namespace: %DOMAINS_NAMESPACE%
 spec:
   containers:
   - command:

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-. %SETUP_ENV_SCRIPT%
+. %SETUP_SCRIPT_ENV_SCRIPT%
 
 #set -x
 
 SERVER_NAME="${1}"
 
-kubectl logs -n ${DOMAIN_NAMESPACE} ${DOMAIN_UID}-${SERVER_NAME}
+kubectl logs -n ${DOMAINS_NAMESPACE} ${DOMAIN_UID}-${SERVER_NAME}

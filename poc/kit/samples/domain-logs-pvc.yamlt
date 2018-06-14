@@ -6,7 +6,7 @@ metadata:
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.resourceVersion: domain-v1
   name: %DOMAIN_UID%-weblogic-domain-logs-pvc
-  namespace: %DOMAIN_NAMESPACE%
+  namespace: %DOMAINS_NAMESPACE%
 spec:
   accessModes:
   - ReadWriteMany

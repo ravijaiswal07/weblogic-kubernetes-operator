@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. %SETUP_ENV_SCRIPT%
+. %SETUP_SCRIPT_ENV_SCRIPT%
 
 #set -x
 
@@ -10,7 +10,7 @@ readyHave="false"
 readyWant="true"
 iter=1
 while [ "${readyHave}" != "${readyWant}" -a ${iter} -lt 101 ] ; do
-  readyHave=`kubectl get pod -n ${DOMAIN_NAMESPACE} ${DOMAIN_UID}-${SERVER_NAME} -o jsonpath='{.status.containerStatuses[0].ready}'`
+  readyHave=`kubectl get pod -n ${DOMAINS_NAMESPACE} ${DOMAIN_UID}-${SERVER_NAME} -o jsonpath='{.status.containerStatuses[0].ready}'`
   echo readyHave=${readyHave}
   if [ "${readyHave}" != "${readyWant}" ] ; then
     echo "waiting for ${SERVER_NAME} to start, attempt ${iter} : ready=${readyHave}"
