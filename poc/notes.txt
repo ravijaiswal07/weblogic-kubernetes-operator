@@ -16,15 +16,23 @@ setup
 how to run demo1
 
   cd demo1
+  mkdir generated # the scripts need to be improved to do this!
+  create-operator.sh
   create-domains-ns.sh
   create-domain.sh
+  from Tom Barnes: if running on a hosted linux box (macs don't need this):
+    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
+    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
   simulate-operator-runtime.sh
   generated/start-server.sh as
   generated/wait-for-server-to-start.sh as
   generated/start-server.sh ms1
   generated/wait-for-server-to-start.sh ms1
+  from Tom Barnes: if running on a hosted linux box (macs don't need this):
+    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
   delete-domain.sh
   delete-domains-ns.sh
+  delete-operator.sh
 
 poc source files
 
@@ -32,12 +40,21 @@ poc source files
     uses offline wlst to create a domain with a configured cluster
     uses a domain persistent volume
 
+    demo-env.sh
+      - sets up some demo wide environment variables that are not per operator or per domain
+
+    operator-env.sh
+      - sets up a bunch of environment variables needed for the operator level
+
     domain-ns-env.sh
       - sets up a bunch of environment variables needed for the domain namespace level
 
     domain-env.sh
       - sets up a bunch of environment variables that are needed for the domain level,
         imports domain-ns-env.sh too
+
+    create-operator.sh
+      - create the operator kubernetes resources
 
     create-domains-ns.sh
       - create the domains namespace and namespace wide kubernetes resources
@@ -54,6 +71,9 @@ poc source files
       - create the domain and corresponding domain wide kubernetes resources and persistent volumes
       - NOTE: don't call this unless you've called create-domains-ns.sh first!
  
+    delete-operator.sh
+      - delete the operator kubernetes resources
+
     simulate-operator-runtime.sh
       - creates a pod that introspects the domain image and creates and loads a config map
         that contains the domain's topology as well as a situation config file for the domain
@@ -69,6 +89,20 @@ poc source files
 
       utilities level:
         none (yet)
+
+      operator level:
+
+        operator-rolebinding.yamlt - overall cluster role binding for the operator 
+        operator-rolebinding-auth-delegator.yamlt - auth delegator cluster role binding for the operator
+        operator-rolebinding-discovery.yamlt - discovery cluster role binding for the operator
+        operator-rolebinding-nonresource.yamlt - non resource cluster role binding for the operator
+        operator-sa.yamlt - service account for the operator
+        operator-cm.yamlt - config map containing the configuration for the operator
+        operator-secrets.yamlt - config map containing the secrets for the operator
+        operator-dep.yamlt - deployment for the operator
+        operator-external-svc.yamlt - external node port for the operator
+        operator-internal-svc.yamlt - internal cluster ip port for the operator
+        operator-ns.yamlt - namespace for the operator
 
       domain namespace level:
         domain-cm.yamlt - template config map containing the operator's server pod lifecycle scripts
@@ -138,6 +172,19 @@ poc generated files
     demo1/generated/
 
       - generated yaml files and scripts for this demo
+
+      operator level:
+        operator-rolebinding-auth-delegator.yaml
+        operator-rolebinding-discovery.yaml
+        operator-rolebinding-nonresource.yaml
+        operator-rolebinding.yaml
+        operator-sa.yaml
+        operator-cm.yaml
+        operator-secrets.yaml
+        operator-dep.yaml
+        operator-external-svc.yaml
+        operator-internal-svc.yaml
+          kubernetes resources for the operator
 
       domains namespace level:
 

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    weblogic.operatorName: %OPERATOR_NAMESPACE%
+    weblogic.resourceVersion: operator-v1
+  name: %OPERATOR_SERVICE_ACCOUNT%
+  namespace: %OPERATOR_NAMESPACE%

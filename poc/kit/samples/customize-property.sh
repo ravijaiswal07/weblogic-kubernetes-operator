@@ -13,5 +13,5 @@ fi
 
 backupExtension=".bak"
 
-sed -i ${backupExtension} -e "s|%${variableToCustomize}%|${customValue}|g" ${fileToCustomize}
+sed -i${backupExtension} -e "s|%${variableToCustomize}%|${customValue}|g" ${fileToCustomize}
 rm ${fileToCustomize}${backupExtension}

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    weblogic.operatorName: tmoreau-op-ns
+    weblogic.resourceVersion: operator-v1
+  name: tmoreau-op-ns
+spec:
+  finalizers:
+  - kubernetes

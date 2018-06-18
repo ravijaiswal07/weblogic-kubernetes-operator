@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    weblogic.operatorName: %OPERATOR_NAMESPACE%
+    weblogic.resourceVersion: operator-v1
+  name: %OPERATOR_NAMESPACE%-operator-rolebinding-discovery
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:discovery
+subjects:
+- kind: ServiceAccount
+  name: %OPERATOR_SERVICE_ACCOUNT%
+  namespace: %OPERATOR_NAMESPACE%

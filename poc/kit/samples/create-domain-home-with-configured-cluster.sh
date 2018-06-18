@@ -6,6 +6,7 @@ rm -rf ${DOMAIN_PATH}
 
 java weblogic.WLST << EOF
 
+weblogic_version         = "${WEBLOGIC_VERSION}"
 domain_uid               = "${DOMAIN_UID}"
 domain_name              = "${DOMAIN_NAME}"
 domain_path              = "${DOMAIN_PATH}"
@@ -23,7 +24,7 @@ number_of_ms             = ${MANAGED_SERVER_COUNT}
 managed_server_port      = ${MANAGED_SERVER_PORT}
 managed_server_base_name = "${MANAGED_SERVER_BASE_NAME}"
 
-selectTemplate('Basic WebLogic Server Domain', '12.2.1.3.0')
+selectTemplate('Basic WebLogic Server Domain', weblogic_version)
 loadTemplates()
 
 # configure the domain

@@ -20,17 +20,12 @@ function copyAndCustomize {
   ${OPERATOR_SAMPLES}/customize.sh ${to}
 }
 
-function copyAndCustomizeServerScript {
-  script=${1}
-  copyAndCustomize ${OPERATOR_SAMPLES}/${1} ${GENERATED_FILES}/${1}
-}
-
-function createDomainNamespaceScriptsYaml {
+function createDomainsNamespaceScriptsYaml {
   copyAndCustomize ${OPERATOR_TEMPLATES}/domain-cm.yamlt ${GENERATED_FILES}/domain-cm.yaml
 }
 
 function copyAndCustomizeTemplatesBase {
-  createDomainNamespaceScriptsYaml
+  createDomainsNamespaceScriptsYaml
 }
 
 function createKubernetesResourcesBase {
@@ -39,7 +34,7 @@ function createKubernetesResourcesBase {
   kubectl apply -f ${GENERATED_FILES}/domain-cm.yaml
 }
 
-function createDomainNamespace {
+function createDomainsNamespace {
   kubectl create ns ${DOMAINS_NAMESPACE}
 }
 
@@ -60,7 +55,7 @@ function main {
     return
   fi
   copyAndCustomizeTemplates
-  createDomainNamespace
+  createDomainsNamespace
   createKubernetesResources
 }
 

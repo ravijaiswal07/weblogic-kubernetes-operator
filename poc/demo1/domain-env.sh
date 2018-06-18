@@ -3,6 +3,7 @@
 . ./domains-ns-env.sh
 
 export DOMAIN_UID="${DEMO_NAME}-domain-uid"
+export WEBLOGIC_VERSION="12.2.1.3.0"
 export WEBLOGIC_IMAGE="store/oracle/weblogic:12.2.1.3"
 export WEBLOGIC_IMAGE_PULL_POLICY="IfNotPresent"
 export DOMAIN_NAME="${DEMO_NAME}-domain"
