@@ -40,7 +40,7 @@ spec:
       terminationGracePeriodSeconds: 60
       %IF_LOADBALANCER_VOLUME_PATH%
       # volumes:
-      # - name: "%DOMAIN_UID%-apache-webtier"
+      # - name: %DOMAIN_UID%-apache-webtier
       #   hostPath:
       #     path: %LOAD_BALANCER_VOLUME_PATH%
       %END_IF%
@@ -50,7 +50,7 @@ spec:
         imagePullPolicy: Never
         %IF_LOADBALANCER_VOLUME_PATH%
         # volumeMounts:
-        # - name: "%DOMAIN_UID%-apache-webtier"
+        # - name: %DOMAIN_UID%-apache-webtier
         #   mountPath: "/config"
         %END_IF%
         env:

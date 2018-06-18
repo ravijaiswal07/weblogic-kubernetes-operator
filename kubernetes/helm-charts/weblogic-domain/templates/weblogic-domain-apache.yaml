@@ -40,7 +40,7 @@ spec:
       terminationGracePeriodSeconds: 60
       {{- if .Values.loadBalancerVolumePath }}
       volumes:
-      - name: "{{ .Values.domainUID }}-apache-webtier"
+      - name: {{ .Values.domainUID }}-apache-webtier
         hostPath:
           path: {{ .Values.loadBalancerVolumePath }}
       {{- end }}
@@ -50,7 +50,7 @@ spec:
         imagePullPolicy: Never
         {{- if .Values.loadBalancerVolumePath }}
         volumeMounts:
-        - name: "{{ .Values.domainUID }}-apache-webtier"
+        - name: {{ .Values.domainUID }}-apache-webtier
           mountPath: "/config"
         {{- end }}
         env:

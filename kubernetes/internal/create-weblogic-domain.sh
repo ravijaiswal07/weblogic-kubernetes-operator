@@ -470,6 +470,14 @@ function createYamlFiles {
   enabledPrefix=""     # uncomment the feature
   disabledPrefix="# "  # comment out the feature
 
+  # For backward compatability, default to "store/oracle/weblogic:12.2.1.3" if not defined in
+  # create-weblogic-domain-inputs.yaml
+  if [ -z "${weblogicImage}" ]; then
+    weblogicImage="store/oracle/weblogic:12.2.1.3"
+  fi
+  # Must escape the ':' value in weblogicImage for sed to properly parse and replace
+  weblogicImage=$(echo ${weblogicImage} | sed -e "s/\:/\\\:/g")
+
   # Generate the yaml to create the persistent volume
   echo Generating ${domainPVOutput}
 
@@ -521,6 +529,7 @@ function createYamlFiles {
   cp ${createJobInput} ${createJobOutput}
   sed -i -e "s:%NAMESPACE%:$namespace:g" ${createJobOutput}
   sed -i -e "s:%WEBLOGIC_CREDENTIALS_SECRET_NAME%:${weblogicCredentialsSecretName}:g" ${createJobOutput}
+  sed -i -e "s:%WEBLOGIC_IMAGE%:${weblogicImage}:g" ${createJobOutput}
   sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_NAME%:${weblogicImagePullSecretName}:g" ${createJobOutput}
   sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_PREFIX%:${weblogicImagePullSecretPrefix}:g" ${createJobOutput}
   sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${createJobOutput}
@@ -546,6 +555,7 @@ function createYamlFiles {
 
     cp ${deleteJobInput} ${deleteJobOutput}
     sed -i -e "s:%NAMESPACE%:$namespace:g" ${deleteJobOutput}
+    sed -i -e "s:%WEBLOGIC_IMAGE%:${weblogicImage}:g" ${deleteJobOutput}
     sed -i -e "s:%WEBLOGIC_CREDENTIALS_SECRET_NAME%:${weblogicCredentialsSecretName}:g" ${deleteJobOutput}
     sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_NAME%:${weblogicImagePullSecretName}:g" ${deleteJobOutput}
     sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_PREFIX%:${weblogicImagePullSecretPrefix}:g" ${deleteJobOutput}
@@ -574,6 +584,7 @@ function createYamlFiles {
   sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${dcrOutput}
   sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${dcrOutput}
   sed -i -e "s:%ADMIN_SERVER_NAME%:${adminServerName}:g" ${dcrOutput}
+  sed -i -e "s:%WEBLOGIC_IMAGE%:${weblogicImage}:g" ${dcrOutput}
   sed -i -e "s:%ADMIN_PORT%:${adminPort}:g" ${dcrOutput}
   sed -i -e "s:%INITIAL_MANAGED_SERVER_REPLICAS%:${initialManagedServerReplicas}:g" ${dcrOutput}
   sed -i -e "s:%EXPOSE_T3_CHANNEL_PREFIX%:${exposeAdminT3ChannelPrefix}:g" ${dcrOutput}
@@ -626,6 +637,16 @@ function createYamlFiles {
       sed -i -e "s|#   value: '%ADMIN_PORT%'|    value: '%ADMIN_PORT%'|g" ${apacheOutput}
     fi
 
+    if [ ! -z "${loadBalancerVolumePath}" ]; then
+      sed -i -e "s:%LOAD_BALANCER_VOLUME_PATH%:${loadBalancerVolumePath}:g" ${apacheOutput}
+      sed -i -e "s:# volumes:volumes:g" ${apacheOutput}
+      sed -i -e "s|# - name: %DOMAIN_UID%-apache-webtier|- name: %DOMAIN_UID%-apache-webtier|g" ${apacheOutput}
+      sed -i -e "s:#   hostPath:  hostPath:g" ${apacheOutput}
+      sed -i -e "s:#     path:    path:g" ${apacheOutput}
+      sed -i -e "s:# volumeMounts:volumeMounts:g" ${apacheOutput}
+      sed -i -e "s:#   mountPath:  mountPath:g" ${apacheOutput}
+    fi
+
     sed -i -e "s:%NAMESPACE%:$namespace:g" ${apacheOutput}
     sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${apacheOutput}
     sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${apacheOutput}
@@ -640,17 +661,6 @@ function createYamlFiles {
     sed -i -e "s:%IF_LOADBALANCER_EXPOSE_ADMIN_PORT%:${helmIfLoadbalancerExposeAdminPort}:g" ${apacheOutput}
     sed -i -e "s:%END_IF%:${helmEndIf}:g" ${apacheOutput}
 
-    if [ ! -z "${loadBalancerVolumePath}" ]; then
-      sed -i -e "s:%LOAD_BALANCER_VOLUME_PATH%:${loadBalancerVolumePath}:g" ${apacheOutput}
-      sed -i -e "s:# volumes:volumes:g" ${apacheOutput}
-      sed -i -e "s:# - name:- name:g" ${apacheOutput}
-      sed -i -e "s:#   hostPath:  hostPath:g" ${apacheOutput}
-      sed -i -e "s:#     path:    path:g" ${apacheOutput}
-      sed -i -e "s:# volumeMounts:volumeMounts:g" ${apacheOutput}
-      sed -i -e "s:# - name:- name:g" ${apacheOutput}
-      sed -i -e "s:#   mountPath:  mountPath:g" ${apacheOutput}
-    fi
- 
     # Apache security file
     cp ${apacheSecurityInput} ${apacheSecurityOutput}
     echo Generating ${apacheSecurityOutput}

@@ -41,6 +41,9 @@ managedServerNameBase: "{{ .Values.managedServerNameBase }}"
 # Port number for each managed server
 managedServerPort: "{{ .Values.managedServerPort }}"
 
+# WebLogic Docker image
+weblogicImage: "{{ .Values.weblogicImage }}"
+
 # Persistent volume type for the domain's storage.
 # The value must be 'HOST_PATH' or 'NFS'. 
 # If using 'NFS', weblogicDomainStorageNFSServer must be specified.
