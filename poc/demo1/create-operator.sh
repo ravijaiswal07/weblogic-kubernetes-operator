@@ -21,16 +21,16 @@ function copyAndCustomize {
 }
 
 function createDomainNamespaceScriptsYaml {
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-rolebinding.yamlt                ${GENERATED_FILES}/operator-rolebinding.yaml
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-rolebinding-auth-delegator.yamlt ${GENERATED_FILES}/operator-rolebinding-auth-delegator.yaml
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-rolebinding-discovery.yamlt      ${GENERATED_FILES}/operator-rolebinding-discovery.yaml
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-rolebinding-nonresource.yamlt    ${GENERATED_FILES}/operator-rolebinding-nonresource.yaml
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-sa.yamlt                         ${GENERATED_FILES}/operator-sa.yaml
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-cm.yamlt                         ${GENERATED_FILES}/operator-cm.yaml
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-secrets.yamlt                    ${GENERATED_FILES}/operator-secrets.yaml
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-dep.yamlt                        ${GENERATED_FILES}/operator-dep.yaml
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-internal-svc.yamlt               ${GENERATED_FILES}/operator-internal-svc.yaml
-  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-external-svc.yamlt               ${GENERATED_FILES}/operator-external-svc.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-clusterrolebinding.yamlt                ${GENERATED_FILES}/operator-clusterrolebinding.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-clusterrolebinding-auth-delegator.yamlt ${GENERATED_FILES}/operator-clusterrolebinding-auth-delegator.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-clusterrolebinding-discovery.yamlt      ${GENERATED_FILES}/operator-clusterrolebinding-discovery.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-clusterrolebinding-nonresource.yamlt    ${GENERATED_FILES}/operator-clusterrolebinding-nonresource.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-sa.yamlt                                ${GENERATED_FILES}/operator-sa.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-cm.yamlt                                ${GENERATED_FILES}/operator-cm.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-secrets.yamlt                           ${GENERATED_FILES}/operator-secrets.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-dep.yamlt                               ${GENERATED_FILES}/operator-dep.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-internal-svc.yamlt                      ${GENERATED_FILES}/operator-internal-svc.yaml
+  copyAndCustomize ${OPERATOR_TEMPLATES}/operator-external-svc.yamlt                      ${GENERATED_FILES}/operator-external-svc.yaml
 }
 
 function copyAndCustomizeTemplatesBase {
@@ -38,10 +38,10 @@ function copyAndCustomizeTemplatesBase {
 }
 
 function createKubernetesResourcesBase {
-  kubectl apply -f ${GENERATED_FILES}/operator-rolebinding.yaml
-  kubectl apply -f ${GENERATED_FILES}/operator-rolebinding-auth-delegator.yaml
-  kubectl apply -f ${GENERATED_FILES}/operator-rolebinding-discovery.yaml
-  kubectl apply -f ${GENERATED_FILES}/operator-rolebinding-nonresource.yaml
+  kubectl apply -f ${GENERATED_FILES}/operator-clusterrolebinding.yaml
+  kubectl apply -f ${GENERATED_FILES}/operator-clusterrolebinding-auth-delegator.yaml
+  kubectl apply -f ${GENERATED_FILES}/operator-clusterrolebinding-discovery.yaml
+  kubectl apply -f ${GENERATED_FILES}/operator-clusterrolebinding-nonresource.yaml
   kubectl apply -f ${GENERATED_FILES}/operator-sa.yaml
   kubectl apply -f ${GENERATED_FILES}/operator-cm.yaml
   kubectl apply -f ${GENERATED_FILES}/operator-secrets.yaml
@@ -58,8 +58,41 @@ function createOperatorNamespace {
 # Functionality specific to this domains namespace
 #----------------------------------------------------------------------------------------
 
+function enableELK {
+  file=${GENERATED_FILES}/operator-dep.yaml
+  awk "
+  { print }
+/      containers:/ {
+    print \"      - name: logstash\"
+    print \"        image: logstash:5\"
+    print \"        args: ['-f', '/logs/logstash.conf']\"
+    print \"        volumeMounts:\"
+    print \"        - mountPath: /logs\"
+    print \"          name: log-dir\"
+    print \"        env:\"
+    print \"        - name: ELASTICSEARCH_HOST\"
+    print \"          value: elasticsearch.default.svc.cluster.local\"
+    print \"        - name: ELASTICSEARCH_PORT\"
+    print \"          value: '9200'\"
+}
+/        volumeMounts:/ {
+    print \"        - mountPath: /logs\"
+    print \"          name: log-dir\"
+    print \"          readOnly: false\"
+}
+/      volumes:/ {
+    print \"      - name: log-dir\"
+    print \"        emptyDir:\"
+    print \"          medium: Memory\"
+}
+" $file > $file.bak
+  rm $file
+  mv $file.bak $file
+}
+
 function copyAndCustomizeTemplates {
   copyAndCustomizeTemplatesBase
+  enableELK
 }
 
 function createKubernetesResources {

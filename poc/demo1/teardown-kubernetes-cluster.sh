@@ -1,17 +1,12 @@
 #!/bin/bash
 
-. ./domains-ns-env.sh
+. ./demo-env.sh
 
 set -x
 
 #----------------------------------------------------------------------------------------
 # All/most customers need these functions as-is
 #----------------------------------------------------------------------------------------
-
-function verifyNoDomainsPresent {
-  # TBD - if any domains are present in the namespace, warn and return false
-  return true
-}
 
 function waitUntilResourceNoLongerExists {
   type=$1
@@ -58,38 +53,52 @@ function deleteGlobalResource {
 function deleteResource {
   type=$1
   name=$2
-  kubectl delete ${type} ${name} -n ${DOMAINS_NAMESPACE}
-  waitUntilResourceNoLongerExists ${type} ${name} ${DOMAINS_NAMESPACE}
+  kubectl delete ${type} ${name} -n default
+  waitUntilResourceNoLongerExists ${type} ${name} default
 }
 
 function deleteKubernetesResourcesBase {
-  deleteResource cm weblogic-domain-cm
-  deleteResource rolebinding weblogic-operator-rolebinding
-  deleteGlobalResource ns ${DOMAINS_NAMESPACE}
+  deleteGlobalResource clusterrole weblogic-operator-cluster-role
+  deleteGlobalResource clusterrole weblogic-operator-cluster-role-nonresource
+  deleteGlobalResource clusterrole weblogic-operator-namespace-role
 }
 
 function deleteGeneratedFilesBase {
-  rm ${GENERATED_FILES}/domain-cm.yaml
-  rm ${GENERATED_FILES}/operator-rolebinding.yaml
+  rm ${GENERATED_FILES}/operator-clusterrole.yaml
+  rm ${GENERATED_FILES}/operator-clusterrole-nonresource.yaml
+  rm ${GENERATED_FILES}/operator-clusterrole-namespace.yaml
 }
 
 #----------------------------------------------------------------------------------------
-# Functionality specific to this domains namespace
+# Functionality specific to this operator namespace
 #----------------------------------------------------------------------------------------
+
+function deleteELKIntegrationKubernetesResources {
+  deleteResource deployment kibana
+  deleteResource service    kibana
+  deleteResource deployment elasticsearch
+  deleteResource service    elasticsearch
+}
 
 function deleteKubernetesResources {
   deleteKubernetesResourcesBase
+  deleteELKIntegrationKubernetesResources
+}
+
+function deleteELKIntegrationGeneratedFiles {
+  rm ${GENERATED_FILES}/kibana-dep.yaml
+  rm ${GENERATED_FILES}/kibana-svc.yaml
+  rm ${GENERATED_FILES}/elasticsearch-dep.yaml
+  rm ${GENERATED_FILES}/elasticsearch-svc.yaml
 }
 
 function deleteGeneratedFiles {
   deleteGeneratedFilesBase
+  deleteELKIntegrationGeneratedFiles
 }
 
 function main {
-  if [ verifyNoDomainsPresent == false ]; then
-    return
-  fi
-  # attempt to delete all resources for this domain namespace, whether or not they already
+  # attempt to delete all resources, whether or not they already
   # exist, so that if there was a prior failure, we still have a chance to cleanup
   deleteKubernetesResources
   deleteGeneratedFiles

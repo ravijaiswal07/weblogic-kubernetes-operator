@@ -53,7 +53,7 @@ function deleteGlobalResource {
 function deleteResource {
   type=$1
   name=$2
-  kubectl delete ${type} ${name} -n ${OPERATOR_NAMESPACE} 
+  kubectl delete ${type} ${name} -n ${OPERATOR_NAMESPACE}
   waitUntilResourceNoLongerExists ${type} ${name} ${OPERATOR_NAMESPACE}
 }
 
@@ -72,10 +72,10 @@ function deleteKubernetesResourcesBase {
 }
 
 function deleteGeneratedFilesBase {
-  rm ${GENERATED_FILES}/operator-rolebinding.yaml
-  rm ${GENERATED_FILES}/operator-rolebinding-auth-delegator.yaml
-  rm ${GENERATED_FILES}/operator-rolebinding-discovery.yaml
-  rm ${GENERATED_FILES}/operator-rolebinding-nonresource.yaml
+  rm ${GENERATED_FILES}/operator-clusterrolebinding.yaml
+  rm ${GENERATED_FILES}/operator-clusterrolebinding-auth-delegator.yaml
+  rm ${GENERATED_FILES}/operator-clusterrolebinding-discovery.yaml
+  rm ${GENERATED_FILES}/operator-clusterrolebinding-nonresource.yaml
   rm ${GENERATED_FILES}/operator-sa.yaml
   rm ${GENERATED_FILES}/operator-cm.yaml
   rm ${GENERATED_FILES}/operator-secrets.yaml

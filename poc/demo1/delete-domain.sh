@@ -53,7 +53,7 @@ function deleteGlobalResource {
 function deleteResource {
   type=$1
   name=$2
-  kubectl delete ${type} ${name} -n ${DOMAINS_NAMESPACE} 
+  kubectl delete ${type} ${name} -n ${DOMAINS_NAMESPACE}
   waitUntilResourceNoLongerExists ${type} ${name} ${DOMAINS_NAMESPACE}
 }
 

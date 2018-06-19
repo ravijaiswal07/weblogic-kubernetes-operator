@@ -17,6 +17,7 @@ how to run demo1
 
   cd demo1
   mkdir generated # the scripts need to be improved to do this!
+  setup-kubernetes-cluster.sh
   create-operator.sh
   create-domains-ns.sh
   create-domain.sh
@@ -33,6 +34,7 @@ how to run demo1
   delete-domain.sh
   delete-domains-ns.sh
   delete-operator.sh
+  cleanup-kubernetes-cluster.sh
 
 poc source files
 
@@ -53,15 +55,16 @@ poc source files
       - sets up a bunch of environment variables that are needed for the domain level,
         imports domain-ns-env.sh too
 
+    setup-kubernetes-cluster.sh
+      - create per-kubernetes cluster operator related resources that are not tied to a
+        particular operator instance
+
     create-operator.sh
       - create the operator kubernetes resources
+      - NOTE: don't call this unless you've called setup-kubernetes-cluster.sh first!
 
     create-domains-ns.sh
       - create the domains namespace and namespace wide kubernetes resources
-
-    delete-domains-ns.sh
-      - removes the domains namespace and its namespace wide kubernetes resources
-      - NOTE: don't call this unless you've called delete-domain.sh first!
 
     create-domain.sh
       - create the domain and corresponding domain wide kubernetes resources and persistent volumes
@@ -71,15 +74,24 @@ poc source files
       - create the domain and corresponding domain wide kubernetes resources and persistent volumes
       - NOTE: don't call this unless you've called create-domains-ns.sh first!
  
+    delete-domains-ns.sh
+      - removes the domains namespace and its namespace wide kubernetes resources
+      - NOTE: don't call this unless you've called delete-domain.sh first!
+
     delete-operator.sh
       - delete the operator kubernetes resources
+
+    cleanup-kubernetes-cluster.sh
+      - remove per-kubernetes cluster operator related resources that are not tied to a
+        particular operator instance
+      - NOTE: don't call this unless you've called delete-domains-ns.sh and delete-operator.sh first!
 
     simulate-operator-runtime.sh
       - creates a pod that introspects the domain image and creates and loads a config map
         that contains the domain's topology as well as a situation config file for the domain
         that gets mounted into the server pods
       - also creates yaml files for all of the server pods and services
-      - NOTE: don't call this unless you've called create-domain.sh first
+      - NOTE: don't call this unless you've called create-domain.sh and create-operator.sh first!
 
   kit/
     represents the files in an operator kit
@@ -90,12 +102,21 @@ poc source files
       utilities level:
         none (yet)
 
+      kubernetes cluster level:
+        operator-clusterrole.yaml - overall cluster role for the operator 
+        operator-clusterrole-nonresource.yaml - overall nonresource cluster role for the operator 
+        operator-clusterrole-namespace.yaml - overall namespace cluster role for the operator 
+        kibana-dep.yaml - kibana deployment (needed for ELK integration)
+        kibana-svc.yaml - kibana service (needed for ELK integration)
+        elasticsearch-dep.yaml - kibana deployment (needed for ELK integration)
+        elasticsearch-svc.yaml - kibana service (needed for ELK integration)
+
       operator level:
 
-        operator-rolebinding.yamlt - overall cluster role binding for the operator 
-        operator-rolebinding-auth-delegator.yamlt - auth delegator cluster role binding for the operator
-        operator-rolebinding-discovery.yamlt - discovery cluster role binding for the operator
-        operator-rolebinding-nonresource.yamlt - non resource cluster role binding for the operator
+        operator-clusterrolebinding.yamlt - overall cluster role binding for the operator 
+        operator-clusterrolebinding-auth-delegator.yamlt - auth delegator cluster role binding for the operator
+        operator-clusterrolebinding-discovery.yamlt - discovery cluster role binding for the operator
+        operator-clusterrolebinding-nonresource.yamlt - non resource cluster role binding for the operator
         operator-sa.yamlt - service account for the operator
         operator-cm.yamlt - config map containing the configuration for the operator
         operator-secrets.yamlt - config map containing the secrets for the operator
@@ -106,6 +127,7 @@ poc source files
 
       domain namespace level:
         domain-cm.yamlt - template config map containing the operator's server pod lifecycle scripts
+        operator-rolebinding.yaml - template role binding to let the operator access this domain namespace
 
       domain level:
         admin-server-pod.yamlt - admin server's pod template
@@ -173,11 +195,25 @@ poc generated files
 
       - generated yaml files and scripts for this demo
 
+      kubernetes cluster level:
+
+        operator-clusterrole.yaml
+        operator-clusterrole-nonresource.yaml
+        operator-clusterrole-namespace.yaml
+          operator cluster roles
+        kibana-dep.yaml
+        kibana-svc.yaml
+          kibana related resources
+        elasticsearch-dep.yaml
+        elasticsearch-svc.yaml
+          elasticsearch related resources
+
       operator level:
-        operator-rolebinding-auth-delegator.yaml
-        operator-rolebinding-discovery.yaml
-        operator-rolebinding-nonresource.yaml
-        operator-rolebinding.yaml
+
+        operator-clusterrolebinding-auth-delegator.yaml
+        operator-clusterrolebinding-discovery.yaml
+        operator-clusterrolebinding-nonresource.yaml
+        operator-clusterrolebinding.yaml
         operator-sa.yaml
         operator-cm.yaml
         operator-secrets.yaml
@@ -189,6 +225,7 @@ poc generated files
       domains namespace level:
 
         domain-cm.yaml - config map of server pod lifecycle scripts for this domain namespace
+        operator-rolebinding.yaml - role binding to let the operator access this domain namespace
 
       domain level:
 
