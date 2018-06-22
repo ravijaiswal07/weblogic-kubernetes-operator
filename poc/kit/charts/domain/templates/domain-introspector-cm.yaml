@@ -1,0 +1,82 @@
+{{- $values := .Values }}
+{{- range $k, $e := $values.podTemplates }}
+{{-   if eq $k $values.introspectorPodTemplate }}
+{{-     $podTemplate := $e }}
+{{-     $weblogicImage           := $e.weblogicImage           | default $values.weblogicImage }}
+{{-     $weblogicImagePullPolicy := $e.weblogicImagePullPolicy | default $values.weblogicImagePullPolicy }}
+{{-     $extraVolumes            := $e.extraVolumes            | default $values.extraVolumes }}
+{{-     $extraVolumeMounts       := $e.extraVolumeMounts       | default $values.extraVolumeMounts }}
+kind: ConfigMap
+metadata:
+  labels:
+    weblogic.createdByOperator: "true"
+    weblogic.operatorName: {{ $values.operatorNamespace }}
+    weblogic.domainUID: {{ $values.domainUID }}
+    weblogic.resourceVersion: domain-v1
+  name: {{ $values.domainUID }}-domain-introspector-cm
+  namespace: {{ $values.domainsNamespace }}
+data:
+  domain-introspector-pod.yaml: |-
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      labels:
+        weblogic.createdByOperator: "true"
+        weblogic.domainUID: {{ $values.domainUID }}
+        weblogic.resourceVersion: domain-v1
+      name: {{ $values.domainUID }}-domain-introspector
+      namespace: {{ $values.domainsNamespace }}
+    spec:
+      containers:
+      - command:
+        - /weblogic-operator/scripts/introspectDomain.sh
+        env:
+        - name: DOMAIN_UID
+          value: {{ $values.domainUID }}
+        - name: DOMAIN_HOME
+          value: {{ $values.podDomainHomeDir }}
+        image: {{ $weblogicImage }}
+        imagePullPolicy: {{ $weblogicImagePullPolicy }}
+        livenessProbe:
+          exec:
+            command:
+            - /weblogic-operator/scripts/introspectorLivenessProbe.sh
+          failureThreshold: 25
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: weblogic-server
+        readinessProbe:
+          exec:
+            command:
+            - /weblogic-operator/scripts/introspectorReadinessProbe.sh
+          failureThreshold: 1
+          initialDelaySeconds: 2
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: weblogic-credentials-volume
+          mountPath: /weblogic-operator/secrets
+          readOnly: true
+        - name: weblogic-domain-cm-volume
+          mountPath: /weblogic-operator/scripts
+          readOnly: true
+{{- if $extraVolumeMounts }}
+{{ toYaml $extraVolumeMounts | indent 8 }}
+{{- end }}
+      volumes:
+      - name: weblogic-credentials-volume
+        secret:
+          defaultMode: 420
+          secretName:  {{ $values.weblogicDomainCredentialsSecretName }}
+      - name: weblogic-domain-cm-volume
+        configMap:
+          defaultMode: 365
+          name: weblogic-domain-cm 
+{{- if $extraVolumes }}
+{{ toYaml $extraVolumes | indent 6 }}
+{{- end }}
+{{- end }}
+{{- end }}

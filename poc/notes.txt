@@ -1,4 +1,6 @@
+-----------------------------------------------------------------------------------------
 setup
+-----------------------------------------------------------------------------------------
 
   doublesync src122130 and devenv.sh
     (since we're going to use WLST to create the domain)
@@ -13,88 +15,34 @@ setup
     cluster roles & cluster role bindings
     maybe /scratch/k8s_dir
 
-how to run demo1
+-----------------------------------------------------------------------------------------
+how to run a demo
+-----------------------------------------------------------------------------------------
+cd to the demo's directory & read its notes.txt
 
-  cd demo1
-  mkdir generated # the scripts need to be improved to do this!
-  setup-kubernetes-cluster.sh
-  create-operator.sh
-  create-domains-ns.sh
-  create-domain.sh
-  from Tom Barnes: if running on a hosted linux box (macs don't need this):
-    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
-    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
-  simulate-operator-runtime.sh
-  generated/start-server.sh as
-  generated/wait-for-server-to-start.sh as
-  generated/start-server.sh ms1
-  generated/wait-for-server-to-start.sh ms1
-  from Tom Barnes: if running on a hosted linux box (macs don't need this):
-    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
-  delete-domain.sh
-  delete-domains-ns.sh
-  delete-operator.sh
-  cleanup-kubernetes-cluster.sh
-
+-----------------------------------------------------------------------------------------
 poc source files
-
-  demo1/
-    uses offline wlst to create a domain with a configured cluster
-    uses a domain persistent volume
-
-    demo-env.sh
-      - sets up some demo wide environment variables that are not per operator or per domain
-
-    operator-env.sh
-      - sets up a bunch of environment variables needed for the operator level
-
-    domain-ns-env.sh
-      - sets up a bunch of environment variables needed for the domain namespace level
-
-    domain-env.sh
-      - sets up a bunch of environment variables that are needed for the domain level,
-        imports domain-ns-env.sh too
-
-    setup-kubernetes-cluster.sh
-      - create per-kubernetes cluster operator related resources that are not tied to a
-        particular operator instance
-
-    create-operator.sh
-      - create the operator kubernetes resources
-      - NOTE: don't call this unless you've called setup-kubernetes-cluster.sh first!
-
-    create-domains-ns.sh
-      - create the domains namespace and namespace wide kubernetes resources
-
-    create-domain.sh
-      - create the domain and corresponding domain wide kubernetes resources and persistent volumes
-      - NOTE: don't call this unless you've called create-domains-ns.sh first!
-
-    delete-domain.sh
-      - create the domain and corresponding domain wide kubernetes resources and persistent volumes
-      - NOTE: don't call this unless you've called create-domains-ns.sh first!
- 
-    delete-domains-ns.sh
-      - removes the domains namespace and its namespace wide kubernetes resources
-      - NOTE: don't call this unless you've called delete-domain.sh first!
-
-    delete-operator.sh
-      - delete the operator kubernetes resources
-
-    cleanup-kubernetes-cluster.sh
-      - remove per-kubernetes cluster operator related resources that are not tied to a
-        particular operator instance
-      - NOTE: don't call this unless you've called delete-domains-ns.sh and delete-operator.sh first!
-
-    simulate-operator-runtime.sh
-      - creates a pod that introspects the domain image and creates and loads a config map
-        that contains the domain's topology as well as a situation config file for the domain
-        that gets mounted into the server pods
-      - also creates yaml files for all of the server pods and services
-      - NOTE: don't call this unless you've called create-domain.sh and create-operator.sh first!
+-----------------------------------------------------------------------------------------
+  each demo describes its own files
 
   kit/
     represents the files in an operator kit
+
+    -------------------------------------------------------------------------------------
+    helm based
+    -------------------------------------------------------------------------------------
+    charts/
+      the various charts mirroring the different lifecycle phases
+      tbd - give more details
+
+    runtime/
+      scripts that simulate the operator runtime's functions
+      currently only work with helm based setup
+
+    -------------------------------------------------------------------------------------
+    script-based (we'll remove this if we only need to support helm)
+    (also, it's out of date w/ the helm setup)
+    -------------------------------------------------------------------------------------
 
     templates/
       template yaml files that the customer must copy and customize
@@ -189,108 +137,8 @@ poc source files
         wait-for-server-to-start.sh as
           - template scripts for managing servers (see description under the 'demo1' section)
 
+-----------------------------------------------------------------------------------------
 poc generated files
+-----------------------------------------------------------------------------------------
 
-    demo1/generated/
-
-      - generated yaml files and scripts for this demo
-
-      kubernetes cluster level:
-
-        operator-clusterrole.yaml
-        operator-clusterrole-nonresource.yaml
-        operator-clusterrole-namespace.yaml
-          operator cluster roles
-        kibana-dep.yaml
-        kibana-svc.yaml
-          kibana related resources
-        elasticsearch-dep.yaml
-        elasticsearch-svc.yaml
-          elasticsearch related resources
-
-      operator level:
-
-        operator-clusterrolebinding-auth-delegator.yaml
-        operator-clusterrolebinding-discovery.yaml
-        operator-clusterrolebinding-nonresource.yaml
-        operator-clusterrolebinding.yaml
-        operator-sa.yaml
-        operator-cm.yaml
-        operator-secrets.yaml
-        operator-dep.yaml
-        operator-external-svc.yaml
-        operator-internal-svc.yaml
-          kubernetes resources for the operator
-
-      domains namespace level:
-
-        domain-cm.yaml - config map of server pod lifecycle scripts for this domain namespace
-        operator-rolebinding.yaml - role binding to let the operator access this domain namespace
-
-      domain level:
-
-        start-server.sh             - manually starts a server by creating its kubernetes resources
-        stop-server.sh              - manually stops a server by deleting its kubernetes resources
-        server-pod-desc.sh          - describes a server's pod
-        server-pod-state.sh         - gets a server's pod's state
-        server-pod-log.sh           - prints a server's pod's log
-        server-out.sh               - prints a server stdout file
-        server-log.sh               - prints a server's log
-        server-nm-log.sh            - prints a server's node manager log
-        server-nm-state.sh          - gets the state that the node manager thinks a server is in
-        wait-for-server-to-start.sh - waits for the server to start
-          all per-server scripts the name of a server (as, ms1, ms2 or ms3)
-            e.g. generated/start-server.sh as
-
-        domain-home
-          - contains the generated domain, before its pathnames have been patched
-          - this means you can 'cd' there and run startWeblogicServer.sh
-          - it also means that it cannot be directly used by a pod since the
-            pathnames in the generated files are based on the shell that ran
-            create-domain-home.sh, instead of the ones that are needed in a pod
-
-        domain-bindings-cm.yaml - config map with a situational config for this domain
-
-        domain-logs-pv.yaml
-        domain-logs-pvc.yaml
-        domain-home-pv.yaml
-        domain-home-pvc.yaml
-          persistent volumes and claims for the domain logs and domain home persistent volumes
-
-        introspect-domain-pod.yamlt
-        admin-server-pod.yamlt
-        admin-server-service.yamlt
-        admin-server-t3-service.yamlt
-        managed-server-pod.yamlt
-        managed-server-service.yamlt
-          templates for creating pods and services for the servers in this domain
-          (normally we'd put them in the domain crd so that the operator runtime could
-          use them as it needs to create and delete per-server pods)
-
-        introspect-domain-pod.yaml
-        as-pod.yaml
-        as-service.yaml
-        as-t3-service.yaml
-        ms1-pod.yaml
-        ms1-service.yaml
-        ms2-pod.yaml
-        ms2-service.yaml
-        ms3-pod.yaml
-        ms3-service.yaml
-          actual pods and services for all the servers in this domain
-          (since we don't have an operator ...)
-          TBD - could create them created and deleted by start-server.sh and
-          stop-server.sh instead, just as the operator runtime would
-
-    /scratch/k8s-dir/demo1-domain-uid
-      contains the persistent volumes for demo1's domain
-
-      domain-logs/
-         - contains the domain, node manager and server logs
-
-      domain-home/
-        - contains the domain home that the pods use
-        - the pathnames in the files have been patched so that the pods can use them
-          (e.g. domain home, java home and mw home have been changed to the values
-          that should be used inside the pod)
-
+  each demo describes its own generated files

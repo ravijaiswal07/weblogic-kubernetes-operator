@@ -1,0 +1,24 @@
+{{- if .Values.domainLogsPersistentVolumeDir }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  labels:
+    weblogic.domainUID: {{ .Values.domainUID }}
+    weblogic.resourceVersion: domain-v1
+  name: {{ .Values.domainUID }}-weblogic-domain-logs-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: {{ .Values.domainUID }}-weblogic-domain-logs-pvc
+    namespace: {{ .Values.domainsNamespace }}
+  hostPath:
+    path: {{ .Values.domainLogsPersistentVolumeDir }}
+    type: ""
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ .Values.domainUID }}-weblogic-domain-logs-storage-class
+{{- end }}

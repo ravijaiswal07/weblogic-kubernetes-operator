@@ -1,0 +1,129 @@
+{{- $values := .Values }}
+{{- range $k, $e := $values.podTemplates }}
+{{-   if eq $k $values.adminServerPodTemplate }}
+{{-     $podTemplate := $e }}
+{{-     $weblogicImage           := $e.weblogicImage           | default $values.weblogicImage }}
+{{-     $weblogicImagePullPolicy := $e.weblogicImagePullPolicy | default $values.weblogicImagePullPolicy }}
+{{-     $extraVolumes            := $e.extraVolumes            | default $values.extraVolumes }}
+{{-     $extraVolumeMounts       := $e.extraVolumeMounts       | default $values.extraVolumeMounts }}
+kind: ConfigMap
+metadata:
+  labels:
+    weblogic.createdByOperator: "true"
+    weblogic.operatorName: {{ $values.operatorNamespace }}
+    weblogic.resourceVersion: domain-v1
+  name: {{ $values.domainUID }}-admin-server-cm
+  namespace: {{ $values.domainsNamespace }}
+data:
+  admin-server-pod.yaml: |-
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      annotations:
+        prometheus.io/path: /wls-exporter/metrics
+        prometheus.io/port: "%ADMIN_SERVER_PORT%"
+        prometheus.io/scrape: "true"
+      labels:
+        weblogic.createdByOperator: "true"
+        weblogic.domainUID: {{ $values.domainUID }}
+        weblogic.resourceVersion: domain-v1
+        weblogic.serverName: %ADMIN_SERVER_NAME%
+      name: {{ $values.domainUID }}-%ADMIN_SERVER_NAME%
+      namespace: {{ $values.domainsNamespace }}
+    spec:
+      containers:
+      - command:
+        - /weblogic-operator/scripts/startServer.sh
+        env:
+        - name: JAVA_OPTIONS
+          value: -Dweblogic.StdoutDebugEnabled=false
+        - name: USER_MEM_ARGS
+          value: '-Xms64m -Xmx256m '
+        - name: INTERNAL_OPERATOR_CERT
+          value: {{ $values.internalOperatorCert }}
+        - name: DOMAIN_UID
+          value: {{ $values.domainUID }}
+        - name: DOMAIN_NAME
+          value: %DOMAIN_NAME%
+        - name: DOMAIN_HOME
+          value: {{ $values.podDomainHomeDir }}
+        - name: DOMAIN_LOGS
+          value: {{ $values.podDomainLogsDir }}
+        - name: ADMIN_NAME
+          value: %ADMIN_SERVER_NAME%
+        - name: ADMIN_PORT
+          value: "%ADMIN_SERVER_PORT%"
+        - name: SERVER_NAME
+          value: %ADMIN_SERVER_NAME%
+        - name: ADMIN_USERNAME
+        - name: ADMIN_PASSWORD
+        image: {{ $weblogicImage }}
+        imagePullPolicy: {{ $weblogicImagePullPolicy }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /weblogic-operator/scripts/stopServer.sh
+        livenessProbe:
+          exec:
+            command:
+            - /weblogic-operator/scripts/livenessProbe.sh
+          failureThreshold: 1
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: weblogic-server
+        ports:
+        - containerPort: %ADMIN_SERVER_PORT%
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - /weblogic-operator/scripts/readinessProbe.sh
+          failureThreshold: 1
+          initialDelaySeconds: 2
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: weblogic-credentials-volume
+          mountPath: /weblogic-operator/secrets
+          readOnly: true
+        - name: weblogic-domain-cm-volume
+          mountPath: /weblogic-operator/scripts
+          readOnly: true
+        - name: sitcfg-cm-volume
+          mountPath: /weblogic-operator/sitcfg
+          readOnly: true
+{{- if $values.domainLogsPersistentVolumeDir }}
+        - name: weblogic-domain-logs-storage-volume
+          mountPath: {{ $values.podDomainLogsDir }}
+{{- end }}
+{{- if $extraVolumeMounts }}
+{{ toYaml $extraVolumeMounts | indent 8 }}
+{{- end }}
+      hostname: {{ $values.domainUID }}-%ADMIN_SERVER_NAME%
+      volumes:
+      - name: weblogic-credentials-volume
+        secret:
+          defaultMode: 420
+          secretName:  {{ $values.weblogicDomainCredentialsSecretName }}
+      - name: weblogic-domain-cm-volume
+        configMap:
+          defaultMode: 365
+          name: weblogic-domain-cm 
+      - name: sitcfg-cm-volume
+        configMap:
+          defaultMode: 365
+          name: {{ $values.domainUID }}-%SITCFG_NAME%-cm
+{{- if $values.domainLogsPersistentVolumeDir }}
+      - name: weblogic-domain-logs-storage-volume
+        persistentVolumeClaim:
+          claimName: {{ $values.domainUID }}-weblogic-domain-logs-pvc
+{{- end }}
+{{- if $extraVolumes }}
+{{ toYaml $extraVolumes | indent 6 }}
+{{- end }}
+{{- end }}
+{{- end }}

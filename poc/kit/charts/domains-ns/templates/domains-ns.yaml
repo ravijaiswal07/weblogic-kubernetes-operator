@@ -1,0 +1,9 @@
+{{- if (not (eq .Values.domainsNamespace "default")) }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    weblogic.operatorName: {{ .Values.operatorNamespace }}
+    weblogic.resourceVersion: operator-v1
+  name: {{ .Values.domainsNamespace }}
+{{- end }}

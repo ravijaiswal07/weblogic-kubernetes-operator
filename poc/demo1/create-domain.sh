@@ -66,9 +66,7 @@ function copyAndCustomizeTemplatesBase {
 }
 
 function createDomainWideKubernetesResourcesBase {
-  # create the kubernetes namespace and domain wide resources for this domain
-  # don't create the ones the operator would create at runtime
-  kubectl apply -f ${GENERATED_FILES}/domain-cm.yaml
+  # none
 }
 
 function createDomainCredentialsSecret {

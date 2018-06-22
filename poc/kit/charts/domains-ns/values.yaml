@@ -1,0 +1,7 @@
+# Default values for domains-ns.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+domainsNamespace: default
+operatorNamespace: weblogic-operator
+operatorServiceAccount: weblogic-operator
