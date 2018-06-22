@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jvm:startup-plan xmlns:jvm="http://xmlns.oracle.com/weblogic/jvm-config">
+  <jvm:startup-group server-topology-name="AdminServerStartupGroup_svrGroup" name="AdminServerStartupGroup" admin-server="true">
+    <jvm:server-group-name>BASE-WLS-ADMIN-SVR</jvm:server-group-name>
+  </jvm:startup-group>
+  <jvm:server-topology name="AdminServerStartupGroup_svrGroup"/>
+</jvm:startup-plan>

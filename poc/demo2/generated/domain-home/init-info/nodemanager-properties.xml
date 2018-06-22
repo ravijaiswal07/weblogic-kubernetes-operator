@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NMProperties xmlns="http://xmlns.oracle.com/cie/nodemanager/properties">
+  <propertiesVersion>12.2.1</propertiesVersion>
+  <logFile>/Users/tmoreau/op10/weblogic-kubernetes-operator/poc/demo2/generated/domain-home/nodemanager/nodemanager.log</logFile>
+  <domainsFile>/Users/tmoreau/op10/weblogic-kubernetes-operator/poc/demo2/generated/domain-home/nodemanager/nodemanager.domains</domainsFile>
+  <nodeManagerHome>/Users/tmoreau/op10/weblogic-kubernetes-operator/poc/demo2/generated/domain-home/nodemanager</nodeManagerHome>
+  <javaHome>/Users/tmoreau/depot/dev/auto_download/jdk180131b11/jdk1.8.0_131.jdk/Contents/Home</javaHome>
+  <startScriptName>startWebLogic.sh</startScriptName>
+  <listenAddress>localhost</listenAddress>
+  <listenPort>5556</listenPort>
+</NMProperties>

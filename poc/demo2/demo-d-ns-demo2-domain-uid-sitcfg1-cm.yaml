@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    weblogic.createdByOperator: "true"
+    weblogic.domainUID: demo2-domain-uid
+    weblogic.resourceVersion: domain-v1
+  name: demo2-domain-uid-sitcfg1-cm
+  namespace: demo-d-ns
+data:
+  operator-situational-config.xml: |
+    <?xml version='1.0' encoding='UTF-8'?>
+    <d:domain xmlns:d="http://xmlns.oracle.com/weblogic/domain" xmlns:f="http://xmlns.oracle.com/weblogic/domain-fragment" xmlns:s="http://xmlns.oracle.com/weblogic/situational-config">
+      <s:expiration> 2020-07-16T19:20+01:00 </s:expiration>
+      <d:security-configuration>
+        <d:node-manager-user-name f:combine-mode="replace">weblogic</d:node-manager-user-name>
+        <d:node-manager-password-encrypted f:combine-mode="replace">{AES}tmBgtWKnQAU1C35OiqsKCyQBE/OsCCNQaFEwFDubH0w=</d:node-manager-password-encrypted>
+      </d:security-configuration>
+      <d:log f:combine-mode="replace">
+        <d:file-name>/domain-logs/demo2-domain.log</d:file-name>
+      </d:log>
+      <d:server>
+        <d:name>as</d:name>
+        <d:log f:combine-mode="replace">
+          <d:file-name>/domain-logs/as.log</d:file-name>
+        </d:log>
+        <d:listen-address f:combine-mode="replace">demo2-domain-uid-as</d:listen-address>
+        <d:network-access-point>
+          <d:name>T3Channel</d:name>
+          <d:listen-address f:combine-mode="replace">demo2-domain-uid-as</d:listen-address>
+        </d:network-access-point>
+      </d:server>
+      <d:server>
+        <d:name>ms1</d:name>
+        <d:log f:combine-mode="replace">
+          <d:file-name>/domain-logs/ms1.log</d:file-name>
+        </d:log>
+        <d:listen-address f:combine-mode="replace">demo2-domain-uid-ms1</d:listen-address>
+      </d:server>
+      <d:server>
+        <d:name>ms2</d:name>
+        <d:log f:combine-mode="replace">
+          <d:file-name>/domain-logs/ms2.log</d:file-name>
+        </d:log>
+        <d:listen-address f:combine-mode="replace">demo2-domain-uid-ms2</d:listen-address>
+      </d:server>
+      <d:server>
+        <d:name>ms3</d:name>
+        <d:log f:combine-mode="replace">
+          <d:file-name>/domain-logs/ms3.log</d:file-name>
+        </d:log>
+        <d:listen-address f:combine-mode="replace">demo2-domain-uid-ms3</d:listen-address>
+      </d:server>
+    </d:domain>

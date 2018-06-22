@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<domain-info javahome="/Users/tmoreau/depot/dev/auto_download/jdk180131b11/jdk1.8.0_131.jdk/Contents/Home" appdir="" mwhome="/Users/tmoreau/depot/src122130_build/Oracle_Home" messagingType="WLSJMS" cam-environment="appserver" configuration-type="classic" isManagedDomain="false" xmlns="http://xmlns.oracle.com/weblogic/domain-info">
+  <domain-template-ref name="Basic WebLogic Server Domain" version="12.2.1.3.0" location="$MW_HOME$/wlserver/common/templates/wls/wls.jar" symbol="Generated_wlserver_0.0.0.0_ORACLE_HOME"/>
+  <install-comp-ref name="wlserver" version="0.0.0.0" symbol="Generated_wlserver_0.0.0.0_ORACLE_HOME" product_home="$MW_HOME$/wlserver"/>
+  <variable name="JAVA_HOME" value="/Users/tmoreau/depot/dev/auto_download/jdk180131b11/jdk1.8.0_131.jdk/Contents/Home"/>
+  <variable name="MW_HOME" value="/Users/tmoreau/depot/src122130_build/Oracle_Home"/>
+</domain-info>

@@ -1,18 +1,21 @@
 {{- $values := .Values }}
-{{- range $k, $e := $values.podTemplates }}
-{{-   if eq $k $values.adminServerPodTemplate }}
-{{-     $podTemplate := $e }}
-{{-     $weblogicImage           := $e.weblogicImage           | default $values.weblogicImage }}
-{{-     $weblogicImagePullPolicy := $e.weblogicImagePullPolicy | default $values.weblogicImagePullPolicy }}
-{{-     $extraVolumes            := $e.extraVolumes            | default $values.extraVolumes }}
-{{-     $extraVolumeMounts       := $e.extraVolumeMounts       | default $values.extraVolumeMounts }}
+{{- range $key, $element := $values.adminServerTemplates }}
+{{-   $podTemplateName := $element.podTemplate }}
+{{-   range $k, $e := $values.podTemplates }}
+{{-     if eq $k $podTemplateName }}
+{{-       $podTemplate := $e }}
+{{-       $weblogicImage           := $e.weblogicImage           | default $values.weblogicImage }}
+{{-       $weblogicImagePullPolicy := $e.weblogicImagePullPolicy | default $values.weblogicImagePullPolicy }}
+{{-       $extraEnv                := $e.extraEnv                | default $values.extraEnv }}
+{{-       $extraVolumes            := $e.extraVolumes            | default $values.extraVolumes }}
+{{-       $extraVolumeMounts       := $e.extraVolumeMounts       | default $values.extraVolumeMounts }}
 kind: ConfigMap
 metadata:
   labels:
     weblogic.createdByOperator: "true"
     weblogic.operatorName: {{ $values.operatorNamespace }}
     weblogic.resourceVersion: domain-v1
-  name: {{ $values.domainUID }}-admin-server-cm
+  name: {{ $values.domainUID }}-{{ $key }}-admin-server-template-cm
   namespace: {{ $values.domainsNamespace }}
 data:
   admin-server-pod.yaml: |-
@@ -57,6 +60,9 @@ data:
           value: %ADMIN_SERVER_NAME%
         - name: ADMIN_USERNAME
         - name: ADMIN_PASSWORD
+{{- if $extraEnv }}
+{{ toYaml $extraEnv | indent 8 }}
+{{- end }}
         image: {{ $weblogicImage }}
         imagePullPolicy: {{ $weblogicImagePullPolicy }}
         lifecycle:

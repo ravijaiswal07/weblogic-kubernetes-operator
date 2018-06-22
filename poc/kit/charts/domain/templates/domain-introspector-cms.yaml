@@ -1,11 +1,14 @@
 {{- $values := .Values }}
-{{- range $k, $e := $values.podTemplates }}
-{{-   if eq $k $values.introspectorPodTemplate }}
-{{-     $podTemplate := $e }}
-{{-     $weblogicImage           := $e.weblogicImage           | default $values.weblogicImage }}
-{{-     $weblogicImagePullPolicy := $e.weblogicImagePullPolicy | default $values.weblogicImagePullPolicy }}
-{{-     $extraVolumes            := $e.extraVolumes            | default $values.extraVolumes }}
-{{-     $extraVolumeMounts       := $e.extraVolumeMounts       | default $values.extraVolumeMounts }}
+{{- range $key, $element := $values.domainIntrospectors }}
+{{-   $podTemplateName := $element.podTemplate }}
+{{-   range $k, $e := $values.podTemplates }}
+{{-     if eq $k $podTemplateName }}
+{{-       $podTemplate := $e }}
+{{-       $weblogicImage           := $e.weblogicImage           | default $values.weblogicImage }}
+{{-       $weblogicImagePullPolicy := $e.weblogicImagePullPolicy | default $values.weblogicImagePullPolicy }}
+{{-       $extraEnv                := $e.extraEnv                | default $values.extraEnv }}
+{{-       $extraVolumes            := $e.extraVolumes            | default $values.extraVolumes }}
+{{-       $extraVolumeMounts       := $e.extraVolumeMounts       | default $values.extraVolumeMounts }}
 kind: ConfigMap
 metadata:
   labels:
@@ -13,7 +16,7 @@ metadata:
     weblogic.operatorName: {{ $values.operatorNamespace }}
     weblogic.domainUID: {{ $values.domainUID }}
     weblogic.resourceVersion: domain-v1
-  name: {{ $values.domainUID }}-domain-introspector-cm
+  name: {{ $values.domainUID }}-{{ $key }}-domain-introspector-cm
   namespace: {{ $values.domainsNamespace }}
 data:
   domain-introspector-pod.yaml: |-
@@ -24,7 +27,7 @@ data:
         weblogic.createdByOperator: "true"
         weblogic.domainUID: {{ $values.domainUID }}
         weblogic.resourceVersion: domain-v1
-      name: {{ $values.domainUID }}-domain-introspector
+      name: {{ $values.domainUID }}-{{ $key }}-domain-introspector
       namespace: {{ $values.domainsNamespace }}
     spec:
       containers:
@@ -35,6 +38,9 @@ data:
           value: {{ $values.domainUID }}
         - name: DOMAIN_HOME
           value: {{ $values.podDomainHomeDir }}
+{{- if $extraEnv }}
+{{ toYaml $extraEnv | indent 8 }}
+{{- end }}
         image: {{ $weblogicImage }}
         imagePullPolicy: {{ $weblogicImagePullPolicy }}
         livenessProbe:
@@ -77,6 +83,7 @@ data:
           name: weblogic-domain-cm 
 {{- if $extraVolumes }}
 {{ toYaml $extraVolumes | indent 6 }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

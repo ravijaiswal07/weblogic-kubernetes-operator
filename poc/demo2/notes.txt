@@ -1,0 +1,169 @@
+-----------------------------------------------------------------------------------------
+setup
+-----------------------------------------------------------------------------------------
+
+  doublesync src122130 and devenv.sh
+    (since we're going to use WLST to create the domain)
+
+  mkdir -m 777 -p /scratch/k8s-dir
+    (i.e. the parent directory for persistent volumes)
+
+  make sure to get rid your old setup:
+  (I had problems getting stuff to run until I got rid of this stuff)
+    operator and domain namespaces
+    persistent volumes
+    cluster roles & cluster role bindings
+    maybe /scratch/k8s_dir
+
+  install helm & tiller
+    See https://github.com/kubernetes/helm/blob/master/docs/install.md
+
+-----------------------------------------------------------------------------------------
+how to run demo2
+-----------------------------------------------------------------------------------------
+
+  cd demo2
+
+  mkdir generated # the scripts need to be improved to do this!
+
+  helm install ../kit/charts/kubernetes-cluster --name demo-kubernetes-cluster --values kubernetes-cluster-values.yaml
+  helm status demo-kubernetes-cluster
+
+  # something about certificate generation ... ?
+  helm install ../kit/charts/operator --name demo-operator --values operator-values.yaml
+  helm status demo-operator
+
+  helm install ../kit/charts/domains-ns --name demo-domains-ns --values domains-ns-values.yaml
+  #helm upgrade --values domains-ns-values.yaml demo-domains-ns ../kit/charts/domains-ns
+  helm status demo-domains-ns
+
+  # can this move to a helm chart?
+  kubectl -n demo-d-ns create secret generic demo2-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
+  mkdir -p /scratch/k8s-dir/demo2-domain-uid/domain-logs
+  create-domain-home.sh
+  from Tom Barnes: if running on a hosted linux box (macs don't need this):
+    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
+    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
+
+  helm install ../kit/charts/domain --name demo2-domain --values domain-values.yaml
+  helm status demo2-domain
+
+  # TBD - something about creating the config map containing the domain-specific sit config customizations
+  # and passing the name of that config map into the sit config stuff below ...
+
+  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo2-domain-uid
+
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo2-domain-uid sitcfg1
+
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo2-domain-uid sitcfg1 demo2-domain as 7100
+
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo2-domain-uid as
+
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo2-domain-uid sitcfg1
+
+  helm delete --purge demo2-domain
+
+  kubectl delete secret -n demo-d-ns demo2-domain-uid-domain-creds
+  from Tom Barnes: if running on a hosted linux box (macs don't need this):
+    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
+  rm -rf /scratch/k8s-dir/demo2-domain-uid
+
+  helm delete --purge demo-domains-ns
+
+  helm delete --purge demo-operator
+
+  helm delete --purge demo-kubernetes-cluster
+
+-----------------------------------------------------------------------------------------
+poc source files
+-----------------------------------------------------------------------------------------
+
+  demo2/
+    uses offline wlst to create a domain with a configured cluster
+    uses a domain persistent volume
+    uses helm to configure everything
+
+    kubernetes-cluster-values.yaml
+      - helm configuration settings for setting up the kubernets cluster kubernetes resources
+
+    operator-values.yaml
+      - helm configuration settings for creating the operator kubernetes resources
+
+    domains-ns-values.yaml
+      - helm configuration settings for creating the domains namespace kubernetes resources
+
+    domain-values.yaml
+      - helm configuration settings for creating the domain kubernetes resources
+
+    create-domain-home.sh
+      - shell script that uses offline wlst to configure a domain home with a configured cluster
+
+-----------------------------------------------------------------------------------------
+poc generated files
+-----------------------------------------------------------------------------------------
+
+    demo2/generated/
+
+        domain-home
+          - contains the generated domain, before its pathnames have been patched
+          - this means you can 'cd' there and run startWeblogicServer.sh
+          - it also means that it cannot be directly used by a pod since the
+            pathnames in the generated files are based on the shell that ran
+            create-domain-home.sh, instead of the ones that are needed in a pod
+
+    /scratch/k8s-dir/demo1-domain-uid
+      contains the persistent volumes for demo1's domain
+
+      domain-logs/
+         - contains the domain, node manager and server logs
+
+      domain-home/
+        - contains the domain home that the pods use
+        - the pathnames in the files have been patched so that the pods can use them
+          (e.g. domain home, java home and mw home have been changed to the values
+          that should be used inside the pod)
+
+-----------------------------------------------------------------------------------------
+todo
+-----------------------------------------------------------------------------------------
+
+add admin server service & t3 service
+
+add managed server support
+
+pass thru customizations needed to to create the sit cfg from user thru to
+sit cfg generator (even though it won't pay attention to them yet)
+
+get a better understanding of help templates, variables, ...
+  i.e. what I did was hacky, I think
+  (couldn't find good docs via google)
+
+demo2-domain-crd (roughly)
+
+  domainUID: demo2-domain-uid
+
+  serverDefaults:
+    domainCustomizations:       demo2-domain-uid-domain-customizations-cm
+    sitConfigGeneratorTemplate: demo2-domain-uid-sitconfig-generator1-cm
+    serverPodTemplate:          demo2-domain-uid-managed-server-pod-template1-cm
+    serverServiceTemplate:      demo2-domain-uid-server-service-template1-cm
+
+  adminServer:
+    serverPodTemplate:          demo2-domain-uid-admin-server-pod-template1-cm
+    serverT3ServiceTemplate:    demo2-domain-uid-admin-server-t3-service-template1-cm
+
+
+possible formats for having the customer specify domain config property overridesA:
+
+properties:
+
+domain.server.name.as.list-address:abcd
+domain.server.name.as.list-port:7001
+
+yaml:
+
+domain:
+  server:
+    name:as
+    listen-address: abcd
+    listen-port: 7001

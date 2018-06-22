@@ -6,6 +6,7 @@
 {{-       $podTemplate := $e }}
 {{-       $weblogicImage           := $e.weblogicImage           | default $values.weblogicImage }}
 {{-       $weblogicImagePullPolicy := $e.weblogicImagePullPolicy | default $values.weblogicImagePullPolicy }}
+{{-       $extraEnv                := $e.extraEnv                | default $values.extraEnv }}
 {{-       $extraVolumes            := $e.extraVolumes            | default $values.extraVolumes }}
 {{-       $extraVolumeMounts       := $e.extraVolumeMounts       | default $values.extraVolumeMounts }}
 ---
@@ -16,7 +17,7 @@ metadata:
     weblogic.operatorName: {{ $values.operatorNamespace }}
     weblogic.domainUID: {{ $values.domainUID }}
     weblogic.resourceVersion: domain-v1
-  name: {{ $values.domainUID }}-{{ $key }}-generator-cm
+  name: {{ $values.domainUID }}-{{ $key }}-sitcfg-generator-cm
   namespace: {{ $values.domainsNamespace }}
 data:
   sitcfg-generator-pod.yaml: |-
@@ -27,7 +28,7 @@ data:
         weblogic.createdByOperator: "true"
         weblogic.domainUID: {{ $values.domainUID }}
         weblogic.resourceVersion: domain-v1
-      name: {{ $values.domainUID }}-{{ $key }}-generator
+      name: {{ $values.domainUID }}-{{ $key }}-sitcfg-generator
       namespace: {{ $values.domainsNamespace }}
     spec:
       containers:
@@ -42,6 +43,9 @@ data:
           value: {{ $values.podDomainLogsDir }}
         - name: SITCFG_NAME
           value: {{ $key }}
+{{- if $extraEnv }}
+{{ toYaml $extraEnv | indent 8 }}
+{{- end }}
         image: {{ $weblogicImage }}
         imagePullPolicy: {{ $weblogicImagePullPolicy }}
         livenessProbe:
