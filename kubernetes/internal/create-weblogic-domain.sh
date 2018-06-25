@@ -454,6 +454,14 @@ function createYamlFiles {
   enabledPrefix=""     # uncomment the feature
   disabledPrefix="# "  # comment out the feature
 
+  # For backward compatability, default to "store/oracle/weblogic:12.2.1.3" if not defined in
+  # create-weblogic-domain-inputs.yaml
+  if [ -z "${weblogicImage}" ]; then
+    weblogicImage="store/oracle/weblogic:12.2.1.3"
+  fi
+  # Must escape the ':' value in weblogicImage for sed to properly parse and replace
+  weblogicImage=$(echo ${weblogicImage} | sed -e "s/\:/\\\:/g")
+
   # Generate the yaml to create the persistent volume
   echo Generating ${domainPVOutput}
 
@@ -491,6 +499,7 @@ function createYamlFiles {
   cp ${createJobInput} ${createJobOutput}
   sed -i -e "s:%NAMESPACE%:$namespace:g" ${createJobOutput}
   sed -i -e "s:%WEBLOGIC_CREDENTIALS_SECRET_NAME%:${weblogicCredentialsSecretName}:g" ${createJobOutput}
+  sed -i -e "s:%WEBLOGIC_IMAGE%:${weblogicImage}:g" ${createJobOutput}
   sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_NAME%:${weblogicImagePullSecretName}:g" ${createJobOutput}
   sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_PREFIX%:${weblogicImagePullSecretPrefix}:g" ${createJobOutput}
   sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${createJobOutput}
@@ -511,6 +520,7 @@ function createYamlFiles {
 
   cp ${deleteJobInput} ${deleteJobOutput}
   sed -i -e "s:%NAMESPACE%:$namespace:g" ${deleteJobOutput}
+  sed -i -e "s:%WEBLOGIC_IMAGE%:${weblogicImage}:g" ${deleteJobOutput}
   sed -i -e "s:%WEBLOGIC_CREDENTIALS_SECRET_NAME%:${weblogicCredentialsSecretName}:g" ${deleteJobOutput}
   sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_NAME%:${weblogicImagePullSecretName}:g" ${deleteJobOutput}
   sed -i -e "s:%WEBLOGIC_IMAGE_PULL_SECRET_PREFIX%:${weblogicImagePullSecretPrefix}:g" ${deleteJobOutput}
@@ -538,6 +548,7 @@ function createYamlFiles {
   sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${dcrOutput}
   sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${dcrOutput}
   sed -i -e "s:%ADMIN_SERVER_NAME%:${adminServerName}:g" ${dcrOutput}
+  sed -i -e "s:%WEBLOGIC_IMAGE%:${weblogicImage}:g" ${dcrOutput}
   sed -i -e "s:%ADMIN_PORT%:${adminPort}:g" ${dcrOutput}
   sed -i -e "s:%INITIAL_MANAGED_SERVER_REPLICAS%:${initialManagedServerReplicas}:g" ${dcrOutput}
   sed -i -e "s:%EXPOSE_T3_CHANNEL_PREFIX%:${exposeAdminT3ChannelPrefix}:g" ${dcrOutput}
@@ -575,14 +586,21 @@ function createYamlFiles {
  
     echo Generating ${apacheOutput}
 
-    # This part needs to be done before substitution of %DOMAIN_UID%, %ADMIN_SERVER_NAME% and %ADMIN_PORT%
     if [ "${loadBalancerExposeAdminPort}" = "true" ]; then
-      sed -i -e "s|# - name: WEBLOGIC_HOST|  - name: WEBLOGIC_HOST|g" ${apacheOutput}
-      sed -i -e "s|#   value: '%DOMAIN_UID%-%ADMIN_SERVER_NAME%'|    value: '%DOMAIN_UID%-%ADMIN_SERVER_NAME%'|g" ${apacheOutput}
-      sed -i -e "s|# - name: WEBLOGIC_PORT|  - name: WEBLOGIC_PORT|g" ${apacheOutput}
-      sed -i -e "s|#   value: '%ADMIN_PORT%'|    value: '%ADMIN_PORT%'|g" ${apacheOutput}
+      enableLoadBalancerExposeAdminPortPrefix="${enabledPrefix}"
+    else
+      enableLoadBalancerExposeAdminPortPrefix="${disabledPrefix}"
     fi
 
+    if [ ! -z "${loadBalancerVolumePath}" ]; then
+      enableLoadBalancerVolumePathPrefix="${enabledPrefix}"
+      sed -i -e "s:%LOAD_BALANCER_VOLUME_PATH%:${loadBalancerVolumePath}:g" ${apacheOutput}
+    else
+      enableLoadBalancerVolumePathPrefix="${disabledPrefix}"
+    fi
+
+    sed -i -e "s:%ENABLE_LOAD_BALANCER_EXPOSE_ADMIN_PORT%:${enableLoadBalancerExposeAdminPortPrefix}:g" ${apacheOutput}
+    sed -i -e "s:%ENABLE_LOAD_BALANCER_VOLUME_PATH%:${enableLoadBalancerVolumePathPrefix}:g" ${apacheOutput}
     sed -i -e "s:%NAMESPACE%:$namespace:g" ${apacheOutput}
     sed -i -e "s:%DOMAIN_UID%:${domainUID}:g" ${apacheOutput}
     sed -i -e "s:%DOMAIN_NAME%:${domainName}:g" ${apacheOutput}
@@ -592,17 +610,6 @@ function createYamlFiles {
     sed -i -e "s:%MANAGED_SERVER_PORT%:${managedServerPort}:g" ${apacheOutput}
     sed -i -e "s:%LOAD_BALANCER_WEB_PORT%:$loadBalancerWebPort:g" ${apacheOutput}
     sed -i -e "s:%WEB_APP_PREPATH%:$loadBalancerAppPrepath:g" ${apacheOutput}
-
-    if [ ! -z "${loadBalancerVolumePath}" ]; then
-      sed -i -e "s:%LOAD_BALANCER_VOLUME_PATH%:${loadBalancerVolumePath}:g" ${apacheOutput}
-      sed -i -e "s:# volumes:volumes:g" ${apacheOutput}
-      sed -i -e "s:# - name:- name:g" ${apacheOutput}
-      sed -i -e "s:#   hostPath:  hostPath:g" ${apacheOutput}
-      sed -i -e "s:#     path:    path:g" ${apacheOutput}
-      sed -i -e "s:# volumeMounts:volumeMounts:g" ${apacheOutput}
-      sed -i -e "s:# - name:- name:g" ${apacheOutput}
-      sed -i -e "s:#   mountPath:  mountPath:g" ${apacheOutput}
-    fi
  
     # Apache security file
     cp ${apacheSecurityInput} ${apacheSecurityOutput}
@@ -729,13 +736,22 @@ function setupVoyagerLoadBalancer {
     | bash -s -- --provider=baremetal --namespace=voyager
   fi
 
-  # verify Voyager controller pod is ready
-  local ready=`kubectl -n voyager get pod | grep voyager-operator | awk ' { print $2; } '`
-  if [ "${ready}" != "1/1" ] ; then
-    fail "Voyager Ingress Controller is not ready"
-  fi
+  echo Checking voyager controller pod is ready
+  local maxwaitsecs=30
+  local mstart=`date +%s`
+  while : ; do
+    local mnow=`date +%s`
+    local ready=`kubectl -n voyager get pod | grep voyager-operator | awk ' { print $2; } '`
+    if [ "${ready}" = "1/1" ] ; then
+      echo "Voyager Ingress Controller is ready"
+      break
+    fi
+    if [ $((mnow - mstart)) -gt $((maxwaitsecs)) ]; then
+      fail "The Voyager Ingress Controller is not ready."
+    fi
+    sleep 1
+  done
 
-  # deploy Voyager Ingress resource
   kubectl apply -f ${voyagerOutput}
 
   echo Checking Voyager Ingress resource
