@@ -34,7 +34,8 @@ import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
 
 /** Watches for Pods to become Ready or leave Ready state */
-public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod> {
+public class PodWatcher extends Watcher<V1Pod>
+    implements WatchListener<V1Pod>, PodAwaiterStepFactory {
   private static final LoggingFacade LOGGER = LoggingFactory.getLogger("Operator", "Operator");
 
   private final String ns;
@@ -177,13 +178,7 @@ public class PodWatcher extends Watcher<V1Pod> implements WatchListener<V1Pod> {
     return null;
   }
 
-  /**
-   * Waits until the Pod is Ready
-   *
-   * @param pod Pod to watch
-   * @param next Next processing step once Pod is ready
-   * @return Asynchronous step
-   */
+  @Override
   public Step waitForReady(V1Pod pod, Step next) {
     return new WaitForPodReadyStep(pod, next);
   }

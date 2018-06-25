@@ -341,7 +341,7 @@ public class PodHelperConfigTest {
     }
 
     @Override
-    protected String getInternalOperatorCertFile(TuningParameters configMapHelper, Packet packet) {
+    protected String getInternalOperatorCertFile(TuningParameters tuningParameters, Packet packet) {
       // Normally, this would open the files for the config map in the operator.
       return INTERNAL_OPERATOR_CERT_FILE;
     }
