@@ -6,15 +6,20 @@ export THIS_DIR=`dirname ${BASH_SOURCE[0]}`
 
 export DOMAINS_NAMESPACE=$1
 export DOMAIN_UID=$2
-export MANAGED_TEMPLATE=$3
-export MANAGED_SERVER_NAME=$4
+export POD_TEMPLATE=$3
+export SERVICE_TEMPLATE=$4
+export MANAGED_SERVER_NAME=$5
 
-# simulate the operator stopping the admin server
+# simulate the operator stopping a managed server
 
-export MANAGED_POD_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${MANAGED_TEMPLATE}-${MANAGED_SERVER_NAME}-managed-server-pod.yaml
-export MANAGED_POD=${DOMAIN_UID}-${MANAGED_SERVER_NAME}
+# remove the managed server's pod
+export POD_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${POD_TEMPLATE}-${MANAGED_SERVER_NAME}-managed-server-pod.yaml
+export POD=${DOMAIN_UID}-${MANAGED_SERVER_NAME}
+kubectl delete -f ${POD_YAML}
+${THIS_DIR}/wait-for-pod-deleted.sh ${DOMAINS_NAMESPACE} ${POD}
+rm ${POD_YAML}
 
-kubectl delete -f ${MANAGED_POD_YAML}
-${THIS_DIR}/wait-for-pod-deleted.sh ${DOMAINS_NAMESPACE} ${MANAGED_POD}
-rm ${MANAGED_POD_YAML}
-
+# remove the managed server's service
+export SERVICE_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${SERVICE_TEMPLATE}-${MANAGED_SERVER_NAME}-managed-server-service.yaml
+kubectl delete -f ${SERVICE_YAML}
+rm ${SERVICE_YAML}

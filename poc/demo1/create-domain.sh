@@ -65,10 +65,6 @@ function copyAndCustomizeTemplatesBase {
   createServerScripts
 }
 
-function createDomainWideKubernetesResourcesBase {
-  # none
-}
-
 function createDomainCredentialsSecret {
   kubectl -n ${DOMAINS_NAMESPACE} create secret generic ${DOMAIN_CREDENTIALS_SECRET_NAME} --from-literal=username=${ADMIN_USERNAME} --from-literal=password=${ADMIN_PASSWORD}
 }
@@ -165,7 +161,6 @@ function createDomainHomeResources {
 }
 
 function createDomainWideKubernetesResources {
-  createDomainWideKubernetesResourcesBase
   # create the kubernetes namespace and domain wide resources for this domain
   # don't create the ones the operator would create at runtime
   createDomainLogsResources

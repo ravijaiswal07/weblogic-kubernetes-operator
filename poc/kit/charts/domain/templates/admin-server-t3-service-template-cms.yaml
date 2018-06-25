@@ -1,0 +1,37 @@
+{{- $values := .Values -}}
+{{- range $key, $element := $values.adminServerT3ServiceTemplates -}}
+---
+kind: ConfigMap
+metadata:
+  labels:
+    weblogic.createdByOperator: "true"
+    weblogic.operatorName: {{ $values.operatorNamespace }}
+    weblogic.resourceVersion: domain-v1
+  name: {{ $values.domainUID }}-{{ $key }}-admin-server-t3-service-template-cm
+  namespace: {{ $values.domainsNamespace }}
+data:
+  server-service.yaml: |-
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        weblogic.channelName: T3Channel
+        weblogic.createdByOperator: "true"
+        weblogic.domainUID: {{ $values.domainUID }}
+        weblogic.resourceVersion: domain-v1
+        weblogic.serverName: %ADMIN_SERVER_NAME%
+      name: {{ $values.domainUID }}-%ADMIN_SERVER_NAME%-extchannel-t3channel
+      namespace: {{ $values.domainsNamespace }}
+    spec:
+      externalTrafficPolicy: Cluster
+      ports:
+      - nodePort: 30212
+        port: 30212
+        protocol: TCP
+        targetPort: 30212
+      selector:
+        weblogic.createdByOperator: "true"
+        weblogic.domainUID: {{ $values.domainUID }}
+        weblogic.serverName: %ADMIN_SERVER_NAME%
+      type: NodePort
+{{- end }}

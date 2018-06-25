@@ -12,7 +12,7 @@ export SITCFG=$3
 
 export SITCFG_POD_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${SITCFG}-sitcfg-generator-pod.yaml
 export SITCFG_POD=${DOMAIN_UID}-${SITCFG}-sitcfg-generator
-export SITCFG_CM_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${SITCFG}-sitcfg-generator-cm.yaml
+export SITCFG_CM_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${SITCFG}-sitcfg-cm.yaml
 
 kubectl get cm -n ${DOMAINS_NAMESPACE} ${DOMAIN_UID}-${SITCFG}-sitcfg-generator-cm -o jsonpath='{.data.sitcfg-generator-pod\.yaml}' > ${SITCFG_POD_YAML}
 

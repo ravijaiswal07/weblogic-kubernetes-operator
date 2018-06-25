@@ -45,7 +45,7 @@ function createKubernetesResourcesBase {
   kubectl apply -f ${GENERATED_FILES}/operator-sa.yaml
   kubectl apply -f ${GENERATED_FILES}/operator-cm.yaml
   kubectl apply -f ${GENERATED_FILES}/operator-secrets.yaml
-  kubectl apply -f ${GENERATED_FILES}/operator-dep.yaml
+  #kubectl apply -f ${GENERATED_FILES}/operator-dep.yaml
   kubectl apply -f ${GENERATED_FILES}/operator-internal-svc.yaml
   kubectl apply -f ${GENERATED_FILES}/operator-external-svc.yaml
 }

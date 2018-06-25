@@ -60,7 +60,7 @@ function deleteResource {
 function deleteKubernetesResourcesBase {
   deleteResource service    external-weblogic-operator-svc
   deleteResource service    internal-weblogic-operator-svc
-  deleteResource deployment weblogic-operator
+  #deleteResource deployment weblogic-operator
   deleteResource secret     weblogic-operator-secrets
   deleteResource cm         weblogic-operator-cm
   deleteResource sa         ${OPERATOR_SERVICE_ACCOUNT}

@@ -1,5 +1,5 @@
 {{- $values := .Values -}}
-{{- range $key, $element := $values.managedServerTemplates -}}
+{{- range $key, $element := $values.adminServerPodTemplates -}}
 {{-   $call := dict "name" $element.podTemplate "values" $values -}}
 {{-   include "domain.getPodTemplateValues" $call -}}
 {{-   $podVals := $call.return }}
@@ -10,23 +10,23 @@ metadata:
     weblogic.createdByOperator: "true"
     weblogic.operatorName: {{ $values.operatorNamespace }}
     weblogic.resourceVersion: domain-v1
-  name: {{ $values.domainUID }}-{{ $key }}-managed-server-template-cm
+  name: {{ $values.domainUID }}-{{ $key }}-admin-server-pod-template-cm
   namespace: {{ $values.domainsNamespace }}
 data:
-  managed-server-pod.yaml: |-
+  server-pod.yaml: |-
     apiVersion: v1
     kind: Pod
     metadata:
       annotations:
         prometheus.io/path: /wls-exporter/metrics
-        prometheus.io/port: "%MANAGED_SERVER_PORT%"
+        prometheus.io/port: "%ADMIN_SERVER_PORT%"
         prometheus.io/scrape: "true"
       labels:
         weblogic.createdByOperator: "true"
         weblogic.domainUID: {{ $values.domainUID }}
         weblogic.resourceVersion: domain-v1
-        weblogic.serverName: %MANAGED_SERVER_NAME%
-      name: {{ $values.domainUID }}-%MANAGED_SERVER_NAME%
+        weblogic.serverName: %ADMIN_SERVER_NAME%
+      name: {{ $values.domainUID }}-%ADMIN_SERVER_NAME%
       namespace: {{ $values.domainsNamespace }}
     spec:
       containers:
@@ -52,7 +52,7 @@ data:
         - name: ADMIN_PORT
           value: "%ADMIN_SERVER_PORT%"
         - name: SERVER_NAME
-          value: %MANAGED_SERVER_NAME%
+          value: %ADMIN_SERVER_NAME%
         - name: ADMIN_USERNAME
         - name: ADMIN_PASSWORD
 {{- if $podVals.extraEnv }}
@@ -76,7 +76,7 @@ data:
           timeoutSeconds: 5
         name: weblogic-server
         ports:
-        - containerPort: %MANAGED_SERVER_PORT%
+        - containerPort: %ADMIN_SERVER_PORT%
           protocol: TCP
         readinessProbe:
           exec:
@@ -104,6 +104,7 @@ data:
 {{- if $podVals.extraVolumeMounts }}
 {{ toYaml $podVals.extraVolumeMounts | trim | indent 8 }}
 {{- end }}
+      hostname: {{ $values.domainUID }}-%ADMIN_SERVER_NAME%
       volumes:
       - name: weblogic-credentials-volume
         secret:
@@ -116,7 +117,7 @@ data:
       - name: sitcfg-cm-volume
         configMap:
           defaultMode: 365
-          name: {{ $values.domainUID }}-%SITCFG_NAME%-cm
+          name: {{ $values.domainUID }}-%SITCFG_NAME%-sitcfg-cm
 {{- if $values.domainLogsPersistentVolumeDir }}
       - name: weblogic-domain-logs-storage-volume
         persistentVolumeClaim:

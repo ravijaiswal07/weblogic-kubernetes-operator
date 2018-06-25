@@ -41,9 +41,9 @@ how to run demo2
   kubectl -n demo-d-ns create secret generic demo2-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
   mkdir -p /scratch/k8s-dir/demo2-domain-uid/domain-logs
   create-domain-home.sh
-  from Tom Barnes: if running on a hosted linux box (macs don't need this):
-    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
-    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
+  #from Tom Barnes: if running on a hosted linux box (macs don't need this):
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
 
   helm install ../kit/charts/domain --name demo2-domain --values domain-values.yaml
   #helm upgrade --values domain-values.yaml demo2-domain ../kit/charts/domain
@@ -56,21 +56,21 @@ how to run demo2
 
   ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo2-domain-uid default
 
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo2-domain-uid debug default demo2-domain as 7100
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo2-domain-uid debug default default demo2-domain as 7100
 
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo2-domain-uid debug default demo2-domain as 7100 ms1 8100
+  # managed servers won't work until I added the admin server k8s services to the POC:
+  #../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo2-domain-uid debug default default demo2-domain as 7100 ms1 8100
+  #../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo2-domain-uid debug default ms1
 
-  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo2-domain-uid ms1
-
-  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo2-domain-uid as
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo2-domain-uid debug default as
 
   ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo2-domain-uid default
 
   helm delete --purge demo2-domain
 
   kubectl delete secret -n demo-d-ns demo2-domain-uid-domain-creds
-  from Tom Barnes: if running on a hosted linux box (macs don't need this):
-    /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
+  #from Tom Barnes: if running on a hosted linux box (macs don't need this):
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
   rm -rf /scratch/k8s-dir/demo2-domain-uid
 
   helm delete --purge demo-domains-ns
@@ -132,29 +132,25 @@ poc generated files
 todo
 -----------------------------------------------------------------------------------------
 
-test that I didn't break anything when I added functions
-
-finish adding & testing managed server support (mostly need to add the runtime script)
-
-add admin server service & t3 service
-
-pass thru customizations needed to to create the sit cfg from user thru to
+pass thru customizations needed to create the sit cfg from user thru to
 sit cfg generator (even though it won't pay attention to them yet)
 
 demo2-domain-crd (roughly)
 
   domainUID: demo2-domain-uid
 
+  domainIntrospector: demo2-domain-uid-default-domain-introspector-cm
+
   serverDefaults:
-    domainCustomizations:       demo2-domain-uid-domain-customizations-cm
-    sitConfigGeneratorTemplate: demo2-domain-uid-sitconfig-generator1-cm
-    serverPodTemplate:          demo2-domain-uid-managed-server-pod-template1-cm
-    serverServiceTemplate:      demo2-domain-uid-server-service-template1-cm
+    domainCustomizations:  demo2-domain-uid-domain-customizations-cm
+    sitConfigGenerator:    demo2-domain-uid-default-sitcfg-generator-cm 
+    serverPodTemplate:     demo2-domain-uid-default-managed-server-pod-template-cm
+    serverServiceTemplate: demo2-domain-uid-default-managed-server-service-template-cm
 
   adminServer:
-    serverPodTemplate:          demo2-domain-uid-admin-server-pod-template1-cm
-    serverT3ServiceTemplate:    demo2-domain-uid-admin-server-t3-service-template1-cm
-
+    serverPodTemplate:       demo2-domain-uid-debug-admin-server-pod-template-cm
+    serverServiceTemplate:   demo2-domain-uid-default-admin-server-service-template-cm
+    serverT3ServiceTemplate: demo2-domain-uid-default-admin-server-t3-service-template-cm
 
 possible formats for having the customer specify domain config property overridesA:
 
@@ -174,3 +170,91 @@ domain:
 make prometheus annotations optional?
 
 try to make a template for most of the pod stuff?
+
+
+
+
+
+
+overall
+
+cluster side operator setup
+  helm chart
+  vars:
+    elkEnabled
+
+operator setup
+  helm chart
+  vars:
+    externally generated certs
+    most of the stuff from the old operator inputs file
+
+domains namespace setup
+  helm chart
+  don't need much - mostly a namespace name
+
+domain setup
+  lots here
+
+domain introspection
+  v.s. configuring admin server name & port
+  done in offline wlst in a pod w/ access to the domain home
+  also does domain validation so we can tell if the operator can handle the domain
+
+sitcfg generation
+  done in offline wlst in a pod w/ access to the domain home
+  need a way for the customer to add customizations
+  results in a config map (with a sit cfg file) that gets mounted into the server pod
+
+domain.values
+  non-config-xml info about the domain
+  templates for pods, services, ...
+
+domain custom resource
+  lifecycle rules for servers & clusters
+  pointers to the templates for creating k8s artifacts
+
+
+need specs
+  architecture
+  functional - i.e. what a customer sees
+
+need to implement
+
+need wlst / jython guru
+  best practices
+  how do we test it?
+
+need a helm guru
+  best practices
+    docs
+    values validation
+  slots for anything we want tweakable
+    e.g. add volumes, tweak timing / retry params, add labels, ...
+    or should we encourage customers to copy our helm charts & tweak? (probably a bad idea)
+  how do we test them since they have a lot of conditional code?
+    --dry-run ?
+    require k8s & look at artifacts?
+
+naming conventions
+  so that templates, ... don't collide with servers
+
+need a backwards compat and rollout strategy
+
+how about
+  customers must create new domains using our new mechanims
+    we'll need to give at least doc guidelines
+  all new operator/domain config - won't work w/ old configs, old input files
+  all new operator runtime - won't work w/ old domain
+
+phase1
+  build new infra for configuring artifacts, helm based, independent of old create scripts, artifacts, inputs files
+  simulate operator runtime w/ scripts
+
+phase2
+  build new operator runtime (i.e. a different image) that only handles new artifacts
+
+phase3
+  cut over from old operator to new operator
+
+i.e. I don't think we can get there incrementally easily

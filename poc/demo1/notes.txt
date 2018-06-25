@@ -38,7 +38,7 @@ how to run demo1
   delete-domain.sh
   delete-domains-ns.sh
   delete-operator.sh
-  cleanup-kubernetes-cluster.sh
+  teardown-kubernetes-cluster.sh
 
 -----------------------------------------------------------------------------------------
 poc source files

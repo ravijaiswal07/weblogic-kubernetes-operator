@@ -614,7 +614,7 @@ data:
       writeln(f, "    weblogic.createdByOperator: \"true\"")
       writeln(f, "    weblogic.domainUID: " + domain_uid)
       writeln(f, "    weblogic.resourceVersion: domain-v1")
-      writeln(f, "  name: " + domain_uid + "-" + sitcfg_name + '-cm')
+      writeln(f, "  name: " + domain_uid + "-" + sitcfg_name + '-sitcfg-cm')
       writeln(f, "  namespace: {{ .Values.domainsNamespace }}")
 
     def endConfigMap(f):
