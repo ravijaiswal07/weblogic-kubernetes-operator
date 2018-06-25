@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<nod:nodeManagerInfo xmlns:nod="http://xmlns.oracle.com/cie/nodemanager">
-  <nod:userName>weblogic</nod:userName>
-  <nod:password>{AES}rq22YZGhL5mN1T5gpoBOEh2y0OSbleEARMtV12f8Jio=</nod:password>
-  <nod:nodeManagerHome>/Users/tmoreau/op10/weblogic-kubernetes-operator/poc/demo2/generated/domain-home/nodemanager</nod:nodeManagerHome>
-  <nod:perDomainNodeManager>true</nod:perDomainNodeManager>
-  <nod:customLocationNodeManager>false</nod:customLocationNodeManager>
-  <nod:manualNodeManagerSetup>false</nod:manualNodeManagerSetup>
-</nod:nodeManagerInfo>

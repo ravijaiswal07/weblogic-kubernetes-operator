@@ -46,20 +46,25 @@ how to run demo2
     /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
 
   helm install ../kit/charts/domain --name demo2-domain --values domain-values.yaml
+  #helm upgrade --values domain-values.yaml demo2-domain ../kit/charts/domain
   helm status demo2-domain
 
   # TBD - something about creating the config map containing the domain-specific sit config customizations
   # and passing the name of that config map into the sit config stuff below ...
 
-  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo2-domain-uid
+  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo2-domain-uid default
 
-  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo2-domain-uid sitcfg1
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo2-domain-uid default
 
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo2-domain-uid sitcfg1 demo2-domain as 7100
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo2-domain-uid debug default demo2-domain as 7100
+
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo2-domain-uid debug default demo2-domain as 7100 ms1 8100
+
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo2-domain-uid ms1
 
   ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo2-domain-uid as
 
-  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo2-domain-uid sitcfg1
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo2-domain-uid default
 
   helm delete --purge demo2-domain
 
@@ -127,16 +132,14 @@ poc generated files
 todo
 -----------------------------------------------------------------------------------------
 
-add admin server service & t3 service
+test that I didn't break anything when I added functions
 
-add managed server support
+finish adding & testing managed server support (mostly need to add the runtime script)
+
+add admin server service & t3 service
 
 pass thru customizations needed to to create the sit cfg from user thru to
 sit cfg generator (even though it won't pay attention to them yet)
-
-get a better understanding of help templates, variables, ...
-  i.e. what I did was hacky, I think
-  (couldn't find good docs via google)
 
 demo2-domain-crd (roughly)
 
@@ -167,3 +170,7 @@ domain:
     name:as
     listen-address: abcd
     listen-port: 7001
+
+make prometheus annotations optional?
+
+try to make a template for most of the pod stuff?

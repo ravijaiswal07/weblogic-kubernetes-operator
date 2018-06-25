@@ -12,7 +12,6 @@ weblogicDomainCredentialsSecretName: demo2-domain-uid-domain-creds
 extraEnv:
 - name: PROPERTY1
   value: VALUE1
-
 podTemplates:
   default: {}
   debug:
@@ -23,7 +22,7 @@ podTemplates:
       value: VALUE2
 domainIntrospectors:
   default:
-    podTemplate: podTemplate1
+    podTemplate: default
 sitCfgGenerators:
   default:
     podTemplate: default
@@ -35,7 +34,8 @@ adminServerTemplates:
 managedServerTemplates:
   default:
     podTemplate: default
-
+  debug:
+    podTemplate: debug
 extraVolumeMounts:
 - name: weblogic-domain-home-storage-volume
   mountPath: /domain-home
@@ -82,4 +82,3 @@ extraResources:
         storage: 5Gi
     storageClassName: demo2-domain-uid-weblogic-domain-home-storage-class
     volumeName: demo2-domain-uid-weblogic-domain-home-pv
-

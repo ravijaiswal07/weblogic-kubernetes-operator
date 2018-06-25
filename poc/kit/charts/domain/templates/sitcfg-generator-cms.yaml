@@ -1,14 +1,8 @@
-{{- $values := .Values }}
-{{- range $key, $element := $values.sitCfgGenerators }}
-{{-   $podTemplateName := $element.podTemplate }}
-{{-   range $k, $e := $values.podTemplates }}
-{{-     if eq $k $podTemplateName }}
-{{-       $podTemplate := $e }}
-{{-       $weblogicImage           := $e.weblogicImage           | default $values.weblogicImage }}
-{{-       $weblogicImagePullPolicy := $e.weblogicImagePullPolicy | default $values.weblogicImagePullPolicy }}
-{{-       $extraEnv                := $e.extraEnv                | default $values.extraEnv }}
-{{-       $extraVolumes            := $e.extraVolumes            | default $values.extraVolumes }}
-{{-       $extraVolumeMounts       := $e.extraVolumeMounts       | default $values.extraVolumeMounts }}
+{{- $values := .Values -}}
+{{- range $key, $element := $values.sitCfgGenerators -}}
+{{-   $call := dict "name" $element.podTemplate "values" $values -}}
+{{-   include "domain.getPodTemplateValues" $call -}}
+{{-   $podVals := $call.return }}
 ---
 kind: ConfigMap
 metadata:
@@ -43,11 +37,11 @@ data:
           value: {{ $values.podDomainLogsDir }}
         - name: SITCFG_NAME
           value: {{ $key }}
-{{- if $extraEnv }}
-{{ toYaml $extraEnv | indent 8 }}
+{{- if $podVals.extraEnv }}
+{{ toYaml $podVals.extraEnv | trim | indent 8 }}
 {{- end }}
-        image: {{ $weblogicImage }}
-        imagePullPolicy: {{ $weblogicImagePullPolicy }}
+        image: {{ $podVals.weblogicImage }}
+        imagePullPolicy: {{ $podVals.weblogicImagePullPolicy }}
         livenessProbe:
           exec:
             command:
@@ -74,8 +68,8 @@ data:
         - name: weblogic-domain-cm-volume
           mountPath: /weblogic-operator/scripts
           readOnly: true
-{{- if $extraVolumeMounts }}
-{{ toYaml $extraVolumeMounts | indent 8 }}
+{{- if $podVals.extraVolumeMounts }}
+{{ toYaml $podVals.extraVolumeMounts | trim | indent 8 }}
 {{- end }}
       volumes:
       - name: weblogic-credentials-volume
@@ -86,9 +80,7 @@ data:
         configMap:
           defaultMode: 365
           name: weblogic-domain-cm 
-{{- if $extraVolumes }}
-{{ toYaml $extraVolumes | indent 6 }}
-{{- end }}
-{{- end }}
+{{- if $podVals.extraVolumes }}
+{{ toYaml $podVals.extraVolumes | trim | indent 6 }}
 {{- end }}
 {{- end }}
