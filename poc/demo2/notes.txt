@@ -58,9 +58,8 @@ how to run demo2
 
   ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo2-domain-uid debug default default demo2-domain as 7100
 
-  # managed servers won't work until I added the admin server k8s services to the POC:
-  #../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo2-domain-uid debug default default demo2-domain as 7100 ms1 8100
-  #../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo2-domain-uid debug default ms1
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo2-domain-uid debug default default demo2-domain as 7100 ms1 8100
+  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo2-domain-uid debug default ms1
 
   ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo2-domain-uid debug default as
 
@@ -258,3 +257,67 @@ phase3
   cut over from old operator to new operator
 
 i.e. I don't think we can get there incrementally easily
+
+---------------
+
+slides
+
+major problems we're trying to address
+
+  more complex domains (v.s. our toy domains)
+
+  domain home inside image
+
+  lifecycle (i.e. user controlled order of restarts)
+
+  give the user a lot more control over the k8s artifacts we create
+    - extra volume mounts
+    - change tuning parameters
+    - general issue - they keep asking to customize stuff we haven't thought of before
+
+  give the user a lot more control over how/which wls ports and network access points are exposed
+
+  let user override wls properties (e.g. bind the domain - creds, addresses, ...)
+
+  domain introspection
+
+  validate that a domain can be supported by the operator
+
+  formalize levels of lifecycle so we can cleanly setup and teardown
+
+  move the k8s artifact templates outside of the operator java code and into mounts
+  (since it will be easier to update files than to update the operator runtime)
+
+  add helm support
+
+topology
+
+  k8s cluster -> n operators -> n domain namespaces -> no domains
+
+  implies need for 4 levels of lifecycle
+
+slide for each lifecycle level
+
+slide showing domain crd
+
+slide showing operator runtime
+
+slide showing domain introspection
+
+slide showing sit config generation
+
+
+big questions
+
+what should the granularity of introspector be?
+  i.e. to add more servers, the customer spins a new image with a new domain home,
+  but we want to gradually roll out the change - how do we do this? i.e. what do we
+  do when different servers have a different view of the domain config?
+
+similar question for sit config
+  since it modifies config.xml at runtime, is OK for different servers to have different
+  sit configs?  and what about shared domain home on pv?
+  i.e. as you roll out a new image, you might need:
+    different values for the same settings on the new servers
+      e.g. used to point to test db, now want to point to production db?
+    what if the set of apps is different? ...
