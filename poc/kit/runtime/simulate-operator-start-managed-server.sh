@@ -35,10 +35,10 @@ ${THIS_DIR}/wait-for-pod-to-start.sh ${DOMAINS_NAMESPACE} ${POD}
 
 # create a service for the managed server
 export SERVICE_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${SERVICE_TEMPLATE}-${MANAGED_SERVER_NAME}-managed-server-service.yaml
-kubectl get cm -n ${DOMAINS_NAMESPACE} ${DOMAIN_UID}-${SERVICE_TEMPLATE}-admin-server-service-template-cm -o jsonpath='{.data.server-service\.yaml}' > ${SERVICE_YAML}
+kubectl get cm -n ${DOMAINS_NAMESPACE} ${DOMAIN_UID}-${SERVICE_TEMPLATE}-managed-server-service-template-cm -o jsonpath='{.data.server-service\.yaml}' > ${SERVICE_YAML}
 sed -i.bak \
-  -e "s|%ADMIN_SERVER_NAME%|${ADMIN_SERVER_NAME}|" \
-  -e "s|%ADMIN_SERVER_PORT%|${ADMIN_SERVER_PORT}|" \
+  -e "s|%MANAGED_SERVER_NAME%|${MANAGED_SERVER_NAME}|" \
+  -e "s|%MANAGED_SERVER_PORT%|${MANAGED_SERVER_PORT}|" \
 ${SERVICE_YAML}
 rm ${SERVICE_YAML}.bak
 kubectl apply -f ${SERVICE_YAML}

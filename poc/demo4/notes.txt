@@ -1,0 +1,324 @@
+-----------------------------------------------------------------------------------------
+setup
+-----------------------------------------------------------------------------------------
+
+  doublesync src122130 and devenv.sh
+    (since we're going to use WLST to create the domain)
+
+  mkdir -m 777 -p /scratch/k8s-dir
+    (i.e. the parent directory for persistent volumes)
+
+  make sure to get rid your old setup:
+  (I had problems getting stuff to run until I got rid of this stuff)
+    operator and domain namespaces
+    persistent volumes
+    cluster roles & cluster role bindings
+    maybe /scratch/k8s_dir
+
+  install helm & tiller
+    See https://github.com/kubernetes/helm/blob/master/docs/install.md
+
+-----------------------------------------------------------------------------------------
+how to run demo4
+-----------------------------------------------------------------------------------------
+
+  cd demo4
+
+  mkdir generated # the scripts need to be improved to do this!
+
+  helm install ../kit/charts/kubernetes-cluster --name demo-kubernetes-cluster --values kubernetes-cluster-values.yaml
+  helm status demo-kubernetes-cluster
+
+  # something about certificate generation ... ?
+  helm install ../kit/charts/operator --name demo-operator --values operator-values.yaml
+  helm status demo-operator
+
+  helm install ../kit/charts/domains-ns --name demo-domains-ns --values domains-ns-values.yaml
+  #helm upgrade --values domains-ns-values.yaml demo-domains-ns ../kit/charts/domains-ns
+  helm status demo-domains-ns
+
+  # can this move to a helm chart?
+  kubectl -n demo-d-ns create secret generic demo4-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
+  mkdir -p /scratch/k8s-dir/demo4-domain-uid/domain-logs
+  create-domain-in-image.sh
+  #from Tom Barnes: if running on a hosted linux box (macs don't need this):
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
+
+  helm install ../kit/charts/domain --name demo4-domain --values domain-values.yaml
+  #helm upgrade --values domain-values.yaml demo4-domain ../kit/charts/domain
+  helm status demo4-domain
+
+  # TBD - something about creating the config map containing the domain-specific sit config customizations
+  # and passing the name of that config map into the sit config stuff below ...
+
+  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo4-domain-uid default
+
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo4-domain-uid default
+
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo4-domain-uid debug default default demo4-domain as 7100
+
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo4-domain-uid debug default default demo4-domain as 7100 ms1 8100
+
+  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo4-domain-uid debug default ms1
+
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo4-domain-uid debug default as
+
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo4-domain-uid default
+
+  helm delete --purge demo4-domain
+
+  kubectl delete secret -n demo-d-ns demo4-domain-uid-domain-creds
+  #from Tom Barnes: if running on a hosted linux box (macs don't need this):
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
+  rm -rf /scratch/k8s-dir/demo4-domain-uid
+
+  helm delete --purge demo-domains-ns
+
+  helm delete --purge demo-operator
+
+  helm delete --purge demo-kubernetes-cluster
+
+-----------------------------------------------------------------------------------------
+poc source files
+-----------------------------------------------------------------------------------------
+
+  demo4/
+    uses offline wlst to create a domain with a configured cluster
+    uses a domain persistent volume
+    uses helm to configure everything
+
+    kubernetes-cluster-values.yaml
+      - helm configuration settings for setting up the kubernets cluster kubernetes resources
+
+    operator-values.yaml
+      - helm configuration settings for creating the operator kubernetes resources
+
+    domains-ns-values.yaml
+      - helm configuration settings for creating the domains namespace kubernetes resources
+
+    domain-values.yaml
+      - helm configuration settings for creating the domain kubernetes resources
+
+    create-domain-home.sh
+      - shell script that uses offline wlst to configure a domain home with a configured cluster
+
+-----------------------------------------------------------------------------------------
+poc generated files
+-----------------------------------------------------------------------------------------
+
+    demo4/generated/
+
+        domain-home
+          - contains the generated domain, before its pathnames have been patched
+          - this means you can 'cd' there and run startWeblogicServer.sh
+          - it also means that it cannot be directly used by a pod since the
+            pathnames in the generated files are based on the shell that ran
+            create-domain-home.sh, instead of the ones that are needed in a pod
+
+    /scratch/k8s-dir/demo1-domain-uid
+      contains the persistent volumes for demo1's domain
+
+      domain-logs/
+         - contains the domain, node manager and server logs
+
+      domain-home/
+        - contains the domain home that the pods use
+        - the pathnames in the files have been patched so that the pods can use them
+          (e.g. domain home, java home and mw home have been changed to the values
+          that should be used inside the pod)
+
+-----------------------------------------------------------------------------------------
+todo
+-----------------------------------------------------------------------------------------
+
+pass thru customizations needed to create the sit cfg from user thru to
+sit cfg generator (even though it won't pay attention to them yet)
+
+demo4-domain-crd (roughly)
+
+  domainUID: demo4-domain-uid
+
+  domainIntrospector: demo4-domain-uid-default-domain-introspector-cm
+
+  serverDefaults:
+    domainCustomizations:  demo4-domain-uid-domain-customizations-cm
+    sitConfigGenerator:    demo4-domain-uid-default-sitcfg-generator-cm
+    serverPodTemplate:     demo4-domain-uid-default-managed-server-pod-template-cm
+    serverServiceTemplate: demo4-domain-uid-default-managed-server-service-template-cm
+
+  adminServer:
+    serverPodTemplate:       demo4-domain-uid-debug-admin-server-pod-template-cm
+    serverServiceTemplate:   demo4-domain-uid-default-admin-server-service-template-cm
+    serverT3ServiceTemplate: demo4-domain-uid-default-admin-server-t3-service-template-cm
+
+possible formats for having the customer specify domain config property overridesA:
+
+properties:
+
+domain.server.name.as.list-address:abcd
+domain.server.name.as.list-port:7001
+
+yaml:
+
+domain:
+  server:
+    name:as
+    listen-address: abcd
+    listen-port: 7001
+
+make prometheus annotations optional?
+
+try to make a template for most of the pod stuff?
+
+
+
+
+
+
+overall
+
+cluster side operator setup
+  helm chart
+  vars:
+    elkEnabled
+
+operator setup
+  helm chart
+  vars:
+    externally generated certs
+    most of the stuff from the old operator inputs file
+
+domains namespace setup
+  helm chart
+  don't need much - mostly a namespace name
+
+domain setup
+  lots here
+
+domain introspection
+  v.s. configuring admin server name & port
+  done in offline wlst in a pod w/ access to the domain home
+  also does domain validation so we can tell if the operator can handle the domain
+
+sitcfg generation
+  done in offline wlst in a pod w/ access to the domain home
+  need a way for the customer to add customizations
+  results in a config map (with a sit cfg file) that gets mounted into the server pod
+
+domain.values
+  non-config-xml info about the domain
+  templates for pods, services, ...
+
+domain custom resource
+  lifecycle rules for servers & clusters
+  pointers to the templates for creating k8s artifacts
+
+
+need specs
+  architecture
+  functional - i.e. what a customer sees
+
+need to implement
+
+need wlst / jython guru
+  best practices
+  how do we test it?
+
+need a helm guru
+  best practices
+    docs
+    values validation
+  slots for anything we want tweakable
+    e.g. add volumes, tweak timing / retry params, add labels, ...
+    or should we encourage customers to copy our helm charts & tweak? (probably a bad idea)
+  how do we test them since they have a lot of conditional code?
+    --dry-run ?
+    require k8s & look at artifacts?
+
+naming conventions
+  so that templates, ... don't collide with servers
+
+need a backwards compat and rollout strategy
+
+how about
+  customers must create new domains using our new mechanims
+    we'll need to give at least doc guidelines
+  all new operator/domain config - won't work w/ old configs, old input files
+  all new operator runtime - won't work w/ old domain
+
+phase1
+  build new infra for configuring artifacts, helm based, independent of old create scripts, artifacts, inputs files
+  simulate operator runtime w/ scripts
+
+phase2
+  build new operator runtime (i.e. a different image) that only handles new artifacts
+
+phase3
+  cut over from old operator to new operator
+
+i.e. I don't think we can get there incrementally easily
+
+---------------
+
+slides
+
+major problems we're trying to address
+
+  more complex domains (v.s. our toy domains)
+
+  domain home inside image
+
+  lifecycle (i.e. user controlled order of restarts)
+
+  give the user a lot more control over the k8s artifacts we create
+    - extra volume mounts
+    - change tuning parameters
+    - general issue - they keep asking to customize stuff we haven't thought of before
+
+  give the user a lot more control over how/which wls ports and network access points are exposed
+
+  let user override wls properties (e.g. bind the domain - creds, addresses, ...)
+
+  domain introspection
+
+  validate that a domain can be supported by the operator
+
+  formalize levels of lifecycle so we can cleanly setup and teardown
+
+  move the k8s artifact templates outside of the operator java code and into mounts
+  (since it will be easier to update files than to update the operator runtime)
+
+  add helm support
+
+topology
+
+  k8s cluster -> n operators -> n domain namespaces -> no domains
+
+  implies need for 4 levels of lifecycle
+
+slide for each lifecycle level
+
+slide showing domain crd
+
+slide showing operator runtime
+
+slide showing domain introspection
+
+slide showing sit config generation
+
+
+big questions
+
+what should the granularity of introspector be?
+  i.e. to add more servers, the customer spins a new image with a new domain home,
+  but we want to gradually roll out the change - how do we do this? i.e. what do we
+  do when different servers have a different view of the domain config?
+
+similar question for sit config
+  since it modifies config.xml at runtime, is OK for different servers to have different
+  sit configs?  and what about shared domain home on pv?
+  i.e. as you roll out a new image, you might need:
+    different values for the same settings on the new servers
+      e.g. used to point to test db, now want to point to production db?
+    what if the set of apps is different? ...
