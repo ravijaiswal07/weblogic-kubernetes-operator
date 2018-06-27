@@ -21,7 +21,6 @@ function createDockerImage {
 }
 
 function main {
-#  cp ${OPERATOR_SAMPLES}/create-domain-home-with-configured-cluster.sh .
   createDockerImage
 }
 
