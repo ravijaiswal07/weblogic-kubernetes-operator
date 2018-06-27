@@ -19,10 +19,10 @@ setup
     See https://github.com/kubernetes/helm/blob/master/docs/install.md
 
 -----------------------------------------------------------------------------------------
-how to run demo4
+how to run demo3
 -----------------------------------------------------------------------------------------
 
-  cd demo4
+  cd demo3
 
   mkdir generated # the scripts need to be improved to do this!
 
@@ -38,40 +38,40 @@ how to run demo4
   helm status demo-domains-ns
 
   # can this move to a helm chart?
-  kubectl -n demo-d-ns create secret generic demo4-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
-  mkdir -p /scratch/k8s-dir/demo4-domain-uid/domain-logs
+  kubectl -n demo-d-ns create secret generic demo3-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
+  mkdir -p /scratch/k8s-dir/demo3-domain-uid/domain-logs
   create-domain-in-image.sh
   #from Tom Barnes: if running on a hosted linux box (macs don't need this):
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
 
-  helm install ../kit/charts/domain --name demo4-domain --values domain-values.yaml
-  #helm upgrade --values domain-values.yaml demo4-domain ../kit/charts/domain
-  helm status demo4-domain
+  helm install ../kit/charts/domain --name demo3-domain --values domain-values.yaml
+  #helm upgrade --values domain-values.yaml demo3-domain ../kit/charts/domain
+  helm status demo3-domain
 
   # TBD - something about creating the config map containing the domain-specific sit config customizations
   # and passing the name of that config map into the sit config stuff below ...
 
-  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo4-domain-uid default
+  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo3-domain-uid default
 
-  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo4-domain-uid default
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo3-domain-uid default
 
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo4-domain-uid debug default default demo4-domain as 7100
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo3-domain-uid debug default default demo3-domain as 7100
 
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo4-domain-uid debug default default demo4-domain as 7100 ms1 8100
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo3-domain-uid debug default default demo3-domain as 7100 ms1 8100
 
-  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo4-domain-uid debug default ms1
+  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo3-domain-uid debug default ms1
 
-  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo4-domain-uid debug default as
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo3-domain-uid debug default as
 
-  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo4-domain-uid default
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo3-domain-uid default
 
-  helm delete --purge demo4-domain
+  helm delete --purge demo3-domain
 
-  kubectl delete secret -n demo-d-ns demo4-domain-uid-domain-creds
+  kubectl delete secret -n demo-d-ns demo3-domain-uid-domain-creds
   #from Tom Barnes: if running on a hosted linux box (macs don't need this):
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
-  rm -rf /scratch/k8s-dir/demo4-domain-uid
+  rm -rf /scratch/k8s-dir/demo3-domain-uid
 
   helm delete --purge demo-domains-ns
 
@@ -83,7 +83,7 @@ how to run demo4
 poc source files
 -----------------------------------------------------------------------------------------
 
-  demo4/
+  demo3/
     uses offline wlst to create a domain with a configured cluster
     uses a domain persistent volume
     uses helm to configure everything
@@ -107,7 +107,7 @@ poc source files
 poc generated files
 -----------------------------------------------------------------------------------------
 
-    demo4/generated/
+    demo3/generated/
 
         domain-home
           - contains the generated domain, before its pathnames have been patched
@@ -135,22 +135,22 @@ todo
 pass thru customizations needed to create the sit cfg from user thru to
 sit cfg generator (even though it won't pay attention to them yet)
 
-demo4-domain-crd (roughly)
+demo3-domain-crd (roughly)
 
-  domainUID: demo4-domain-uid
+  domainUID: demo3-domain-uid
 
-  domainIntrospector: demo4-domain-uid-default-domain-introspector-cm
+  domainIntrospector: demo3-domain-uid-default-domain-introspector-cm
 
   serverDefaults:
-    domainCustomizations:  demo4-domain-uid-domain-customizations-cm
-    sitConfigGenerator:    demo4-domain-uid-default-sitcfg-generator-cm
-    serverPodTemplate:     demo4-domain-uid-default-managed-server-pod-template-cm
-    serverServiceTemplate: demo4-domain-uid-default-managed-server-service-template-cm
+    domainCustomizations:  demo3-domain-uid-domain-customizations-cm
+    sitConfigGenerator:    demo3-domain-uid-default-sitcfg-generator-cm
+    serverPodTemplate:     demo3-domain-uid-default-managed-server-pod-template-cm
+    serverServiceTemplate: demo3-domain-uid-default-managed-server-service-template-cm
 
   adminServer:
-    serverPodTemplate:       demo4-domain-uid-debug-admin-server-pod-template-cm
-    serverServiceTemplate:   demo4-domain-uid-default-admin-server-service-template-cm
-    serverT3ServiceTemplate: demo4-domain-uid-default-admin-server-t3-service-template-cm
+    serverPodTemplate:       demo3-domain-uid-debug-admin-server-pod-template-cm
+    serverServiceTemplate:   demo3-domain-uid-default-admin-server-service-template-cm
+    serverT3ServiceTemplate: demo3-domain-uid-default-admin-server-t3-service-template-cm
 
 possible formats for having the customer specify domain config property overridesA:
 

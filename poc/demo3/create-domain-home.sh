@@ -3,7 +3,7 @@
 set -x
 
 export DEMO_HOME=`pwd` # this means that you need to run the sample from this directory!
-export DEMO_NAME="demo4"
+export DEMO_NAME="demo3"
 export OPERATOR_HOME="${DEMO_HOME}/../kit"
 export GENERATED_FILES="${DEMO_HOME}/generated"
 export OPERATOR_SAMPLES="${OPERATOR_HOME}/samples"
