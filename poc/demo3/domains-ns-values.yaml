@@ -1,0 +1,7 @@
+# Default values for domains-ns.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+domainsNamespace: demo-d-ns
+operatorNamespace: demo-o-ns
+operatorServiceAccount: demo-o-sa

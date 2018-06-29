@@ -19,10 +19,10 @@ setup
     See https://github.com/kubernetes/helm/blob/master/docs/install.md
 
 -----------------------------------------------------------------------------------------
-how to run demo2
+how to run demo3
 -----------------------------------------------------------------------------------------
 
-  cd demo2
+  cd demo3
 
   mkdir generated # the scripts need to be improved to do this!
 
@@ -38,39 +38,40 @@ how to run demo2
   helm status demo-domains-ns
 
   # can this move to a helm chart?
-  kubectl -n demo-d-ns create secret generic demo2-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
-  mkdir -p /scratch/k8s-dir/demo2-domain-uid/domain-logs
-  create-domain-home.sh
+  kubectl -n demo-d-ns create secret generic demo3-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
+  mkdir -p /scratch/k8s-dir/demo3-domain-uid/domain-logs
+  create-domain-in-image.sh
   #from Tom Barnes: if running on a hosted linux box (macs don't need this):
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
 
-  helm install ../kit/charts/domain --name demo2-domain --values domain-values.yaml
-  #helm upgrade --values domain-values.yaml demo2-domain ../kit/charts/domain
-  helm status demo2-domain
+  helm install ../kit/charts/domain --name demo3-domain --values domain-values.yaml
+  #helm upgrade --values domain-values.yaml demo3-domain ../kit/charts/domain
+  helm status demo3-domain
 
   # TBD - something about creating the config map containing the domain-specific sit config customizations
   # and passing the name of that config map into the sit config stuff below ...
 
-  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo2-domain-uid default
+  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo3-domain-uid default
 
-  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo2-domain-uid default
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo3-domain-uid default
 
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo2-domain-uid debug default default demo2-domain as 7100
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo3-domain-uid default default default demo3-domain as 7200
 
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo2-domain-uid debug default default demo2-domain as 7100 ms1 8100
-  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo2-domain-uid debug default ms1
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo3-domain-uid default default default demo3-domain as 7200 ms1 8200
 
-  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo2-domain-uid debug default as
+  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo3-domain-uid default default ms1
 
-  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo2-domain-uid default
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo3-domain-uid default default as
 
-  helm delete --purge demo2-domain
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo3-domain-uid default
 
-  kubectl delete secret -n demo-d-ns demo2-domain-uid-domain-creds
+  helm delete --purge demo3-domain
+
+  kubectl delete secret -n demo-d-ns demo3-domain-uid-domain-creds
   #from Tom Barnes: if running on a hosted linux box (macs don't need this):
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
-  rm -rf /scratch/k8s-dir/demo2-domain-uid
+  rm -rf /scratch/k8s-dir/demo3-domain-uid
 
   helm delete --purge demo-domains-ns
 
@@ -82,7 +83,7 @@ how to run demo2
 poc source files
 -----------------------------------------------------------------------------------------
 
-  demo2/
+  demo3/
     uses offline wlst to create a domain with a configured cluster
     uses a domain persistent volume
     uses helm to configure everything
@@ -106,7 +107,7 @@ poc source files
 poc generated files
 -----------------------------------------------------------------------------------------
 
-    demo2/generated/
+    demo3/generated/
 
         domain-home
           - contains the generated domain, before its pathnames have been patched
@@ -115,8 +116,8 @@ poc generated files
             pathnames in the generated files are based on the shell that ran
             create-domain-home.sh, instead of the ones that are needed in a pod
 
-    /scratch/k8s-dir/demo2-domain-uid
-      contains the persistent volumes for demo2's domain
+    /scratch/k8s-dir/demo1-domain-uid
+      contains the persistent volumes for demo1's domain
 
       domain-logs/
          - contains the domain, node manager and server logs
@@ -134,22 +135,22 @@ todo
 pass thru customizations needed to create the sit cfg from user thru to
 sit cfg generator (even though it won't pay attention to them yet)
 
-demo2-domain-crd (roughly)
+demo3-domain-crd (roughly)
 
-  domainUID: demo2-domain-uid
+  domainUID: demo3-domain-uid
 
-  domainIntrospector: demo2-domain-uid-default-domain-introspector-cm
+  domainIntrospector: demo3-domain-uid-default-domain-introspector-cm
 
   serverDefaults:
-    domainCustomizations:  demo2-domain-uid-domain-customizations-cm
-    sitConfigGenerator:    demo2-domain-uid-default-sitcfg-generator-cm 
-    serverPodTemplate:     demo2-domain-uid-default-managed-server-pod-template-cm
-    serverServiceTemplate: demo2-domain-uid-default-managed-server-service-template-cm
+    domainCustomizations:  demo3-domain-uid-domain-customizations-cm
+    sitConfigGenerator:    demo3-domain-uid-default-sitcfg-generator-cm
+    serverPodTemplate:     demo3-domain-uid-default-managed-server-pod-template-cm
+    serverServiceTemplate: demo3-domain-uid-default-managed-server-service-template-cm
 
   adminServer:
-    serverPodTemplate:       demo2-domain-uid-debug-admin-server-pod-template-cm
-    serverServiceTemplate:   demo2-domain-uid-default-admin-server-service-template-cm
-    serverT3ServiceTemplate: demo2-domain-uid-default-admin-server-t3-service-template-cm
+    serverPodTemplate:       demo3-domain-uid-debug-admin-server-pod-template-cm
+    serverServiceTemplate:   demo3-domain-uid-default-admin-server-service-template-cm
+    serverT3ServiceTemplate: demo3-domain-uid-default-admin-server-t3-service-template-cm
 
 possible formats for having the customer specify domain config property overridesA:
 
@@ -260,207 +261,69 @@ i.e. I don't think we can get there incrementally easily
 
 ---------------
 
+slides
 
-helm links
-  https://github.com/kubernetes/helm/blob/master/docs
-  https://github.com/kubernetes/helm/tree/master/docs/examples
-  https://godoc.org/text/template
-  https://godoc.org/github.com/Masterminds/sprig
-  https://github.com/sapcc/openstack-helm/tree/master
-  https://github.com/kubernetes/helm/blob/master/docs/charts_tips_and_tricks.md
-  https://docs.helm.sh/chart_template_guide/#../charts
-  https://docs.helm.sh/chart_template_guide/#the-chart-template-developer-s-guide
-  https://github.com/Masterminds/sprig/blob/master/docs/dicts.md
-  https://github.com/kubernetes/charts/blob/master/stable/traefik
-  https://github.com/kubernetes/helm/blob/master/docs/examples/nginx
+major problems we're trying to address
 
-minimum
-=======
+  more complex domains (v.s. our toy domains)
 
-domain-crd.yaml
----------------
-domainUID: demo2-domain-uid
+  domain home inside image
 
-domain-values.yaml
-------------------
-operatorNamespace: demo-o-ns
-domainsNamespace: demo-d-ns
-domainUID: demo2-domain-uid
-domainLogsPersistentVolumeDir: /scratch/k8s-dir/demo2-domain-uid/domain-logs
-weblogicImage: myimage
-weblogicImagePullPolicy: IfNotPresent
-weblogicDomainCredentialsSecretName: demo2-domain-uid-domain-creds
+  lifecycle (i.e. user controlled order of restarts)
 
+  give the user a lot more control over the k8s artifacts we create
+    - extra volume mounts
+    - change tuning parameters
+    - general issue - they keep asking to customize stuff we haven't thought of before
 
+  give the user a lot more control over how/which wls ports and network access points are exposed
 
+  let user override wls properties (e.g. bind the domain - creds, addresses, ...)
 
+  domain introspection
 
+  validate that a domain can be supported by the operator
 
+  formalize levels of lifecycle so we can cleanly setup and teardown
 
-put domain home on pv
-=====================
+  move the k8s artifact templates outside of the operator java code and into mounts
+  (since it will be easier to update files than to update the operator runtime)
 
-domain-crd.yaml
----------------
-domainUID: demo2-domain-uid
+  add helm support
 
-domain-values.yaml
-------------------
-minimum plus:
+topology
 
-weblogicImage: store/oracle/weblogic:12.2.1.3
-extraVolumeMounts:
-- name: weblogic-domain-home-storage-volume
-  mountPath: /domain-home
-extraVolumes:
-- name: weblogic-domain-home-storage-volume
-  persistentVolumeClaim:
-    claimName: demo2-domain-uid-weblogic-domain-home-pvc
-extraResources:
-- kind: PersistentVolume
-  apiVersion: v1
-  metadata:
-    labels:
-      weblogic.domainUID: demo2-domain-uid
-      weblogic.resourceVersion: domain-v1
-    name: demo2-domain-uid-weblogic-domain-home-pv
-  spec:
-    accessModes:
-    - ReadWriteMany
-    capacity:
-      storage: 5Gi
-    claimRef:
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      name: demo2-domain-uid-weblogic-domain-home-pvc
-      namespace: demo-d-ns
-    hostPath:
-      path: /scratch/k8s-dir/demo2-domain-uid/domain-home
-      type: ""
-    persistentVolumeReclaimPolicy: Retain
-    storageClassName: demo2-domain-uid-weblogic-domain-home-storage-class
-- kind: PersistentVolumeClaim
-  apiVersion: v1
-  metadata:
-    labels:
-      weblogic.domainUID: demo2-domain-uid
-      weblogic.resourceVersion: domain-v1
-    name: demo2-domain-uid-weblogic-domain-home-pvc
-    namespace: demo-d-ns
-  spec:
-    accessModes:
-    - ReadWriteMany
-    resources:
-      requests:
-        storage: 5Gi
-    storageClassName: demo2-domain-uid-weblogic-domain-home-storage-class
-    volumeName: demo2-domain-uid-weblogic-domain-home-pv
+  k8s cluster -> n operators -> n domain namespaces -> no domains
+
+  implies need for 4 levels of lifecycle
+
+slide for each lifecycle level
+
+slide showing domain crd
+
+slide showing operator runtime
+
+slide showing domain introspection
+
+slide showing sit config generation
 
 
+big questions
 
-turn on debugging for just the admin server
-===========================================
+what should the granularity of introspector be?
+  i.e. to add more servers, the customer spins a new image with a new domain home,
+  but we want to gradually roll out the change - how do we do this? i.e. what do we
+  do when different servers have a different view of the domain config?
 
-domain-crd.yaml
----------------
-domainUID: demo2-domain-uid
-adminServer:
-  podTemplate: debug
-
-domain-values.yaml
-------------------
-minimum plus:
-
-customAdminServerPodTemplates:
-  debug:
-    extraEnvVars:
-    - debugEnabled: true
-
-
-
-automatically switch the domain to a new image name
-===================================================
-
-domain-crd.yaml
----------------
-domainUID: demo2-domain-uid
-
-domain-values.yaml
-------------------
-minimum plus:
-weblogicImage: v2image
-(i.e. just change the image name - the operator will notice the stale pods
-and gradually replace them)
+similar question for sit config
+  since it modifies config.xml at runtime, is OK for different servers to have different
+  sit configs?  and what about shared domain home on pv?
+  i.e. as you roll out a new image, you might need:
+    different values for the same settings on the new servers
+      e.g. used to point to test db, now want to point to production db?
+    what if the set of apps is different? ...
 
 
 
 
-manually switch the domain to a new image name
-(i.e. customer controlled rollout)
-===============================================
-
-domain-crd.yaml
----------------
-domainUID: demo2-domain-uid
-adminServer:
-  podTemplate: v2
-clusters:
-  cluster1:
-    servers:
-      server2:
-        podTemplate: v2
-
-domain-values.yaml
-------------------
-minimum plus:
-
-weblogicImage: v1image
-
-customPodTemplates:
-  v2:
-    weblogicImage: v2image
-
-customAdminServerPodTemplates:
-  v2:
-    podTemplate: v2
-    extraEnvVars:
-    - debugEnabled: true
-
-customManagedServerPodTemplates:
-  v2:
-    podTemplate: v2
-    extraEnvVars:
-    - debugEnabled: true
-
-
-
-
-1) design the k8s artifacts
-
-2) design the k8s templates
-
-3) design the domain crd
-
-4) use helm to create the k8s artifacts (and perhaps the templates)
-
-5) modify the operator to use the new k8s artifacts, templates and domain crd
-   (including finishing the lifecycle work we started earlier)
-
-
-can we phase it in feature by feature?  what lower level infra cleanup do we want to do
-to make it easier?
-
-most important - domain home in image
-  implies sit cfg right from the get go?
-  implies domain validation right from the get go?
-
-figure out which parts of the poc are needed by each feature
-
-the service stuff needs a major revamp
-  probably should introspect the domain to find out all the ports (listen port + naps)
-  then, for each, if the customer specifies a nodePort, create a NodePort service for it,
-  otherwise, create a ClusterIP service for it.
-
-  today, the poc is always exposting the listen port and t3 nap under fixed numbers,
-  thus demo2 and demo3 collide (prevents demo3's managed servers from coming up since
-  they can't get to demo3's admin server since demo2 is already took its node port)
+why does it take SO long for servers to stop? (40 seconds)

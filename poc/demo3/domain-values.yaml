@@ -1,0 +1,11 @@
+# Default values for demo3-domain.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+domainUID: demo3-domain-uid
+operatorNamespace: demo-o-ns
+domainsNamespace: demo-d-ns
+domainLogsPersistentVolumeDir: /scratch/k8s-dir/demo3-domain-uid/domain-logs
+podDomainHomeDir: /u01/oracle/domain-home
+weblogicImage: wls-12213-domain-in-image:latest
+weblogicDomainCredentialsSecretName: demo3-domain-uid-domain-creds
