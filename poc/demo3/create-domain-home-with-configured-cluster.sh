@@ -40,7 +40,6 @@ cmo.setPassword(admin_password)
 cd('/Servers/AdminServer')
 cmo.setName(admin_server_name)
 cmo.setListenPort(admin_server_port)
-cmo.setListenAddress(domain_uid + "-" + admin_server_name)
 
 # TBD - who should configure this? i.e. should it move to sit config?
 nap=create('T3Channel', 'NetworkAccessPoint')
@@ -57,7 +56,6 @@ for index in range(1, number_of_ms+1):
   ms=create(name, 'Server')
   ms.setCluster(cl)
   ms.setListenPort(managed_server_port)
-  ms.setListenAddress(domain_uid + '-' + name)
   ms.setNumOfRetriesBeforeMSIMode(0)
   ms.setRetryIntervalBeforeMSIMode(1)
 
