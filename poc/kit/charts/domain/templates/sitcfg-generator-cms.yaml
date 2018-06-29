@@ -1,86 +1,12 @@
 {{- $values := .Values -}}
-{{- range $key, $element := $values.sitCfgGenerators -}}
-{{-   $call := dict "name" $element.podTemplate "values" $values -}}
-{{-   include "domain.getPodTemplateValues" $call -}}
-{{-   $podVals := $call.return }}
----
-kind: ConfigMap
-metadata:
-  labels:
-    weblogic.createdByOperator: "true"
-    weblogic.operatorName: {{ $values.operatorNamespace }}
-    weblogic.domainUID: {{ $values.domainUID }}
-    weblogic.resourceVersion: domain-v1
-  name: {{ $values.domainUID }}-{{ $key }}-sitcfg-generator-cm
-  namespace: {{ $values.domainsNamespace }}
-data:
-  sitcfg-generator-pod.yaml: |-
-    apiVersion: v1
-    kind: Pod
-    metadata:
-      labels:
-        weblogic.createdByOperator: "true"
-        weblogic.domainUID: {{ $values.domainUID }}
-        weblogic.resourceVersion: domain-v1
-      name: {{ $values.domainUID }}-{{ $key }}-sitcfg-generator
-      namespace: {{ $values.domainsNamespace }}
-    spec:
-      containers:
-      - command:
-        - /weblogic-operator/scripts/generateSitCfg.sh
-        env:
-        - name: DOMAIN_UID
-          value: {{ $values.domainUID }}
-        - name: DOMAIN_HOME
-          value: {{ $values.podDomainHomeDir }}
-        - name: DOMAIN_LOGS
-          value: {{ $values.podDomainLogsDir }}
-        - name: SITCFG_NAME
-          value: {{ $key }}
-{{- if $podVals.extraEnv }}
-{{ toYaml $podVals.extraEnv | trim | indent 8 }}
-{{- end }}
-        image: {{ $podVals.weblogicImage }}
-        imagePullPolicy: {{ $podVals.weblogicImagePullPolicy }}
-        livenessProbe:
-          exec:
-            command:
-            - /weblogic-operator/scripts/sitCfgGeneratorLivenessProbe.sh
-          failureThreshold: 25
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 5
-        name: weblogic-server
-        readinessProbe:
-          exec:
-            command:
-            - /weblogic-operator/scripts/sitCfgGeneratorReadinessProbe.sh
-          failureThreshold: 1
-          initialDelaySeconds: 2
-          periodSeconds: 5
-          successThreshold: 1
-          timeoutSeconds: 5
-        volumeMounts:
-        - name: weblogic-credentials-volume
-          mountPath: /weblogic-operator/secrets
-          readOnly: true
-        - name: weblogic-domain-cm-volume
-          mountPath: /weblogic-operator/scripts
-          readOnly: true
-{{- if $podVals.extraVolumeMounts }}
-{{ toYaml $podVals.extraVolumeMounts | trim | indent 8 }}
-{{- end }}
-      volumes:
-      - name: weblogic-credentials-volume
-        secret:
-          defaultMode: 420
-          secretName:  {{ $values.weblogicDomainCredentialsSecretName }}
-      - name: weblogic-domain-cm-volume
-        configMap:
-          defaultMode: 365
-          name: weblogic-domain-cm 
-{{- if $podVals.extraVolumes }}
-{{ toYaml $podVals.extraVolumes | trim | indent 6 }}
-{{- end }}
+{{- $templates := dict "default" dict -}}
+{{- $customTemplates := $values.customSitCfgGenerators -}}
+{{- if $customTemplates -}}
+{{-   $ignore := merge $templates $customTemplates -}}
+{{- end -}}
+{{- range $key, $element := $templates -}}
+{{-   $args1 := dict "current" $element "values" $values -}}
+{{-   $args2 := include "domain.getPodTemplateScope" $args1 | fromYaml -}}
+{{-   $ignore := set $args2 "sitCfgName" $key -}}
+{{-   include "domain.sitCfgGeneratorPod" $args2 }}
 {{- end }}

@@ -56,13 +56,13 @@ how to run demo3
 
   ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo3-domain-uid default
 
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo3-domain-uid debug default default demo3-domain as 7100
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo3-domain-uid default default default demo3-domain as 7200
 
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo3-domain-uid debug default default demo3-domain as 7100 ms1 8100
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo3-domain-uid default default default demo3-domain as 7200 ms1 8200
 
-  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo3-domain-uid debug default ms1
+  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo3-domain-uid default default ms1
 
-  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo3-domain-uid debug default as
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo3-domain-uid default default as
 
   ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo3-domain-uid default
 
@@ -322,3 +322,8 @@ similar question for sit config
     different values for the same settings on the new servers
       e.g. used to point to test db, now want to point to production db?
     what if the set of apps is different? ...
+
+
+
+
+why does it take SO long for servers to stop? (40 seconds)

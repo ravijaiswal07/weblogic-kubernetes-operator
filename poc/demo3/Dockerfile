@@ -24,8 +24,8 @@ FROM store/oracle/weblogic:12.2.1.3
 # ----------
 MAINTAINER Lenny Phan <lenny.phan@oracle.com>
 
-ARG MS_PORT=8100
-ARG AS_PORT=7100
+ARG MS_PORT=8200
+ARG AS_PORT=7200
 ARG NM_PORT=5556
 ARG DOMAIN_HOME_DIR="/u01/oracle/domain-home"
 

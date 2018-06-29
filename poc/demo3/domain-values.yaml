@@ -2,46 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+domainUID: demo3-domain-uid
 operatorNamespace: demo-o-ns
 domainsNamespace: demo-d-ns
-domainUID: demo3-domain-uid
 domainLogsPersistentVolumeDir: /scratch/k8s-dir/demo3-domain-uid/domain-logs
 podDomainHomeDir: /u01/oracle/domain-home
 weblogicImage: wls-12213-domain-in-image:latest
-weblogicImagePullPolicy: IfNotPresent
 weblogicDomainCredentialsSecretName: demo3-domain-uid-domain-creds
-extraEnv:
-- name: PROPERTY1
-  value: VALUE1
-
-podTemplates:
-  default: {}
-  debug:
-    extraEnv:
-    - name: PROPERTY1
-      value: VALUE1
-    - name: PROPERTY2
-      value: VALUE2
-domainIntrospectors:
-  default:
-    podTemplate: default
-sitCfgGenerators:
-  default:
-    podTemplate: default
-adminServerPodTemplates:
-  default:
-    podTemplate: default
-  debug:
-    podTemplate: debug
-managedServerPodTemplates:
-  default:
-    podTemplate: default
-  debug:
-    podTemplate: debug
-
-adminServerServiceTemplates:
-  default: {}
-adminServerT3ServiceTemplates:
-  default: {}
-managedServerServiceTemplates:
-  default: {}
