@@ -115,8 +115,8 @@ poc generated files
             pathnames in the generated files are based on the shell that ran
             create-domain-home.sh, instead of the ones that are needed in a pod
 
-    /scratch/k8s-dir/demo1-domain-uid
-      contains the persistent volumes for demo1's domain
+    /scratch/k8s-dir/demo2-domain-uid
+      contains the persistent volumes for demo2's domain
 
       domain-logs/
          - contains the domain, node manager and server logs
@@ -260,64 +260,174 @@ i.e. I don't think we can get there incrementally easily
 
 ---------------
 
-slides
 
-major problems we're trying to address
+helm links
+  https://github.com/kubernetes/helm/blob/master/docs
+  https://github.com/kubernetes/helm/tree/master/docs/examples
+  https://godoc.org/text/template
+  https://godoc.org/github.com/Masterminds/sprig
+  https://github.com/sapcc/openstack-helm/tree/master
+  https://github.com/kubernetes/helm/blob/master/docs/charts_tips_and_tricks.md
+  https://docs.helm.sh/chart_template_guide/#../charts
+  https://docs.helm.sh/chart_template_guide/#the-chart-template-developer-s-guide
+  https://github.com/Masterminds/sprig/blob/master/docs/dicts.md
+  https://github.com/kubernetes/charts/blob/master/stable/traefik
+  https://github.com/kubernetes/helm/blob/master/docs/examples/nginx
 
-  more complex domains (v.s. our toy domains)
+minimum
+=======
 
-  domain home inside image
+domain-crd.yaml
+---------------
+domainUID: demo2-domain-uid
 
-  lifecycle (i.e. user controlled order of restarts)
-
-  give the user a lot more control over the k8s artifacts we create
-    - extra volume mounts
-    - change tuning parameters
-    - general issue - they keep asking to customize stuff we haven't thought of before
-
-  give the user a lot more control over how/which wls ports and network access points are exposed
-
-  let user override wls properties (e.g. bind the domain - creds, addresses, ...)
-
-  domain introspection
-
-  validate that a domain can be supported by the operator
-
-  formalize levels of lifecycle so we can cleanly setup and teardown
-
-  move the k8s artifact templates outside of the operator java code and into mounts
-  (since it will be easier to update files than to update the operator runtime)
-
-  add helm support
-
-topology
-
-  k8s cluster -> n operators -> n domain namespaces -> no domains
-
-  implies need for 4 levels of lifecycle
-
-slide for each lifecycle level
-
-slide showing domain crd
-
-slide showing operator runtime
-
-slide showing domain introspection
-
-slide showing sit config generation
+domain-values.yaml
+------------------
+operatorNamespace: demo-o-ns
+domainsNamespace: demo-d-ns
+domainUID: demo2-domain-uid
+domainLogsPersistentVolumeDir: /scratch/k8s-dir/demo2-domain-uid/domain-logs
+weblogicImage: myimage
+weblogicImagePullPolicy: IfNotPresent
+weblogicDomainCredentialsSecretName: demo2-domain-uid-domain-creds
 
 
-big questions
 
-what should the granularity of introspector be?
-  i.e. to add more servers, the customer spins a new image with a new domain home,
-  but we want to gradually roll out the change - how do we do this? i.e. what do we
-  do when different servers have a different view of the domain config?
 
-similar question for sit config
-  since it modifies config.xml at runtime, is OK for different servers to have different
-  sit configs?  and what about shared domain home on pv?
-  i.e. as you roll out a new image, you might need:
-    different values for the same settings on the new servers
-      e.g. used to point to test db, now want to point to production db?
-    what if the set of apps is different? ...
+
+
+
+put domain home on pv
+=====================
+
+domain-crd.yaml
+---------------
+domainUID: demo2-domain-uid
+
+domain-values.yaml
+------------------
+minimum plus:
+
+weblogicImage: store/oracle/weblogic:12.2.1.3
+extraVolumeMounts:
+- name: weblogic-domain-home-storage-volume
+  mountPath: /domain-home
+extraVolumes:
+- name: weblogic-domain-home-storage-volume
+  persistentVolumeClaim:
+    claimName: demo2-domain-uid-weblogic-domain-home-pvc
+extraResources:
+- kind: PersistentVolume
+  apiVersion: v1
+  metadata:
+    labels:
+      weblogic.domainUID: demo2-domain-uid
+      weblogic.resourceVersion: domain-v1
+    name: demo2-domain-uid-weblogic-domain-home-pv
+  spec:
+    accessModes:
+    - ReadWriteMany
+    capacity:
+      storage: 5Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: demo2-domain-uid-weblogic-domain-home-pvc
+      namespace: demo-d-ns
+    hostPath:
+      path: /scratch/k8s-dir/demo2-domain-uid/domain-home
+      type: ""
+    persistentVolumeReclaimPolicy: Retain
+    storageClassName: demo2-domain-uid-weblogic-domain-home-storage-class
+- kind: PersistentVolumeClaim
+  apiVersion: v1
+  metadata:
+    labels:
+      weblogic.domainUID: demo2-domain-uid
+      weblogic.resourceVersion: domain-v1
+    name: demo2-domain-uid-weblogic-domain-home-pvc
+    namespace: demo-d-ns
+  spec:
+    accessModes:
+    - ReadWriteMany
+    resources:
+      requests:
+        storage: 5Gi
+    storageClassName: demo2-domain-uid-weblogic-domain-home-storage-class
+    volumeName: demo2-domain-uid-weblogic-domain-home-pv
+
+
+
+turn on debugging for just the admin server
+===========================================
+
+domain-crd.yaml
+---------------
+domainUID: demo2-domain-uid
+adminServer:
+  podTemplate: debug
+
+domain-values.yaml
+------------------
+minimum plus:
+
+customAdminServerPodTemplates:
+  debug:
+    extraEnvVars:
+    - debugEnabled: true
+
+
+
+automatically switch the domain to a new image name
+===================================================
+
+domain-crd.yaml
+---------------
+domainUID: demo2-domain-uid
+
+domain-values.yaml
+------------------
+minimum plus:
+weblogicImage: v2image
+(i.e. just change the image name - the operator will notice the stale pods
+and gradually replace them)
+
+
+
+
+manually switch the domain to a new image name
+(i.e. customer controlled rollout)
+===============================================
+
+domain-crd.yaml
+---------------
+domainUID: demo2-domain-uid
+adminServer:
+  podTemplate: v2
+clusters:
+  cluster1:
+    servers:
+      server2:
+        podTemplate: v2
+
+domain-values.yaml
+------------------
+minimum plus:
+
+weblogicImage: v1image
+
+customPodTemplates:
+  v2:
+    weblogicImage: v2image
+
+customAdminServerPodTemplates:
+  v2:
+    podTemplate: v2
+    extraEnvVars:
+    - debugEnabled: true
+
+customManagedServerPodTemplates:
+  v2:
+    podTemplate: v2
+    extraEnvVars:
+    - debugEnabled: true

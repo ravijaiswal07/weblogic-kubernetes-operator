@@ -13,28 +13,30 @@ extraEnv:
 - name: PROPERTY1
   value: VALUE1
 
-podTemplates:
-  default: {}
+customPodTemplates:
   debug:
     extraEnv:
     - name: PROPERTY1
       value: VALUE1
     - name: PROPERTY2
       value: VALUE2
-domainIntrospectors:
-  default:
-    podTemplate: default
-sitCfgGenerators:
-  default:
-    podTemplate: default
-adminServerPodTemplates:
-  default:
-    podTemplate: default
+#customDomainIntrospectors:
+#  debug:
+#    podTemplate: debug
+#customSitCfgGenerators:
+#  debug:
+#    podTemplate: debug
+customAdminServerPodTemplates:
   debug:
     podTemplate: debug
-managedServerPodTemplates:
-  default:
-    podTemplate: default
+    extraEnv:
+    - name: PROPERTY1
+      value: VALUE1
+    - name: PROPERTY2
+      value: VALUE2
+    - name: PROPERTY3
+      value: VALUE3
+customManagedServerPodTemplates:
   debug:
     podTemplate: debug
 

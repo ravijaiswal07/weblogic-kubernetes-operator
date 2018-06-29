@@ -19,8 +19,8 @@ data:
         weblogic.createdByOperator: "true"
         weblogic.domainUID: {{ $values.domainUID }}
         weblogic.resourceVersion: domain-v1
-        weblogic.serverName: %ADMIN_SERVER_NAME%
-      name: {{ $values.domainUID }}-%ADMIN_SERVER_NAME%-extchannel-t3channel
+        weblogic.serverName: %SERVER_NAME%
+      name: {{ $values.domainUID }}-%SERVER_NAME%-extchannel-t3channel
       namespace: {{ $values.domainsNamespace }}
     spec:
       externalTrafficPolicy: Cluster
@@ -32,6 +32,6 @@ data:
       selector:
         weblogic.createdByOperator: "true"
         weblogic.domainUID: {{ $values.domainUID }}
-        weblogic.serverName: %ADMIN_SERVER_NAME%
+        weblogic.serverName: %SERVER_NAME%
       type: NodePort
 {{- end }}

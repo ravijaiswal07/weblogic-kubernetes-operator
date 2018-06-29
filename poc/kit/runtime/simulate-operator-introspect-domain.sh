@@ -10,7 +10,7 @@ export INTROSPECTOR=$3
 
 # simulate the operator generating the domain topology:
 
-export INTROSPECTOR_POD_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${SITCFG}-sitcfg-generator-cm.yaml
+export INTROSPECTOR_POD_YAML=${DOMAIN_UID}-${SITCFG}-sitcfg-generator-cm.yaml
 export INTROSPECTOR_POD=${DOMAIN_UID}-${INTROSPECTOR}-domain-introspector
 
 # get the template for creating the pod from the config map and use it to create the pod

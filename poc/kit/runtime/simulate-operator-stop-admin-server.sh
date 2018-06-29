@@ -13,17 +13,17 @@ export ADMIN_SERVER_NAME=$5
 # simulate the operator stopping the admin server
 
 # remove the admin server's t3 service
-export T3_SERVICE_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${SERVICE_TEMPLATE}-${ADMIN_SERVER_NAME}-admin-server-t3-service.yaml
+export T3_SERVICE_YAML=${DOMAIN_UID}-${SERVICE_TEMPLATE}-${ADMIN_SERVER_NAME}-server-t3-service.yaml
 kubectl delete -f ${T3_SERVICE_YAML}
 rm ${T3_SERVICE_YAML}
 
 # remove the admin server's service
-export SERVICE_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${SERVICE_TEMPLATE}-${ADMIN_SERVER_NAME}-admin-server-service.yaml
+export SERVICE_YAML=${DOMAIN_UID}-${SERVICE_TEMPLATE}-${ADMIN_SERVER_NAME}-server-service.yaml
 kubectl delete -f ${SERVICE_YAML}
 rm ${SERVICE_YAML}
 
 # remove the admin server's pod
-export POD_YAML=${DOMAINS_NAMESPACE}-${DOMAIN_UID}-${POD_TEMPLATE}-${ADMIN_SERVER_NAME}-admin-server-pod.yaml
+export POD_YAML=${DOMAIN_UID}-${POD_TEMPLATE}-${ADMIN_SERVER_NAME}-server-pod.yaml
 export POD=${DOMAIN_UID}-${ADMIN_SERVER_NAME}
 kubectl delete -f ${POD_YAML}
 ${THIS_DIR}/wait-for-pod-deleted.sh ${DOMAINS_NAMESPACE} ${POD}
