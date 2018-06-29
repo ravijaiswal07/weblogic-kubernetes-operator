@@ -4,7 +4,8 @@
 
 package oracle.kubernetes.operator.helpers;
 
-import io.kubernetes.client.ApiException;
+import static oracle.kubernetes.operator.VersionConstants.DOMAIN_V1;
+
 import io.kubernetes.client.models.V1ConfigMap;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.io.IOException;
@@ -17,18 +18,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import oracle.kubernetes.operator.KubernetesConstants;
 import oracle.kubernetes.operator.LabelConstants;
 import oracle.kubernetes.operator.ProcessingConstants;
-import oracle.kubernetes.operator.VersionConstants;
+import oracle.kubernetes.operator.calls.CallResponse;
 import oracle.kubernetes.operator.logging.LoggingFacade;
 import oracle.kubernetes.operator.logging.LoggingFactory;
 import oracle.kubernetes.operator.logging.MessageKeys;
+import oracle.kubernetes.operator.steps.DefaultResponseStep;
 import oracle.kubernetes.operator.work.NextAction;
 import oracle.kubernetes.operator.work.Packet;
 import oracle.kubernetes.operator.work.Step;
@@ -38,6 +38,7 @@ public class ConfigMapHelper {
 
   private static final String SCRIPTS = "scripts";
   private static final String SCRIPT_LOCATION = "/" + SCRIPTS;
+  private static final ConfigMapHelperFacade FACADE = new ConfigMapHelperFacadeImpl();
 
   private ConfigMapHelper() {}
 
@@ -49,203 +50,213 @@ public class ConfigMapHelper {
    * @return Step for creating config map containing scripts
    */
   public static Step createScriptConfigMapStep(String operatorNamespace, String domainNamespace) {
-    return new ScriptConfigMapStep(operatorNamespace, domainNamespace, null);
+    return new ScriptConfigMapStep(operatorNamespace, domainNamespace);
   }
 
-  // Make this public so that it can be unit tested
-  public static class ScriptConfigMapStep extends Step {
-    private final String operatorNamespace;
-    private final String domainNamespace;
+  private static class ScriptConfigMapStep extends Step {
+    private ConfigMapContext context;
 
-    ScriptConfigMapStep(String operatorNamespace, String domainNamespace, Step next) {
-      this.operatorNamespace = operatorNamespace;
-      this.domainNamespace = domainNamespace;
+    ScriptConfigMapStep(String operatorNamespace, String domainNamespace) {
+      context = new ConfigMapContext(this, operatorNamespace, domainNamespace);
     }
 
     @Override
     public NextAction apply(Packet packet) {
-      V1ConfigMap cm = computeDomainConfigMap();
-      CallBuilderFactory factory = new CallBuilderFactory();
-      Step read =
-          factory
-              .create()
-              .readConfigMapAsync(
-                  cm.getMetadata().getName(),
-                  domainNamespace,
-                  new ResponseStep<V1ConfigMap>(getNext()) {
-                    @Override
-                    public NextAction onFailure(
-                        Packet packet,
-                        ApiException e,
-                        int statusCode,
-                        Map<String, List<String>> responseHeaders) {
-                      if (statusCode == CallBuilder.NOT_FOUND) {
-                        return onSuccess(packet, null, statusCode, responseHeaders);
-                      }
-                      return super.onFailure(packet, e, statusCode, responseHeaders);
-                    }
+      return doNext(context.readConfigMap(getNext()), packet);
+    }
+  }
 
-                    @Override
-                    public NextAction onSuccess(
-                        Packet packet,
-                        V1ConfigMap result,
-                        int statusCode,
-                        Map<String, List<String>> responseHeaders) {
-                      if (result == null) {
-                        Step create =
-                            factory
-                                .create()
-                                .createConfigMapAsync(
-                                    domainNamespace,
-                                    cm,
-                                    new ResponseStep<V1ConfigMap>(getNext()) {
-                                      @Override
-                                      public NextAction onFailure(
-                                          Packet packet,
-                                          ApiException e,
-                                          int statusCode,
-                                          Map<String, List<String>> responseHeaders) {
-                                        return super.onFailure(
-                                            ScriptConfigMapStep.this,
-                                            packet,
-                                            e,
-                                            statusCode,
-                                            responseHeaders);
-                                      }
+  static Map<String, String> loadContents(Path rootDir) throws IOException {
+    try (Stream<Path> walk = Files.walk(rootDir, 1)) {
+      return walk.filter(path -> !Files.isDirectory(path))
+          .collect(Collectors.toMap(ConfigMapHelper::asString, ConfigMapHelper::readContents));
+    }
+  }
 
-                                      @Override
-                                      public NextAction onSuccess(
-                                          Packet packet,
-                                          V1ConfigMap result,
-                                          int statusCode,
-                                          Map<String, List<String>> responseHeaders) {
+  private static String asString(Path path) {
+    return path.getFileName().toString();
+  }
 
-                                        LOGGER.info(MessageKeys.CM_CREATED, domainNamespace);
-                                        packet.put(ProcessingConstants.SCRIPT_CONFIG_MAP, result);
-                                        return doNext(packet);
-                                      }
-                                    });
-                        return doNext(create, packet);
-                      } else if (VersionHelper.matchesResourceVersion(
-                              result.getMetadata(), VersionConstants.DOMAIN_V1)
-                          && result.getData().entrySet().containsAll(cm.getData().entrySet())) {
-                        // existing config map has correct data
-                        LOGGER.fine(MessageKeys.CM_EXISTS, domainNamespace);
-                        packet.put(ProcessingConstants.SCRIPT_CONFIG_MAP, result);
-                        return doNext(packet);
-                      } else {
-                        // we need to update the config map
-                        Map<String, String> updated = result.getData();
-                        updated.putAll(cm.getData());
-                        cm.setData(updated);
-                        Step replace =
-                            factory
-                                .create()
-                                .replaceConfigMapAsync(
-                                    cm.getMetadata().getName(),
-                                    domainNamespace,
-                                    cm,
-                                    new ResponseStep<V1ConfigMap>(getNext()) {
-                                      @Override
-                                      public NextAction onFailure(
-                                          Packet packet,
-                                          ApiException e,
-                                          int statusCode,
-                                          Map<String, List<String>> responseHeaders) {
-                                        return super.onFailure(
-                                            ScriptConfigMapStep.this,
-                                            packet,
-                                            e,
-                                            statusCode,
-                                            responseHeaders);
-                                      }
+  private static String readContents(Path path) {
+    try {
+      return new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+    } catch (IOException io) {
+      LOGGER.warning(MessageKeys.EXCEPTION, io);
+      return "";
+    }
+  }
 
-                                      @Override
-                                      public NextAction onSuccess(
-                                          Packet packet,
-                                          V1ConfigMap result,
-                                          int statusCode,
-                                          Map<String, List<String>> responseHeaders) {
-                                        LOGGER.info(MessageKeys.CM_REPLACED, domainNamespace);
-                                        packet.put(ProcessingConstants.SCRIPT_CONFIG_MAP, result);
-                                        return doNext(packet);
-                                      }
-                                    });
-                        return doNext(replace, packet);
-                      }
-                    }
-                  });
+  interface ConfigMapHelperFacade {
+    boolean containsAll(Map<String, String> actualData, Map<String, String> expectedData);
+  }
 
-      return doNext(read, packet);
+  static class ConfigMapHelperFacadeImpl implements ConfigMapHelperFacade {
+
+    @Override
+    public boolean containsAll(Map<String, String> actualData, Map<String, String> expectedData) {
+      return actualData.entrySet().containsAll(expectedData.entrySet());
+    }
+  }
+
+  static class ConfigMapContext {
+    private final V1ConfigMap model;
+    private final Map<String, String> classpathScripts = loadScriptsFromClasspath();
+    private final Step conflictStep;
+    private final String operatorNamespace;
+    private final String domainNamespace;
+
+    ConfigMapContext(Step conflictStep, String operatorNamespace, String domainNamespace) {
+      this.conflictStep = conflictStep;
+      this.operatorNamespace = operatorNamespace;
+      this.domainNamespace = domainNamespace;
+      this.model = createModel(classpathScripts);
     }
 
-    // Make this protected so that it can be unit tested
-    protected V1ConfigMap computeDomainConfigMap() {
-      String name = KubernetesConstants.DOMAIN_CONFIG_MAP_NAME;
-      V1ConfigMap cm = new V1ConfigMap();
-      cm.setApiVersion("v1");
-      cm.setKind("ConfigMap");
-
-      V1ObjectMeta metadata = new V1ObjectMeta();
-      metadata.setName(name);
-      metadata.setNamespace(domainNamespace);
-
-      Map<String, String> labels = new HashMap<>();
-      labels.put(LabelConstants.RESOURCE_VERSION_LABEL, VersionConstants.DOMAIN_V1);
-      labels.put(LabelConstants.OPERATORNAME_LABEL, operatorNamespace);
-      labels.put(LabelConstants.CREATEDBYOPERATOR_LABEL, "true");
-      metadata.setLabels(labels);
-
-      cm.setMetadata(metadata);
-      cm.setData(loadScripts(domainNamespace));
-
-      return cm;
+    Step readConfigMap(Step next) {
+      return new CallBuilder()
+          .readConfigMapAsync(
+              getModel().getMetadata().getName(), this.domainNamespace, new ReadResponseStep(next));
     }
 
-    private static synchronized Map<String, String> loadScripts(String domainNamespace) {
-      URI uri;
-      try {
-        uri = ScriptConfigMapStep.class.getResource(SCRIPT_LOCATION).toURI();
-      } catch (URISyntaxException e) {
-        LOGGER.warning(MessageKeys.EXCEPTION, e);
-        throw new RuntimeException(e);
+    private class ReadResponseStep extends DefaultResponseStep<V1ConfigMap> {
+
+      ReadResponseStep(Step nextStep) {
+        super(nextStep);
       }
 
-      try {
-        if ("jar".equals(uri.getScheme())) {
-          try (FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
-            return walkScriptsPath(fileSystem.getPath(SCRIPTS), domainNamespace);
-          }
+      @Override
+      public NextAction onSuccess(Packet packet, CallResponse<V1ConfigMap> callResponse) {
+        V1ConfigMap existingMap = callResponse.getResult();
+        if (existingMap == null) {
+          return doNext(createConfigMap(getNext()), packet);
         } else {
-          return walkScriptsPath(Paths.get(uri), domainNamespace);
+          if (isCompatibleMap(existingMap)) {
+            logConfigMapExists();
+            packet.put(ProcessingConstants.SCRIPT_CONFIG_MAP, existingMap);
+            return doNext(packet);
+          } else {
+            return doNext(updateConfigMap(getNext(), existingMap), packet);
+          }
         }
+      }
+    }
+
+    Step createConfigMap(Step next) {
+      return new CallBuilder()
+          .createConfigMapAsync(domainNamespace, getModel(), new CreateResponseStep(next));
+    }
+
+    private class CreateResponseStep extends ResponseStep<V1ConfigMap> {
+
+      CreateResponseStep(Step next) {
+        super(next);
+      }
+
+      @Override
+      public NextAction onFailure(Packet packet, CallResponse<V1ConfigMap> callResponse) {
+        return onFailure(conflictStep, packet, callResponse);
+      }
+
+      @Override
+      public NextAction onSuccess(Packet packet, CallResponse<V1ConfigMap> callResponse) {
+        LOGGER.info(MessageKeys.CM_CREATED, domainNamespace);
+        packet.put(ProcessingConstants.SCRIPT_CONFIG_MAP, callResponse.getResult());
+        return doNext(packet);
+      }
+    }
+
+    Step updateConfigMap(Step next, V1ConfigMap existingMap) {
+      return new CallBuilder()
+          .replaceConfigMapAsync(
+              getModel().getMetadata().getName(),
+              domainNamespace,
+              createModel(getCombinedData(existingMap)),
+              new ReplaceResponseStep(next));
+    }
+
+    Map<String, String> getCombinedData(V1ConfigMap existingConfigMap) {
+      Map<String, String> updated = existingConfigMap.getData();
+      updated.putAll(this.classpathScripts);
+      return updated;
+    }
+
+    void logConfigMapExists() {
+      LOGGER.fine(MessageKeys.CM_EXISTS, domainNamespace);
+    }
+
+    boolean isCompatibleMap(V1ConfigMap existingMap) {
+      return VersionHelper.matchesResourceVersion(existingMap.getMetadata(), DOMAIN_V1)
+          && FACADE.containsAll(existingMap.getData(), getModel().getData());
+    }
+
+    private class ReplaceResponseStep extends ResponseStep<V1ConfigMap> {
+
+      ReplaceResponseStep(Step next) {
+        super(next);
+      }
+
+      @Override
+      public NextAction onFailure(Packet packet, CallResponse<V1ConfigMap> callResponse) {
+        return onFailure(conflictStep, packet, callResponse);
+      }
+
+      @Override
+      public NextAction onSuccess(Packet packet, CallResponse<V1ConfigMap> callResponse) {
+        LOGGER.info(MessageKeys.CM_REPLACED, domainNamespace);
+        packet.put(ProcessingConstants.SCRIPT_CONFIG_MAP, callResponse.getResult());
+        return doNext(packet);
+      }
+    }
+
+    V1ConfigMap getModel() {
+      return model;
+    }
+
+    private V1ConfigMap createModel(Map<String, String> data) {
+      return new V1ConfigMap()
+          .apiVersion("v1")
+          .kind("ConfigMap")
+          .metadata(createMetadata())
+          .data(data);
+    }
+
+    private V1ObjectMeta createMetadata() {
+      return new V1ObjectMeta()
+          .name(KubernetesConstants.DOMAIN_CONFIG_MAP_NAME)
+          .namespace(domainNamespace)
+          .putLabelsItem(LabelConstants.RESOURCE_VERSION_LABEL, DOMAIN_V1)
+          .putLabelsItem(LabelConstants.OPERATORNAME_LABEL, operatorNamespace)
+          .putLabelsItem(LabelConstants.CREATEDBYOPERATOR_LABEL, "true");
+    }
+  }
+
+  private static Map<String, String> loadScriptsFromClasspath() {
+    synchronized (ConfigMapHelper.class) {
+      try {
+        return loadContents(getScriptsPath());
       } catch (IOException e) {
         LOGGER.warning(MessageKeys.EXCEPTION, e);
         throw new RuntimeException(e);
       }
     }
+  }
 
-    private static Map<String, String> walkScriptsPath(Path scriptsDir, String domainNamespace)
-        throws IOException {
-      try (Stream<Path> walk = Files.walk(scriptsDir, 1)) {
-        Map<String, String> data =
-            walk.filter(i -> !Files.isDirectory(i))
-                .collect(
-                    Collectors.toMap(
-                        i -> i.getFileName().toString(),
-                        i -> new String(read(i), StandardCharsets.UTF_8)));
-        LOGGER.info(MessageKeys.SCRIPT_LOADED, domainNamespace);
-        return data;
-      }
+  private static Path getScriptsPath() {
+    try {
+      return toPath(ConfigMapHelper.class.getResource(SCRIPT_LOCATION).toURI());
+    } catch (URISyntaxException | IOException e) {
+      LOGGER.warning(MessageKeys.EXCEPTION, e);
+      throw new RuntimeException(e);
     }
+  }
 
-    private static byte[] read(Path path) {
-      try {
-        return Files.readAllBytes(path);
-      } catch (IOException io) {
-        LOGGER.warning(MessageKeys.EXCEPTION, io);
-      }
-      return null;
+  private static Path toPath(URI uri) throws IOException {
+    return "jar".equals(uri.getScheme()) ? getPathInJar(uri) : Paths.get(uri);
+  }
+
+  private static Path getPathInJar(URI uri) throws IOException {
+    try (FileSystem fileSystem = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
+      return fileSystem.getPath(SCRIPTS);
     }
   }
 }
