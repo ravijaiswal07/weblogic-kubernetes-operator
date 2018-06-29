@@ -21,7 +21,9 @@ public class DomainHelmTemplates {
   private static final String APACHE_SECURITY_YAML = "weblogic-domain-apache-security.yaml";
   private static final String TRAEFIK_YAML = "weblogic-domain-traefik.yaml";
   private static final String TRAEFIK_SECURITY_YAML = "weblogic-domain-traefik-security.yaml";
-  private static final String VOYAGER_YAML = "voyager-ingress.yaml";
+  private static final String VOYAGER_YAML = "weblogic-domain-voyager-ingress.yaml";
+  private static final String VOYAGER_OPERATOR_YAML = "voyager-operator.yaml";
+  private static final String VOYAGER_OPERATOR_SECURITY_YAML = "voyager-operator-security.yaml";
 
   private static final String HELM_TEMPLATES_PATH = "helm-charts/weblogic-domain/templates";
 
@@ -71,6 +73,14 @@ public class DomainHelmTemplates {
     return helmTemplatesPath.resolve(VOYAGER_YAML);
   }
 
+  public Path getVoyagerOperatorYamlPath() {
+    return helmTemplatesPath.resolve(VOYAGER_OPERATOR_YAML);
+  }
+
+  public Path getVoyagerOperatorSecurityYamlPath() {
+    return helmTemplatesPath.resolve(VOYAGER_OPERATOR_SECURITY_YAML);
+  }
+
   public Path getWeblogicDomainPersistentVolumeYamlPath() {
     return helmTemplatesPath.resolve(WEBLOGIC_DOMAIN_PERSISTENT_VOLUME_YAML);
   }
@@ -92,6 +102,8 @@ public class DomainHelmTemplates {
     rtn.add(getTraefikYamlPath());
     rtn.add(getTraefikSecurityYamlPath());
     rtn.add(getVoyagerYamlPath());
+    rtn.add(getVoyagerOperatorYamlPath());
+    rtn.add(getVoyagerOperatorSecurityYamlPath());
     rtn.add(getWeblogicDomainPersistentVolumeYamlPath());
     rtn.add(getWeblogicDomainPersistentVolumeClaimYamlPath());
     if (includeDirectory) {

@@ -125,4 +125,18 @@ public class GenerateDomainHelmTemplatesTest {
         generatedDomainHelmTemplates.getVoyagerYamlPath(),
         expectedDomainHelmTemplates.getVoyagerYamlPath());
   }
+
+  @Test
+  public void generatesCorrect_voyager_operator() throws Exception {
+    assertSameFileContents(
+        generatedDomainHelmTemplates.getVoyagerOperatorYamlPath(),
+        expectedDomainHelmTemplates.getVoyagerOperatorYamlPath());
+  }
+
+  @Test
+  public void generatesCorrect_voyager_operator_security() throws Exception {
+    assertSameFileContents(
+        generatedDomainHelmTemplates.getVoyagerOperatorSecurityYamlPath(),
+        expectedDomainHelmTemplates.getVoyagerOperatorSecurityYamlPath());
+  }
 }
