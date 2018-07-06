@@ -1,0 +1,8 @@
+setupKubernetesCluster: false
+operatorNamespace: demo2-o1-ns
+operatorServiceAccount: demo2-o1-sa
+domainsNamespaces:
+  demo2-d1-ns: {}
+operatorImage: wlsldi-v2.docker.oraclecorp.com/weblogic-operator:tmoreau-lc
+operatorImagePullPolicy: Never
+elkIntegrationEnabled: true

@@ -1,0 +1,71 @@
+domainUID: demo2-domain1-uid
+operatorNamespace: demo2-o1-ns
+domainsNamespace: demo2-d1-ns
+domainLogsPersistentVolumeDir: /scratch/k8s-dir/demo2-domain1-uid/domain-logs
+weblogicImage: store/oracle/weblogic:12.2.1.3
+weblogicDomainCredentialsSecretName: demo2-domain1-uid-domain-creds
+
+extraResources:
+- kind: PersistentVolume
+  apiVersion: v1
+  metadata:
+    labels:
+      weblogic.domainUID: demo2-domain1-uid
+      weblogic.resourceVersion: domain-v1
+    name: demo2-domain1-uid-weblogic-domain-home-pv
+  spec:
+    accessModes:
+    - ReadWriteMany
+    capacity:
+      storage: 5Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: demo2-domain1-uid-weblogic-domain-home-pvc
+      namespace: demo2-d1-ns
+    hostPath:
+      path: /scratch/k8s-dir/demo2-domain1-uid/domain-home
+      type: ""
+    persistentVolumeReclaimPolicy: Retain
+    storageClassName: demo2-domain1-uid-weblogic-domain-home-storage-class
+- kind: PersistentVolumeClaim
+  apiVersion: v1
+  metadata:
+    labels:
+      weblogic.domainUID: demo2-domain1-uid
+      weblogic.resourceVersion: domain-v1
+    name: demo2-domain1-uid-weblogic-domain-home-pvc
+    namespace: demo2-d1-ns
+  spec:
+    accessModes:
+    - ReadWriteMany
+    resources:
+      requests:
+        storage: 5Gi
+    storageClassName: demo2-domain1-uid-weblogic-domain-home-storage-class
+    volumeName: demo2-domain1-uid-weblogic-domain-home-pv
+extraVolumeMounts:
+- name: weblogic-domain-home-storage-volume
+  mountPath: /domain-home
+extraVolumes:
+- name: weblogic-domain-home-storage-volume
+  persistentVolumeClaim:
+    claimName: demo2-domain1-uid-weblogic-domain-home-pvc
+
+extraEnv:
+- name: App1Property1
+  value: App1Property1Value
+- name: App1LoggingLevel
+  value: INFO
+customPodTemplates:
+  debug:
+    extraEnv:
+    - name: App1LoggingLevel
+      value: FINEST
+customAdminServerPodTemplates:
+  debug:
+    podTemplate: debug
+customManagedServerPodTemplates:
+  debug:
+    podTemplate: debug
+

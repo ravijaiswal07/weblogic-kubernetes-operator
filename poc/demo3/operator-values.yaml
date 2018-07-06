@@ -2,11 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-operatorNamespace: demo-o-ns
-operatorServiceAccount: demo-o-sa
-domainsNamespaces: demo-d-ns
-
+operatorNamespace: demo3-o-ns
+operatorServiceAccount: demo3-o-sa
+domainsNamespaces:
+  demo3-d-ns: {}
 operatorImage: wlsldi-v2.docker.oraclecorp.com/weblogic-operator:tmoreau-lc
 operatorImagePullPolicy: Never
-
 elkIntegrationEnabled: true

@@ -2,6 +2,8 @@
 
 set -x
 
+export DOMAIN_NUMBER="${1}"
+
 export DEMO_HOME=`pwd` # this means that you need to run the sample from this directory!
 export DEMO_NAME="demo2"
 export OPERATOR_HOME="${DEMO_HOME}/../kit"
@@ -10,9 +12,8 @@ export OPERATOR_SAMPLES="${OPERATOR_HOME}/samples"
 export PVS_DIR="/scratch/k8s-dir"
 
 export WEBLOGIC_VERSION="12.2.1.3.0"
-export DOMAIN_UID="${DEMO_NAME}-domain-uid"
-export DOMAIN_NAME="${DEMO_NAME}-domain"
-export DOMAIN_PATH="${GENERATED_FILES}${POD_DOMAIN_HOME_DIR}"
+export DOMAIN_UID="${DEMO_NAME}-domain${DOMAIN_NUMBER}-uid"
+export DOMAIN_NAME="${DEMO_NAME}-domain${DOMAIN_NUMBER}"
 export ADMIN_USERNAME="weblogic"
 export ADMIN_PASSWORD="welcome1"
 export ADMIN_SERVER_NAME="as"

@@ -17,6 +17,8 @@ env:
   value: {{ .domainUID }}
 - name: DOMAIN_HOME
   value: {{ .podDomainHomeDir }}
+- name: DOMAINS_NAMESPACE
+  value: {{ .domainsNamespace }}
 {{- if .extraEnv }}
 {{ toYaml .extraEnv | trim | indent 0 }}
 {{- end }}

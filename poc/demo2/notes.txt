@@ -26,57 +26,67 @@ how to run demo2
 
   mkdir generated # the scripts need to be improved to do this!
 
-  helm install ../kit/charts/kubernetes-cluster --name demo-kubernetes-cluster --values kubernetes-cluster-values.yaml
-  helm status demo-kubernetes-cluster
+  helm install ../kit/charts/operator --name demo2-kubernetes-cluster --values kubernetes-cluster-values.yaml --wait
 
   # something about certificate generation ... ?
-  helm install ../kit/charts/operator --name demo-operator --values operator-values.yaml
-  helm status demo-operator
-
-  helm install ../kit/charts/domains-ns --name demo-domains-ns --values domains-ns-values.yaml
-  #helm upgrade --values domains-ns-values.yaml demo-domains-ns ../kit/charts/domains-ns
-  helm status demo-domains-ns
-
-  # can this move to a helm chart?
-  kubectl -n demo-d-ns create secret generic demo2-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
-  mkdir -p /scratch/k8s-dir/demo2-domain-uid/domain-logs
-  create-domain-home.sh
+  helm install ../kit/charts/operator --name demo2-operator1 --values operator1-values.yaml --wait
+  kubectl -n demo2-d1-ns create secret generic demo2-domain1-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
+  mkdir -p /scratch/k8s-dir/demo2-domain1-uid/domain-logs
   #from Tom Barnes: if running on a hosted linux box (macs don't need this):
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
+  create-domain-home.sh 1
+  helm install ../kit/charts/domain --name demo2-domain1 --values domain1-values.yaml --wait
 
-  helm install ../kit/charts/domain --name demo2-domain --values domain-values.yaml
-  #helm upgrade --values domain-values.yaml demo2-domain ../kit/charts/domain
-  helm status demo2-domain
+  helm install ../kit/charts/operator --name demo2-operator2 --values operator2-values.yaml --wait
+  kubectl -n demo2-d2-ns create secret generic demo2-domain2-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
+  mkdir -p /scratch/k8s-dir/demo2-domain2-uid/domain-logs
+  #from Tom Barnes: if running on a hosted linux box (macs don't need this):
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
+  create-domain-home.sh 2
+  helm install ../kit/charts/domain --name demo2-domain2 --values domain2-values.yaml --wait
 
   # TBD - something about creating the config map containing the domain-specific sit config customizations
   # and passing the name of that config map into the sit config stuff below ...
 
-  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo2-domain-uid default
+  # domain-crd (roughly)
+  #   domainUID: demo2-domain1-uid
+  #   clusterDefaults:
+  #     replicas: 1
+  #   adminServer:
+  #     podTemplate: debug
 
-  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo2-domain-uid default
+  # operator runtime tasks
 
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo2-domain-uid debug default default demo2-domain as 7100
+  ../kit/runtime/simulate-operator-introspect-domain.sh demo2-d1-ns demo2-domain1-uid default
 
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo2-domain-uid debug default default demo2-domain as 7100 ms1 8100
-  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo2-domain-uid debug default ms1
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo2-d1-ns demo2-domain1-uid default
 
-  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo2-domain-uid debug default as
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo2-d1-ns demo2-domain1-uid debug default default demo2-domain1 as 7100
 
-  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo2-domain-uid default
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo2-d1-ns demo2-domain1-uid default default default demo2-domain1 as 7100 ms1 8100
+  ../kit/runtime/simulate-operator-stop-managed-server.sh demo2-d1-ns demo2-domain1-uid default default ms1
 
-  helm delete --purge demo2-domain
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo2-d1-ns demo2-domain1-uid debug default as
 
-  kubectl delete secret -n demo-d-ns demo2-domain-uid-domain-creds
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo2-d1-ns demo2-domain1-uid default
+
+  helm delete --purge demo2-domain2
+  kubectl delete secret -n demo2-d2-ns demo2-domain2-uid-domain-creds
   #from Tom Barnes: if running on a hosted linux box (macs don't need this):
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
-  rm -rf /scratch/k8s-dir/demo2-domain-uid
+  rm -rf /scratch/k8s-dir/demo2-domain2-uid
+  helm delete --purge demo2-operator2
 
-  helm delete --purge demo-domains-ns
+  helm delete --purge demo2-domain1
+  kubectl delete secret -n demo2-d1-ns demo2-domain1-uid-domain-creds
+  #from Tom Barnes: if running on a hosted linux box (macs don't need this):
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
+  rm -rf /scratch/k8s-dir/demo2-domain1-uid
+  helm delete --purge demo2-operator1
 
-  helm delete --purge demo-operator
-
-  helm delete --purge demo-kubernetes-cluster
+  helm delete --purge demo2-kubernetes-cluster
 
 -----------------------------------------------------------------------------------------
 poc source files
@@ -273,90 +283,6 @@ helm links
   https://github.com/Masterminds/sprig/blob/master/docs/dicts.md
   https://github.com/kubernetes/charts/blob/master/stable/traefik
   https://github.com/kubernetes/helm/blob/master/docs/examples/nginx
-
-minimum
-=======
-
-domain-crd.yaml
----------------
-domainUID: demo2-domain-uid
-
-domain-values.yaml
-------------------
-operatorNamespace: demo-o-ns
-domainsNamespace: demo-d-ns
-domainUID: demo2-domain-uid
-domainLogsPersistentVolumeDir: /scratch/k8s-dir/demo2-domain-uid/domain-logs
-weblogicImage: myimage
-weblogicImagePullPolicy: IfNotPresent
-weblogicDomainCredentialsSecretName: demo2-domain-uid-domain-creds
-
-
-
-
-
-
-
-put domain home on pv
-=====================
-
-domain-crd.yaml
----------------
-domainUID: demo2-domain-uid
-
-domain-values.yaml
-------------------
-minimum plus:
-
-weblogicImage: store/oracle/weblogic:12.2.1.3
-extraVolumeMounts:
-- name: weblogic-domain-home-storage-volume
-  mountPath: /domain-home
-extraVolumes:
-- name: weblogic-domain-home-storage-volume
-  persistentVolumeClaim:
-    claimName: demo2-domain-uid-weblogic-domain-home-pvc
-extraResources:
-- kind: PersistentVolume
-  apiVersion: v1
-  metadata:
-    labels:
-      weblogic.domainUID: demo2-domain-uid
-      weblogic.resourceVersion: domain-v1
-    name: demo2-domain-uid-weblogic-domain-home-pv
-  spec:
-    accessModes:
-    - ReadWriteMany
-    capacity:
-      storage: 5Gi
-    claimRef:
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      name: demo2-domain-uid-weblogic-domain-home-pvc
-      namespace: demo-d-ns
-    hostPath:
-      path: /scratch/k8s-dir/demo2-domain-uid/domain-home
-      type: ""
-    persistentVolumeReclaimPolicy: Retain
-    storageClassName: demo2-domain-uid-weblogic-domain-home-storage-class
-- kind: PersistentVolumeClaim
-  apiVersion: v1
-  metadata:
-    labels:
-      weblogic.domainUID: demo2-domain-uid
-      weblogic.resourceVersion: domain-v1
-    name: demo2-domain-uid-weblogic-domain-home-pvc
-    namespace: demo-d-ns
-  spec:
-    accessModes:
-    - ReadWriteMany
-    resources:
-      requests:
-        storage: 5Gi
-    storageClassName: demo2-domain-uid-weblogic-domain-home-storage-class
-    volumeName: demo2-domain-uid-weblogic-domain-home-pv
-
-
 
 turn on debugging for just the admin server
 ===========================================

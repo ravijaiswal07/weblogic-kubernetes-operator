@@ -1,5 +1,6 @@
-# Default values for kubernetes-cluster.
+# Default values for operator.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+createOperator: false
 elkIntegrationEnabled: true

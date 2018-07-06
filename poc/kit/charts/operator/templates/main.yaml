@@ -1,0 +1,13 @@
+{{ include "operator.validateInputs" .Values }}
+
+{{- $scope := merge (dict) .Values -}}
+{{- $ignore := set $scope "Files" .Files -}}
+{{- $ignore := set $scope "Chart" .Chart -}}
+
+{{- if .Values.setupKubernetesCluster }}
+{{ include "operator.kubernetesCluster" $scope }}
+{{- end }}
+
+{{- if .Values.createOperator }}
+{{- include "operator.operator" $scope }}
+{{- end }}

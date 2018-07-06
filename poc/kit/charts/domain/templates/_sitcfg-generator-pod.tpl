@@ -20,6 +20,8 @@ env:
   value: {{ .podDomainLogsDir }}
 - name: SITCFG_NAME
   value: {{ .sitCfgName }}
+- name: DOMAINS_NAMESPACE
+  value: {{ .domainsNamespace }}
 {{- if .extraEnv }}
 {{ toYaml .extraEnv | trim | indent 0 }}
 {{- end }}
