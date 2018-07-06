@@ -1,0 +1,109 @@
+-----------------------------------------------------------------------------------------
+scenario
+-----------------------------------------------------------------------------------------
+
+  one operator, one domains namespace, one domain
+
+  domain home in image
+
+  use all operator defaults
+
+  use all domain defaults
+
+-----------------------------------------------------------------------------------------
+setup
+-----------------------------------------------------------------------------------------
+
+  doublesync src122130 and devenv.sh
+    (since we're going to use WLST to create the domain)
+
+  mkdir -m 777 -p /scratch/k8s-dir
+    (i.e. the parent directory for persistent volumes)
+
+  make sure to get rid your old setup:
+  (I had problems getting stuff to run until I got rid of this stuff)
+    operator and domain namespaces
+    persistent volumes
+    cluster roles & cluster role bindings
+    maybe /scratch/k8s_dir
+
+  install helm & tiller
+    See https://github.com/kubernetes/helm/blob/master/docs/install.md
+
+-----------------------------------------------------------------------------------------
+how to run demo4
+-----------------------------------------------------------------------------------------
+
+  cd demo4
+
+  # generate certs for the operator REST api
+  # copy the values file for creating the operator and customize it (including certs)
+
+  # setup the kubernetes cluster wide resources the operator needs AND
+  # create the operator's kubernetes resources AND
+  # create the target namespace for the domains
+  helm install ../kit/charts/operator --name demo4-operator-test --values operator-values.yaml --dry-run --debug
+  helm install ../kit/charts/operator --name demo4-operator --values operator-values.yaml --wait
+
+  # create a weblogic docker image with a domain home in it
+  create-domain-in-image.sh
+
+  # create a kubernetes secret holding that domain's admin credentials
+  kubectl -n default create secret generic demo4-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
+
+  # create a persistent volume that the domain logs will be written to
+  mkdir -p /scratch/k8s-dir/demo4-domain-uid/domain-logs
+
+  #from Tom Barnes: if running on a hosted linux box (macs don't need this):
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
+
+  # copy the values file for creating a domain and customize it for this domain
+
+  # create the domain's kubernetes resources
+  helm install ../kit/charts/domain --name demo4-domain --values domain-values.yaml --wait
+
+  # domain crd (roughly)
+  #   domainUID: demo4-domain-uid
+  #   clusterDefaults:
+  #     replicas: 1
+
+  # simulate the operator runtime
+  #   note: has access to the domain crd
+
+  # use the domain crd to figure out which pod template to instantiate to create
+  # a pod that introspects the domain and returns its topology
+  ../kit/runtime/simulate-operator-introspect-domain.sh default demo4-domain-uid default
+
+  # use the domain crd to figure out which template to instantiate to create a
+  # situational config file for the domain
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh default demo4-domain-uid default
+
+  # use the domain topology to get the name of the admin server
+  # use the domain crd to figure out whether the admin server should be running
+  # use the domain crd to figure out what pod template to instantiate for the admin server
+  # put the generated sit config file in a place the admin server can find it
+  ../kit/runtime/simulate-operator-start-admin-server.sh default demo4-domain-uid default default default demo4-domain as 7200
+
+  # use the domain topology to get the names of the clusters and their servers
+  # use the domain crd to figure out which clustered servers should be running
+  # use the domain crd to figure out what pod template to instantiate for the each managed server
+  # put the generated sit config file in a place each managed server can find it
+  ../kit/runtime/simulate-operator-start-managed-server.sh default demo4-domain-uid default default default demo4-domain as 7200 ms1 8200
+
+  ../kit/runtime/simulate-operator-stop-managed-server.sh default demo4-domain-uid default default ms1
+
+  ../kit/runtime/simulate-operator-stop-admin-server.sh default demo4-domain-uid default default as
+
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh default demo4-domain-uid default
+
+  helm delete --purge demo4-domain
+
+  kubectl delete secret -n default demo4-domain-uid-domain-creds
+  #from Tom Barnes: if running on a hosted linux box (macs don't need this):
+  #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
+  rm -rf /scratch/k8s-dir/demo4-domain-uid
+  docker rmi demo4-image:latest
+
+  helm delete --purge demo4-operator
+

@@ -1,0 +1,5 @@
+domainUID: demo4-domain-uid
+domainLogsPersistentVolumeDir: /scratch/k8s-dir/demo4-domain-uid/domain-logs
+podDomainHomeDir: /u01/oracle/domain-home
+weblogicImage: demo4-image:latest
+weblogicDomainCredentialsSecretName: demo4-domain-uid-domain-creds

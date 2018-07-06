@@ -1,4 +1,20 @@
 -----------------------------------------------------------------------------------------
+scenario
+-----------------------------------------------------------------------------------------
+
+  one operator, one domains namespace, one domain
+
+  domain home in image
+
+  operator customizations
+    enable elk
+    custom namespace names
+    custom operator image
+
+  domain customizations
+    custom namespace names
+
+-----------------------------------------------------------------------------------------
 setup
 -----------------------------------------------------------------------------------------
 
@@ -24,24 +40,16 @@ how to run demo3
 
   cd demo3
 
-  mkdir generated # the scripts need to be improved to do this!
+  # generate certs for the operator REST api
+  # copy the values file for creating the operator and customize it (including certs)
 
-  # tbd - something about certificate generation for the operator REST api
-
-  # copy the values file for creating the operator and customize it for this domain
-
-  # setup the kubernetes cluster wide resources the operator needs AND
-  # create the operator's kubernetes resources AND
-  # create the target namespace for the domains
+  helm install ../kit/charts/operator --name demo3-operator-test --values operator-values.yaml --dry-run --debug
   helm install ../kit/charts/operator --name demo3-operator --values operator-values.yaml --wait
 
-  # create a weblogic docker image with a domain home in it
   create-domain-in-image.sh
 
-  # create a kubernetes secret holding that domain's admin credentials
   kubectl -n demo3-d-ns create secret generic demo3-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
 
-  # create a persistent volume that the domain logs will be written to
   mkdir -p /scratch/k8s-dir/demo3-domain-uid/domain-logs
 
   #from Tom Barnes: if running on a hosted linux box (macs don't need this):
@@ -52,7 +60,6 @@ how to run demo3
   # TBD - something about specifying extra domain customizations beyond what the
   # operator knows it needs to do
 
-  # create the domain's kubernetes resources
   helm install ../kit/charts/domain --name demo3-domain --values domain-values.yaml --wait
 
   # domain crd (roughly)
@@ -60,33 +67,12 @@ how to run demo3
   #   clusterDefaults:
   #     replicas: 1
 
-  # simulate the operator runtime
-  #   note: has access to the domain crd
-
-  # use the domain crd to figure out what pod template to instantiate to create
-  # a pod that introspects the domain and returns its topology
   ../kit/runtime/simulate-operator-introspect-domain.sh demo3-d-ns demo3-domain-uid default
-
-  # use the domain crd to figure out what template to instantiate to create a
-  # situational config file for the domain
   ../kit/runtime/simulate-operator-generate-sitcfg.sh demo3-d-ns demo3-domain-uid default
-
-  # use the domain topology to get the name of the admin server
-  # use the domain crd to figure out whether the admin server should be running
-  # use the domain crd to figure out what pod template to instantiate for the admin server
-  # put the generated sit config file in a place the admin server can find it
   ../kit/runtime/simulate-operator-start-admin-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7200
-
-  # use the domain topology to get the names of the clusters and their servers
-  # use the domain crd to figure out which clustered servers should be running
-  # use the domain crd to figure out what pod template to instantiate for the each managed server
-  # put the generated sit config file in a place each managed server can find it
   ../kit/runtime/simulate-operator-start-managed-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7200 ms1 8200
-
   ../kit/runtime/simulate-operator-stop-managed-server.sh demo3-d-ns demo3-domain-uid default default ms1
-
   ../kit/runtime/simulate-operator-stop-admin-server.sh demo3-d-ns demo3-domain-uid default default as
-
   ../kit/runtime/simulate-operator-remove-sitcfg.sh demo3-d-ns demo3-domain-uid default
 
   helm delete --purge demo3-domain
@@ -121,16 +107,7 @@ poc source files
 poc generated files
 -----------------------------------------------------------------------------------------
 
-    demo3/generated/
-
-        domain-home
-          - contains the generated domain, before its pathnames have been patched
-          - this means you can 'cd' there and run startWeblogicServer.sh
-          - it also means that it cannot be directly used by a pod since the
-            pathnames in the generated files are based on the shell that ran
-            create-domain-home.sh, instead of the ones that are needed in a pod
-
-    /scratch/k8s-dir/demo1-domain-uid
+    /scratch/k8s-dir/demo3-domain-uid
       directory that parents any persistent volumes this demo needs
 
       domain-logs/

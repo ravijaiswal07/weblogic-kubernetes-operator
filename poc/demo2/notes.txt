@@ -1,4 +1,31 @@
 -----------------------------------------------------------------------------------------
+scenario
+-----------------------------------------------------------------------------------------
+
+  one kubernetes cluster with two operators,
+  each with its own domains namespace and one domain
+
+  separate the lifecycles by installing 3 charts:
+    - setup shared kubernetes cluster artifacts
+      (roles, kibana, elastic search)
+    - operator1
+    - operator2
+
+  operator customizations
+    separate kubenetes cluster setup from operator creation
+    elk enabled
+    enable external REST
+    custom namespace names
+    custom operator image
+
+  domain home in shared pv
+
+  domain customizations
+    custom namespace names
+    custom pv/pvc (for the domain home)
+    extra env vars for the servers, different ones for the admin server
+
+-----------------------------------------------------------------------------------------
 setup
 -----------------------------------------------------------------------------------------
 
@@ -28,7 +55,6 @@ how to run demo2
 
   helm install ../kit/charts/operator --name demo2-kubernetes-cluster --values kubernetes-cluster-values.yaml --wait
 
-  # something about certificate generation ... ?
   helm install ../kit/charts/operator --name demo2-operator1 --values operator1-values.yaml --wait
   kubectl -n demo2-d1-ns create secret generic demo2-domain1-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
   mkdir -p /scratch/k8s-dir/demo2-domain1-uid/domain-logs
@@ -125,8 +151,9 @@ poc generated files
             pathnames in the generated files are based on the shell that ran
             create-domain-home.sh, instead of the ones that are needed in a pod
 
-    /scratch/k8s-dir/demo2-domain-uid
-      contains the persistent volumes for demo2's domain
+    /scratch/k8s-dir/demo2-domain1-uid
+    /scratch/k8s-dir/demo2-domain2-uid
+      contains the persistent volumes for demo2's domains
 
       domain-logs/
          - contains the domain, node manager and server logs
