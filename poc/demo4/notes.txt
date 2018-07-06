@@ -2,7 +2,7 @@
 scenario
 -----------------------------------------------------------------------------------------
 
-  one operator, one domains namespace, one domain
+  one operator, one domains (target) namespace, one domain
 
   domain home in image
 
@@ -36,17 +36,20 @@ how to run demo4
 
   cd demo4
 
+  # create a weblogic docker image with a domain home in it
+  create-domain-in-image.sh
+
   # generate certs for the operator REST api
   # copy the values file for creating the operator and customize it (including certs)
 
-  # setup the kubernetes cluster wide resources the operator needs AND
-  # create the operator's kubernetes resources AND
-  # create the target namespace for the domains
-  helm install ../kit/charts/operator --name demo4-operator-test --values operator-values.yaml --dry-run --debug
+  # setup the following kubernetes resources
+  #  - kubernetes cluster wide resources all operators need (e.g. cluster roles)
+  #  - resources for the operator
+  #  - resources for the domains (target) namespace
+  #helm install ../kit/charts/operator --name demo4-operator-test --values operator-values.yaml --dry-run --debug
   helm install ../kit/charts/operator --name demo4-operator --values operator-values.yaml --wait
-
-  # create a weblogic docker image with a domain home in it
-  create-domain-in-image.sh
+  #kubectl get cm -n weblogic-operator weblogic-operator-cm -o yaml
+  #kubectl get cm -n default weblogic-domain-cm -o yaml | grep ": |"
 
   # create a kubernetes secret holding that domain's admin credentials
   kubectl -n default create secret generic demo4-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
@@ -59,6 +62,7 @@ how to run demo4
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
 
   # copy the values file for creating a domain and customize it for this domain
+  # (including the internal operator REST cert generated earlier)
 
   # create the domain's kubernetes resources
   helm install ../kit/charts/domain --name demo4-domain --values domain-values.yaml --wait
@@ -69,7 +73,7 @@ how to run demo4
   #     replicas: 1
 
   # simulate the operator runtime
-  #   note: has access to the domain crd
+  #   note: the operator has access to the domain crd
 
   # use the domain crd to figure out which pod template to instantiate to create
   # a pod that introspects the domain and returns its topology
@@ -78,18 +82,21 @@ how to run demo4
   # use the domain crd to figure out which template to instantiate to create a
   # situational config file for the domain
   ../kit/runtime/simulate-operator-generate-sitcfg.sh default demo4-domain-uid default
+  #kubectl get cm demo4-domain-uid-default-sitcfg-cm -o yaml
 
   # use the domain topology to get the name of the admin server
   # use the domain crd to figure out whether the admin server should be running
-  # use the domain crd to figure out what pod template to instantiate for the admin server
-  # put the generated sit config file in a place the admin server can find it
-  ../kit/runtime/simulate-operator-start-admin-server.sh default demo4-domain-uid default default default demo4-domain as 7200
+  # use the domain crd to figure out which pod template to instantiate for the admin server
+  # put the generated sit config file in a place the admin server pod can find it
+  #kubectl get cm demo4-domain-uid-default-admin-server-pod-template-cm -o yaml
+  ../kit/runtime/simulate-operator-start-admin-server.sh default demo4-domain-uid default default default demo4-domain as 7400
+  #kubectl get po demo4-domain-uid-as -o yaml
 
   # use the domain topology to get the names of the clusters and their servers
   # use the domain crd to figure out which clustered servers should be running
   # use the domain crd to figure out what pod template to instantiate for the each managed server
   # put the generated sit config file in a place each managed server can find it
-  ../kit/runtime/simulate-operator-start-managed-server.sh default demo4-domain-uid default default default demo4-domain as 7200 ms1 8200
+  ../kit/runtime/simulate-operator-start-managed-server.sh default demo4-domain-uid default default default demo4-domain as 7400 ms1 8400
 
   ../kit/runtime/simulate-operator-stop-managed-server.sh default demo4-domain-uid default default ms1
 

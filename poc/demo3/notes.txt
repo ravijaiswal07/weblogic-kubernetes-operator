@@ -43,10 +43,9 @@ how to run demo3
   # generate certs for the operator REST api
   # copy the values file for creating the operator and customize it (including certs)
 
-  helm install ../kit/charts/operator --name demo3-operator-test --values operator-values.yaml --dry-run --debug
-  helm install ../kit/charts/operator --name demo3-operator --values operator-values.yaml --wait
-
   create-domain-in-image.sh
+
+  helm install ../kit/charts/operator --name demo3-operator --values operator-values.yaml --wait
 
   kubectl -n demo3-d-ns create secret generic demo3-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
 
@@ -69,8 +68,8 @@ how to run demo3
 
   ../kit/runtime/simulate-operator-introspect-domain.sh demo3-d-ns demo3-domain-uid default
   ../kit/runtime/simulate-operator-generate-sitcfg.sh demo3-d-ns demo3-domain-uid default
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7200
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7200 ms1 8200
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7300
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7300 ms1 8300
   ../kit/runtime/simulate-operator-stop-managed-server.sh demo3-d-ns demo3-domain-uid default default ms1
   ../kit/runtime/simulate-operator-stop-admin-server.sh demo3-d-ns demo3-domain-uid default default as
   ../kit/runtime/simulate-operator-remove-sitcfg.sh demo3-d-ns demo3-domain-uid default
