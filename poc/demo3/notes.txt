@@ -33,15 +33,13 @@ how to run demo3
   # setup the kubernetes cluster wide resources the operator needs AND
   # create the operator's kubernetes resources AND
   # create the target namespace for the domains
-  helm install ../kit/charts/operator --name demo-operator --values operator-values.yaml --wait
-  #helm upgrade --values operator-values.yaml demo-operator ../kit/charts/operator
-  helm status demo-operator
+  helm install ../kit/charts/operator --name demo3-operator --values operator-values.yaml --wait
 
   # create a weblogic docker image with a domain home in it
   create-domain-in-image.sh
 
   # create a kubernetes secret holding that domain's admin credentials
-  kubectl -n demo-d-ns create secret generic demo3-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
+  kubectl -n demo3-d-ns create secret generic demo3-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
 
   # create a persistent volume that the domain logs will be written to
   mkdir -p /scratch/k8s-dir/demo3-domain-uid/domain-logs
@@ -56,8 +54,6 @@ how to run demo3
 
   # create the domain's kubernetes resources
   helm install ../kit/charts/domain --name demo3-domain --values domain-values.yaml --wait
-  #helm upgrade --values domain-values.yaml demo3-domain ../kit/charts/domain
-  helm status demo3-domain
 
   # domain crd (roughly)
   #   domainUID: demo3-domain-uid
@@ -69,29 +65,29 @@ how to run demo3
 
   # use the domain crd to figure out what pod template to instantiate to create
   # a pod that introspects the domain and returns its topology
-  ../kit/runtime/simulate-operator-introspect-domain.sh demo-d-ns demo3-domain-uid default
+  ../kit/runtime/simulate-operator-introspect-domain.sh demo3-d-ns demo3-domain-uid default
 
   # use the domain crd to figure out what template to instantiate to create a
   # situational config file for the domain
-  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo-d-ns demo3-domain-uid default
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo3-d-ns demo3-domain-uid default
 
   # use the domain topology to get the name of the admin server
   # use the domain crd to figure out whether the admin server should be running
   # use the domain crd to figure out what pod template to instantiate for the admin server
   # put the generated sit config file in a place the admin server can find it
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo-d-ns demo3-domain-uid default default default demo3-domain as 7200
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7200
 
   # use the domain topology to get the names of the clusters and their servers
   # use the domain crd to figure out which clustered servers should be running
   # use the domain crd to figure out what pod template to instantiate for the each managed server
   # put the generated sit config file in a place each managed server can find it
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo-d-ns demo3-domain-uid default default default demo3-domain as 7200 ms1 8200
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7200 ms1 8200
 
-  ../kit/runtime/simulate-operator-stop-managed-server.sh demo-d-ns demo3-domain-uid default default ms1
+  ../kit/runtime/simulate-operator-stop-managed-server.sh demo3-d-ns demo3-domain-uid default default ms1
 
-  ../kit/runtime/simulate-operator-stop-admin-server.sh demo-d-ns demo3-domain-uid default default as
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo3-d-ns demo3-domain-uid default default as
 
-  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo-d-ns demo3-domain-uid default
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo3-d-ns demo3-domain-uid default
 
   helm delete --purge demo3-domain
 
@@ -99,8 +95,9 @@ how to run demo3
   #from Tom Barnes: if running on a hosted linux box (macs don't need this):
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chmod 777"
   rm -rf /scratch/k8s-dir/demo3-domain-uid
+  docker rmi wls-12213-domain-in-image:latest
 
-  helm delete --purge demo-operator
+  helm delete --purge demo3-operator
 
 -----------------------------------------------------------------------------------------
 poc source files

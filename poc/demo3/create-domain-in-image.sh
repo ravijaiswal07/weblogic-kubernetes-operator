@@ -17,7 +17,7 @@ export OPERATOR_SAMPLES="${OPERATOR_HOME}/samples"
 
 
 function createDockerImage {
-  docker build -t wls-12213-domain-in-image .
+  docker build --no-cache -t wls-12213-domain-in-image .
 }
 
 function main {
