@@ -121,7 +121,7 @@ public class ServiceHelper {
 
     @Override
     protected boolean isUseSelectors() {
-      return false;
+      return !isHeadless();
     }
 
     private boolean isPublishNotReadyAddressesSupported() {
@@ -171,7 +171,7 @@ public class ServiceHelper {
 
     @Override
     protected boolean isHeadless() {
-      return true;
+      return getNodePort() == null;
     }
 
     @Override
@@ -240,7 +240,7 @@ public class ServiceHelper {
           new V1ServiceSpec()
               .type(getSpecType())
               .ports(Collections.singletonList(createServicePort()));
-      if (isHeadless() && getNodePort() == null) {
+      if (isHeadless()) {
         serviceSpec.clusterIP("None");
       }
       if (isUseSelectors()) {

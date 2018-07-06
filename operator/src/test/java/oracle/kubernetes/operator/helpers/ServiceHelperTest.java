@@ -409,7 +409,7 @@ public class ServiceHelperTest {
 
   @Test
   public void onServerStepRunWithNoService_createIt() {
-    verifyMissingServerServiceCreated(createServerService());
+    verifyMissingServerServiceCreated(withoutSelectors(createServerService()));
   }
 
   private void verifyMissingServerServiceCreated(V1Service newService) {
@@ -426,7 +426,8 @@ public class ServiceHelperTest {
   public void whenSupported_createServerServiceWithPublishNotReadyAddresses() {
     testSupport.addVersion(new HealthCheckHelper.KubernetesVersion(1, 8));
 
-    verifyMissingServerServiceCreated(withPublishNotReadyAddresses(createServerService()));
+    verifyMissingServerServiceCreated(
+        withPublishNotReadyAddresses(withoutSelectors(createServerService())));
   }
 
   private V1Service withPublishNotReadyAddresses(V1Service service) {
@@ -439,6 +440,11 @@ public class ServiceHelperTest {
     testSupport.addToPacket(NODE_PORT, TEST_NODE_PORT);
 
     verifyMissingServerServiceCreated(withNodePort(createServerService(), TEST_NODE_PORT));
+  }
+
+  private V1Service withoutSelectors(V1Service service) {
+    service.getSpec().selector(null);
+    return service;
   }
 
   private V1Service withNodePort(V1Service service, int nodePort) {
@@ -477,9 +483,10 @@ public class ServiceHelperTest {
   @Test
   public void onServerStepRunWithMatchingService_addToSko() {
     V1Service service =
-        new V1Service()
-            .spec(createServerServiceSpec())
-            .metadata(new V1ObjectMeta().putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1));
+        withoutSelectors(
+            new V1Service()
+                .spec(createServerServiceSpec())
+                .metadata(new V1ObjectMeta().putLabelsItem(RESOURCE_VERSION_LABEL, DOMAIN_V1)));
     expectReadServerService().returning(service);
 
     testSupport.runSteps(ServiceHelper.createForServerStep(terminalStep));
@@ -505,7 +512,9 @@ public class ServiceHelperTest {
   }
 
   private void verifyServerServiceReplaced(ServiceMutator mutator) {
-    verifyServerServiceReplaced(mutator.change(createServerService()), createServerService());
+    verifyServerServiceReplaced(
+        mutator.change(withoutSelectors(createServerService())),
+        withoutSelectors(createServerService()));
   }
 
   @Test
@@ -535,6 +544,9 @@ public class ServiceHelperTest {
 
   private V1ServiceSpec createUntypedServerServiceSpec() {
     return new V1ServiceSpec()
+        .putSelectorItem(DOMAINUID_LABEL, UID)
+        .putSelectorItem(SERVERNAME_LABEL, TEST_SERVER_NAME)
+        .putSelectorItem(CREATEDBYOPERATOR_LABEL, "true")
         .ports(Collections.singletonList(new V1ServicePort().port(TEST_PORT)));
   }
 
@@ -551,7 +563,7 @@ public class ServiceHelperTest {
   }
 
   private AsyncCallTestSupport.CannedResponse expectCreateServerService() {
-    return expectCreateService(createServerService());
+    return expectCreateService(withoutSelectors(createServerService()));
   }
 
   private AsyncCallTestSupport.CannedResponse expectCreateService(V1Service service) {
