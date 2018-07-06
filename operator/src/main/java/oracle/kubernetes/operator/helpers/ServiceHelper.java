@@ -97,9 +97,6 @@ public class ServiceHelper {
       if (isPublishNotReadyAddressesSupported()) {
         serviceSpec.setPublishNotReadyAddresses(Boolean.TRUE);
       }
-      if (nodePort == null) {
-        serviceSpec.clusterIP("None");
-      }
       return serviceSpec;
     }
 
@@ -115,6 +112,16 @@ public class ServiceHelper {
     @Override
     protected String getSpecType() {
       return nodePort == null ? "ClusterIP" : "NodePort";
+    }
+
+    @Override
+    protected Integer getNodePort() {
+      return nodePort;
+    }
+
+    @Override
+    protected boolean isUseSelectors() {
+      return false;
     }
 
     private boolean isPublishNotReadyAddressesSupported() {
@@ -149,14 +156,22 @@ public class ServiceHelper {
 
     ServerServiceStepContext(Step conflictStep, Packet packet) {
       super(conflictStep, packet);
-      serverName = (String) packet.get(ProcessingConstants.SERVER_NAME);
-      sko = ServerKubernetesObjectsManager.getOrCreate(info, getServerName());
+      this.serverName = (String) packet.get(ProcessingConstants.SERVER_NAME);
+      this.sko = ServerKubernetesObjectsManager.getOrCreate(info, getServerName());
     }
 
     @Override
     protected V1ServiceSpec createServiceSpec() {
-      return super.createServiceSpec()
-          .putSelectorItem(LabelConstants.SERVERNAME_LABEL, getServerName());
+      V1ServiceSpec serviceSpec = super.createServiceSpec();
+      if (isUseSelectors()) {
+        serviceSpec.putSelectorItem(LabelConstants.SERVERNAME_LABEL, getServerName());
+      }
+      return serviceSpec;
+    }
+
+    @Override
+    protected boolean isHeadless() {
+      return true;
     }
 
     @Override
@@ -218,12 +233,22 @@ public class ServiceHelper {
       return new V1Service().spec(createServiceSpec()).metadata(createMetadata());
     }
 
+    protected abstract Integer getNodePort();
+
     protected V1ServiceSpec createServiceSpec() {
-      return new V1ServiceSpec()
-          .type(getSpecType())
-          .putSelectorItem(LabelConstants.DOMAINUID_LABEL, getDomainUID())
-          .putSelectorItem(LabelConstants.CREATEDBYOPERATOR_LABEL, "true")
-          .ports(Collections.singletonList(createServicePort()));
+      V1ServiceSpec serviceSpec =
+          new V1ServiceSpec()
+              .type(getSpecType())
+              .ports(Collections.singletonList(createServicePort()));
+      if (isHeadless() && getNodePort() == null) {
+        serviceSpec.clusterIP("None");
+      }
+      if (isUseSelectors()) {
+        serviceSpec
+            .putSelectorItem(LabelConstants.DOMAINUID_LABEL, getDomainUID())
+            .putSelectorItem(LabelConstants.CREATEDBYOPERATOR_LABEL, "true");
+      }
+      return serviceSpec;
     }
 
     protected V1ObjectMeta createMetadata() {
@@ -253,6 +278,14 @@ public class ServiceHelper {
     protected abstract void logServiceCreated(String messageKey);
 
     protected abstract String getSpecType();
+
+    protected boolean isHeadless() {
+      return false;
+    }
+
+    protected boolean isUseSelectors() {
+      return true;
+    }
 
     protected abstract V1ServicePort createServicePort();
 
@@ -431,13 +464,21 @@ public class ServiceHelper {
     }
 
     protected V1ServiceSpec createServiceSpec() {
-      return super.createServiceSpec()
-          .putSelectorItem(LabelConstants.CLUSTERNAME_LABEL, clusterName);
+      V1ServiceSpec serviceSpec = super.createServiceSpec();
+      if (isUseSelectors()) {
+        serviceSpec.putSelectorItem(LabelConstants.CLUSTERNAME_LABEL, clusterName);
+      }
+      return serviceSpec;
     }
 
     @Override
     protected String getSpecType() {
       return "ClusterIP";
+    }
+
+    @Override
+    protected Integer getNodePort() {
+      return null;
     }
 
     protected V1ObjectMeta createMetadata() {
@@ -555,10 +596,12 @@ public class ServiceHelper {
       return "NodePort";
     }
 
+    protected Integer getNodePort() {
+      return networkAccessPoint.getPublicPort();
+    }
+
     protected V1ServicePort createServicePort() {
-      return new V1ServicePort()
-          .port(networkAccessPoint.getListenPort())
-          .nodePort(networkAccessPoint.getPublicPort());
+      return new V1ServicePort().port(networkAccessPoint.getListenPort()).nodePort(getNodePort());
     }
 
     protected V1ObjectMeta createMetadata() {

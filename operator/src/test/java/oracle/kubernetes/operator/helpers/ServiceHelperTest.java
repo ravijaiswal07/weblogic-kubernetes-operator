@@ -535,9 +535,6 @@ public class ServiceHelperTest {
 
   private V1ServiceSpec createUntypedServerServiceSpec() {
     return new V1ServiceSpec()
-        .putSelectorItem(DOMAINUID_LABEL, UID)
-        .putSelectorItem(SERVERNAME_LABEL, TEST_SERVER_NAME)
-        .putSelectorItem(CREATEDBYOPERATOR_LABEL, "true")
         .ports(Collections.singletonList(new V1ServicePort().port(TEST_PORT)));
   }
 
