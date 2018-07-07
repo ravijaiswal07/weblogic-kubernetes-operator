@@ -7,7 +7,12 @@ data:
   externalOperatorCert: {{ .externalOperatorCert }}
   {{- end }}
   serviceaccount: {{ .operatorServiceAccount }}
-  targetNamespaces: {{ join "," (keys .domainsNamespaces) }}
+{{- $domainsNamespaces := merge (dict) .domainsNamespaces -}}
+{{- $len := len $domainsNamespaces -}}
+{{- if eq $len 0 -}}
+{{-   $ignore := set $domainsNamespaces "default" (dict) -}}
+{{- end }}
+  targetNamespaces: {{ join "," (keys $domainsNamespaces) }}
 kind: ConfigMap
 metadata:
   labels:

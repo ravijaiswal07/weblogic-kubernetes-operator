@@ -1,6 +1,11 @@
 {{- define "operator.domainsNamespaces" }}
 {{- $scope := . -}}
-{{- range $key, $element := .domainsNamespaces -}}
+{{- $domainsNamespaces := merge (dict) .domainsNamespaces -}}
+{{- $len := len $domainsNamespaces -}}
+{{- if eq $len 0 -}}
+{{-   $ignore := set $domainsNamespaces "default" (dict) -}}
+{{- end -}}
+{{- range $key, $element := $domainsNamespaces -}}
 {{-   $args := merge (dict) $element $scope -}}
 {{-   $ignore := set $args "domainsNamespace" $key -}}
 {{-   include "operator.domainsNamespace" $args -}}
