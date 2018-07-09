@@ -6,7 +6,6 @@ Uses the following scope variables:
   domainUID (required)
   podDomainHomeDir (required)
   podDomainLogsDir (required)
-  internalOperatorCert (required)
   extraEnv (optional)
   extraContainerProperties (optional)
 */}}
@@ -19,7 +18,7 @@ env:
 - name: USER_MEM_ARGS
   value: '-Xms64m -Xmx256m '
 - name: INTERNAL_OPERATOR_CERT
-  value: {{ .internalOperatorCert }}
+  value: "%INTERNAL_OPERATOR_CERT%"
 - name: DOMAIN_UID
   value: {{ .domainUID }}
 - name: DOMAIN_NAME

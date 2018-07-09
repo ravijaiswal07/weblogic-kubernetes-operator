@@ -1,0 +1,2 @@
+operatorImage: wlsldi-v2.docker.oraclecorp.com/weblogic-operator:tmoreau-lc
+operatorImagePullPolicy: Never

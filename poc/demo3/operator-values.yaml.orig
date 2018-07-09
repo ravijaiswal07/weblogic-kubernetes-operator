@@ -1,0 +1,7 @@
+operatorNamespace: demo3-o-ns
+operatorServiceAccount: demo3-o-sa
+domainsNamespaces:
+  demo3-d-ns: {}
+operatorImage: wlsldi-v2.docker.oraclecorp.com/weblogic-operator:tmoreau-lc
+operatorImagePullPolicy: Never
+elkIntegrationEnabled: true

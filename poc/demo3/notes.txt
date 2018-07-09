@@ -40,10 +40,10 @@ how to run demo3
 
   cd demo3
 
-  # generate certs for the operator REST api
-  # copy the values file for creating the operator and customize it (including certs)
-
   create-domain-in-image.sh
+
+  cp operator-values.yaml.orig operator-values.yaml
+  ../kit/scripts/generate-internal-operator-certificate.sh demo3-o-ns >> operator-values.yaml
 
   helm install ../kit/charts/operator --name demo3-operator --values operator-values.yaml --wait
 
@@ -68,8 +68,8 @@ how to run demo3
 
   ../kit/runtime/simulate-operator-introspect-domain.sh demo3-d-ns demo3-domain-uid default
   ../kit/runtime/simulate-operator-generate-sitcfg.sh demo3-d-ns demo3-domain-uid default
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7300
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo3-d-ns demo3-domain-uid default default default demo3-domain as 7300 ms1 8300
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo3-o-ns demo3-d-ns demo3-domain-uid default default default demo3-domain as 7300
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo3-o-ns demo3-d-ns demo3-domain-uid default default default demo3-domain as 7300 ms1 8300
   ../kit/runtime/simulate-operator-stop-managed-server.sh demo3-d-ns demo3-domain-uid default default ms1
   ../kit/runtime/simulate-operator-stop-admin-server.sh demo3-d-ns demo3-domain-uid default default as
   ../kit/runtime/simulate-operator-remove-sitcfg.sh demo3-d-ns demo3-domain-uid default

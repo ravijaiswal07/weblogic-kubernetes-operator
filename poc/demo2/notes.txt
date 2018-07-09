@@ -55,6 +55,9 @@ how to run demo2
 
   helm install ../kit/charts/operator --name demo2-kubernetes-cluster --values kubernetes-cluster-values.yaml --wait
 
+  cp operator1-values.yaml.orig operator1-values.yaml
+  ../kit/scripts/generate-internal-operator-certificate.sh demo2-o1-ns >> operator1-values.yaml
+  ../kit/scripts/generate-external-operator-certificate.sh DNS:localhost >> operator1-values.yaml
   helm install ../kit/charts/operator --name demo2-operator1 --values operator1-values.yaml --wait
   kubectl -n demo2-d1-ns create secret generic demo2-domain1-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
   mkdir -p /scratch/k8s-dir/demo2-domain1-uid/domain-logs
@@ -64,6 +67,9 @@ how to run demo2
   create-domain-home.sh 1
   helm install ../kit/charts/domain --name demo2-domain1 --values domain1-values.yaml --wait
 
+  cp operator2-values.yaml.orig operator2-values.yaml
+  ../kit/bin/generate-internal-operator-certificate.sh demo2-o2-ns >> operator2-values.yaml
+  ../kit/bin/generate-external-operator-certificate.sh DNS:localhost >> operator2-values.yaml
   helm install ../kit/charts/operator --name demo2-operator2 --values operator2-values.yaml --wait
   kubectl -n demo2-d2-ns create secret generic demo2-domain2-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
   mkdir -p /scratch/k8s-dir/demo2-domain2-uid/domain-logs
@@ -86,16 +92,11 @@ how to run demo2
   # operator runtime tasks
 
   ../kit/runtime/simulate-operator-introspect-domain.sh demo2-d1-ns demo2-domain1-uid default
-
   ../kit/runtime/simulate-operator-generate-sitcfg.sh demo2-d1-ns demo2-domain1-uid default
-
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo2-d1-ns demo2-domain1-uid debug default default demo2-domain1 as 7100
-
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo2-d1-ns demo2-domain1-uid default default default demo2-domain1 as 7100 ms1 8100
+  ../kit/runtime/simulate-operator-start-admin-server.sh demo2-o1-ns demo2-d1-ns demo2-domain1-uid debug default default demo2-domain1 as 7100
+  ../kit/runtime/simulate-operator-start-managed-server.sh demo2-o1-ns demo2-d1-ns demo2-domain1-uid default default default demo2-domain1 as 7100 ms1 8100
   ../kit/runtime/simulate-operator-stop-managed-server.sh demo2-d1-ns demo2-domain1-uid default default ms1
-
   ../kit/runtime/simulate-operator-stop-admin-server.sh demo2-d1-ns demo2-domain1-uid debug default as
-
   ../kit/runtime/simulate-operator-remove-sitcfg.sh demo2-d1-ns demo2-domain1-uid default
 
   helm delete --purge demo2-domain2
