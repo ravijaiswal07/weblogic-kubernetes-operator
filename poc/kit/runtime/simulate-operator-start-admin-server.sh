@@ -13,6 +13,12 @@ export SITCFG=$6
 export DOMAIN_NAME=$7
 export ADMIN_SERVER_NAME=$8
 export ADMIN_SERVER_PORT=$9
+export DESIRED_STATE=${10}
+
+export STARTUP_MODE=""
+if [ "ADMIN" == "${DESIRED_STATE}" ]; then
+  export STARTUP_MODE=" -Dweblogic.management.startupMode=ADMIN"
+fi
 
 # simulate the operator starting the admin server:
 
@@ -38,6 +44,7 @@ sed -i.bak \
   -e "s|%DOMAIN_NAME%|${DOMAIN_NAME}|" \
   -e "s|%SITCFG_NAME%|${SITCFG}|" \
   -e "s|%INTERNAL_OPERATOR_CERT%|${INTERNAL_OPERATOR_CERT}|" \
+  -e "s|%STARTUP_MODE%|${STARTUP_MODE}|" \
 ${POD_YAML}
 rm ${POD_YAML}.bak
 kubectl apply -f ${POD_YAML}

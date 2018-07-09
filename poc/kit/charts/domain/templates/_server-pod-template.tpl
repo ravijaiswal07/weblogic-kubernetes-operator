@@ -14,7 +14,7 @@ command:
 - /weblogic-operator/scripts/startServer.sh
 env:
 - name: JAVA_OPTIONS
-  value: -Dweblogic.StdoutDebugEnabled=false
+  value: "-Dweblogic.StdoutDebugEnabled=false%STARTUP_MODE%"
 - name: USER_MEM_ARGS
   value: '-Xms64m -Xmx256m '
 - name: INTERNAL_OPERATOR_CERT

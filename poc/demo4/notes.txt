@@ -91,14 +91,14 @@ how to run demo4
   # use the domain crd to figure out which pod template to instantiate for the admin server
   # put the generated sit config file in a place the admin server pod can find it
   #kubectl get cm demo4-domain-uid-default-admin-server-pod-template-cm -o yaml
-  ../kit/runtime/simulate-operator-start-admin-server.sh weblogic-operator default demo4-domain-uid default default default demo4-domain as 7400
+  ../kit/runtime/simulate-operator-start-admin-server.sh weblogic-operator default demo4-domain-uid default default default demo4-domain as 7400 RUNNING
   #kubectl get po demo4-domain-uid-as -o yaml
 
   # use the domain topology to get the names of the clusters and their servers
   # use the domain crd to figure out which clustered servers should be running
   # use the domain crd to figure out what pod template to instantiate for the each managed server
   # put the generated sit config file in a place each managed server can find it
-  ../kit/runtime/simulate-operator-start-managed-server.sh weblogic-operator default demo4-domain-uid default default default demo4-domain as 7400 ms1 8400
+  ../kit/runtime/simulate-operator-start-managed-server.sh weblogic-operator default demo4-domain-uid default default default demo4-domain as 7400 ms1 8400 RUNNING
 
   ../kit/runtime/simulate-operator-stop-managed-server.sh default demo4-domain-uid default default ms1
 
