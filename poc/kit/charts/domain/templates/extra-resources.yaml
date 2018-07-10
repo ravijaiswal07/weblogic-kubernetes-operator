@@ -1,5 +1,0 @@
-{{ $values := .Values }}
-{{- range $idx, $element := .Values.extraResources }}
----
-{{ toYaml $element }}
-{{- end }}

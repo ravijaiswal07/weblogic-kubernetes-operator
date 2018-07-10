@@ -1,0 +1,16 @@
+{{ include "domain.validateInputs" .Values }}
+
+{{- $scope := merge (dict) .Values -}}
+{{- $ignore := set $scope "Files" .Files -}}
+{{- $ignore := set $scope "Chart" .Chart -}}
+
+{{ include "domain.domainIntrospectorTemplateConfigMaps" $scope }}
+{{ include "domain.sitCfgGeneratorTemplateConfigMaps" $scope }}
+{{ include "domain.adminServerPodTemplateConfigMaps" $scope }}
+{{ include "domain.adminServerServiceTemplateConfigMaps" $scope }}
+{{ include "domain.adminServerT3ServiceTemplateConfigMaps" $scope }}
+{{ include "domain.managedServerPodTemplateConfigMaps" $scope }}
+{{ include "domain.managedServerServiceTemplateConfigMaps" $scope }}
+{{ include "domain.domainLogsPV" $scope }}
+{{ include "domain.domainLogsPVC" $scope }}
+{{ include "domain.domainExtraResources" $scope }}

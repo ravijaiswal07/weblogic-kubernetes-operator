@@ -1,14 +1,15 @@
-{{- $values := .Values -}}
-{{- range $key, $element := $values.adminServerT3ServiceTemplates -}}
+{{- define "domain.adminServerT3ServiceTemplateConfigMaps" }}
+{{- $scope := . -}}
+{{- range $key, $element := $scope.adminServerT3ServiceTemplates -}}
 ---
 kind: ConfigMap
 metadata:
   labels:
     weblogic.createdByOperator: "true"
-    weblogic.operatorName: {{ $values.operatorNamespace }}
+    weblogic.operatorName: {{ $scope.operatorNamespace }}
     weblogic.resourceVersion: domain-v1
-  name: {{ $values.domainUID }}-{{ $key }}-admin-server-t3-service-template-cm
-  namespace: {{ $values.domainsNamespace }}
+  name: {{ $scope.domainUID }}-{{ $key }}-admin-server-t3-service-template-cm
+  namespace: {{ $scope.domainsNamespace }}
 data:
   server-service.yaml: |-
     apiVersion: v1
@@ -17,11 +18,11 @@ data:
       labels:
         weblogic.channelName: T3Channel
         weblogic.createdByOperator: "true"
-        weblogic.domainUID: {{ $values.domainUID }}
+        weblogic.domainUID: {{ $scope.domainUID }}
         weblogic.resourceVersion: domain-v1
         weblogic.serverName: %SERVER_NAME%
-      name: {{ $values.domainUID }}-%SERVER_NAME%-extchannel-t3channel
-      namespace: {{ $values.domainsNamespace }}
+      name: {{ $scope.domainUID }}-%SERVER_NAME%-extchannel-t3channel
+      namespace: {{ $scope.domainsNamespace }}
     spec:
       externalTrafficPolicy: Cluster
       ports:
@@ -31,7 +32,8 @@ data:
         targetPort: 30212
       selector:
         weblogic.createdByOperator: "true"
-        weblogic.domainUID: {{ $values.domainUID }}
+        weblogic.domainUID: {{ $scope.domainUID }}
         weblogic.serverName: %SERVER_NAME%
       type: NodePort
+{{- end }}
 {{- end }}

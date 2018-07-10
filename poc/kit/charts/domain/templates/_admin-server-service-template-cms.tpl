@@ -1,14 +1,15 @@
-{{- $values := .Values -}}
-{{- range $key, $element := $values.managedServerServiceTemplates -}}
+{{- define "domain.adminServerServiceTemplateConfigMaps" }}
+{{- $scope := . -}}
+{{- range $key, $element := $scope.adminServerServiceTemplates -}}
 ---
 kind: ConfigMap
 metadata:
   labels:
     weblogic.createdByOperator: "true"
-    weblogic.operatorName: {{ $values.operatorNamespace }}
+    weblogic.operatorName: {{ $scope.operatorNamespace }}
     weblogic.resourceVersion: domain-v1
-  name: {{ $values.domainUID }}-{{ $key }}-managed-server-service-template-cm
-  namespace: {{ $values.domainsNamespace }}
+  name: {{ $scope.domainUID }}-{{ $key }}-admin-server-service-template-cm
+  namespace: {{ $scope.domainsNamespace }}
 data:
   server-service.yaml: |-
     apiVersion: v1
@@ -18,20 +19,23 @@ data:
         service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
       labels:
         weblogic.createdByOperator: "true"
-        weblogic.domainUID: {{ $values.domainUID }}
+        weblogic.domainUID: {{ $scope.domainUID }}
         weblogic.resourceVersion: domain-v1
         weblogic.serverName: %SERVER_NAME%
-      name: {{ $values.domainUID }}-%SERVER_NAME%
-      namespace: {{ $values.domainsNamespace }}
+      name: {{ $scope.domainUID }}-%SERVER_NAME%
+      namespace: {{ $scope.domainsNamespace }}
     spec:
+      externalTrafficPolicy: Cluster
       ports:
-      - port: %SERVER_PORT%
+      - nodePort: 30901
+        port: %SERVER_PORT%
         protocol: TCP
         targetPort: %SERVER_PORT%
       publishNotReadyAddresses: true
       selector:
         weblogic.createdByOperator: "true"
-        weblogic.domainUID: {{ $values.domainUID }}
+        weblogic.domainUID: {{ $scope.domainUID }}
         weblogic.serverName: %SERVER_NAME%
-      type: ClusterIP
+      type: NodePort
+{{- end }}
 {{- end }}
