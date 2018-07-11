@@ -91,14 +91,13 @@ how to run demo2
 
   # operator runtime tasks
 
-  ../kit/runtime/simulate-operator-introspect-domain.sh demo2-d1-ns demo2-domain1-uid default
-  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo2-d1-ns demo2-domain1-uid default
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo2-o1-ns demo2-d1-ns demo2-domain1-uid debug default default demo2-domain1 as 7100 RUNNING
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo2-o1-ns demo2-d1-ns demo2-domain1-uid default default default demo2-domain1 as 7100 ms1 8100 RUNNING
-  #../kit/runtime/simulate-operator-start-managed-server.sh demo2-o1-ns demo2-d1-ns demo2-domain1-uid default default default demo2-domain1 as 7100 ms1 8100 ADMIN
-  ../kit/runtime/simulate-operator-stop-managed-server.sh demo2-d1-ns demo2-domain1-uid default default ms1
-  ../kit/runtime/simulate-operator-stop-admin-server.sh demo2-d1-ns demo2-domain1-uid debug default as
-  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo2-d1-ns demo2-domain1-uid default
+  ../kit/runtime/simulate-operator-introspect-domain.sh default demo2-d1-ns demo2-domain1-uid
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh default demo2-d1-ns demo2-domain1-uid
+  ../kit/runtime/simulate-operator-start-admin-server.sh debug default demo2-o1-ns demo2-d1-ns demo2-domain1-uid demo2-domain1 as 7100 RUNNING
+  ../kit/runtime/simulate-operator-start-managed-server.sh default default demo2-o1-ns demo2-d1-ns demo2-domain1-uid demo2-domain1 as 7100 ms1 8100 RUNNING
+  ../kit/runtime/simulate-operator-stop-managed-server.sh demo2-d1-ns demo2-domain1-uid ms1
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo2-d1-ns demo2-domain1-uid as
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh default demo2-domain1-uid
 
   helm delete --purge demo2-domain2
   kubectl delete secret -n demo2-d2-ns demo2-domain2-uid-domain-creds

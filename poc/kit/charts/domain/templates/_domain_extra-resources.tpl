@@ -1,6 +1,6 @@
 {{- define "domain.domainExtraResources" }}
-{{- range $idx, $element := .extraResources }}
+{{- range $idx, $element := .extraDomainResources }}
 ---
-{{ toYaml $element }}
+{{   toYaml $element }}
 {{- end }}
 {{- end }}

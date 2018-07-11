@@ -1,13 +1,5 @@
-{{/* vim: set filetype=mustache: */}}
-
 {{/*
 Prints out the extra pod container properties that a server pod template needs
-Uses the following scope variables:
-  domainUID (required)
-  podDomainHomeDir (required)
-  podDomainLogsDir (required)
-  extraEnv (optional)
-  extraContainerProperties (optional)
 */}}
 {{- define "domain.serverPodTemplateExtraContainerProperties" -}}
 command:
@@ -124,71 +116,29 @@ annotations:
 
 {{/*
 Creates a weblogic server pod template.
-Uses the following scope variables:
-  serverType (required, managed/admin)
-  templateName (required)
-  operatorNamespace (required)
-  domainUID (required)
-  domainsNamespace (required)
-  weblogicDomainCredentialsSecretName (required)
-  weblogicImage (required)
-  weblogicImagePullPolicy (required)
-  weblogicimagePullSecret (optional)
-  extraPodContainerProperties (optional)
-  extraVolumeMounts (optional)
-  extraVolumes (optional)
-  extraEnv (optional)
-  podDomainHomeDir (required)
-  podDomainLogsDir (required)
 */}}
 {{- define "domain.serverPodTemplate" -}}
-{{/* compute the server template specific values for this pod */}}
-{{- $type := (join "-" (list .serverType "server-pod-template" )) -}}
 {{- $podName := "%SERVER_NAME%" -}}
-{{- $configMapName := (join "-" (list .templateName $type "cm" )) -}}
-{{- $yamlName := "server-pod" -}}
 {{- $extraContainerProperties := include "domain.serverPodTemplateExtraContainerProperties" . | fromYaml -}}
 {{- $extraMetadataProperties := include "domain.serverPodTemplateExtraMetadataProperties" . | fromYaml -}}
 {{- $extraLabels := include "domain.serverPodTemplateExtraLabels" . | fromYaml -}}
 {{- $extraVolumeMounts := include "domain.serverPodTemplateExtraVolumeMounts" . | fromYaml -}}
 {{- $extraVolumes := include "domain.serverPodTemplateExtraVolumes" . | fromYaml -}}
-{{/* set up the scope needed to create the pod */}}
 {{- $args := merge (dict) (omit . "extraContainerProperties" "extraVolumeMounts" "extraVolumes" ) -}}
-{{- $ignore := set $args "configMapName" $configMapName -}}
 {{- $ignore := set $args "podName" $podName -}}
-{{- $ignore := set $args "yamlName" $yamlName -}}
 {{- $ignore := set $args "extraContainerProperties" $extraContainerProperties -}}
 {{- $ignore := set $args "extraMetadataProperties" $extraMetadataProperties -}}
 {{- $ignore := set $args "extraLabels" $extraLabels -}}
 {{- $ignore := set $args "extraVolumeMounts" $extraVolumeMounts.extraVolumeMounts -}}
 {{- $ignore := set $args "extraVolumes" $extraVolumes.extraVolumes -}}
-{{/* create the pod */}}
-{{ include "domain.weblogicPod" $args -}}
+{{- include "domain.weblogicPod" $args }}
 {{- end }}
 
 {{/*
 Creates a weblogic managed server pod template.
-Uses the following scope variables:
-  templateName (required)
-  operatorNamespace (required)
-  domainUID (required)
-  domainsNamespace (required)
-  weblogicDomainCredentialsSecretName (required)
-  weblogicImage (required)
-  weblogicImagePullPolicy (required)
-  weblogicimagePullSecret (optional)
-  extraPodContainerProperties (optional)
-  extraVolumeMounts (optional)
-  extraVolumes (optional)
-  extraEnv (optional)
-  podDomainHomeDir (required)
-  podDomainLogsDir (required)
 */}}
 {{- define "domain.managedServerPodTemplate" -}}
-{{/* compute the server template specific values for this pod */}}
-{{- $args := merge (dict) . -}}
-{{- $ignore := set $args "serverType" "managed" -}}
-{{ include "domain.serverPodTemplate" $args -}}
+{{- include "domain.serverPodTemplate" . }}
 {{- end }}
 
 {{/*
@@ -202,27 +152,11 @@ hostname: {{ .domainUID }}-%SERVER_NAME%
 
 {{/*
 Creates a weblogic admin server pod template.
-Uses the following scope variables:
-  templateName (required)
-  operatorNamespace (required)
-  domainUID (required)
-  domainsNamespace (required)
-  weblogicDomainCredentialsSecretName (required)
-  weblogicImage (required)
-  weblogicImagePullPolicy (required)
-  weblogicimagePullSecret (optional)
-  extraPodContainerProperties (optional)
-  extraVolumeMounts (optional)
-  extraVolumes (optional)
-  extraEnv (optional)
-  podDomainHomeDir (required)
-  podDomainLogsDir (required)
 */}}
 {{- define "domain.adminServerPodTemplate" -}}
-{{/* compute the server template specific values for this pod */}}
 {{- $extraPodSpecProperties := include "domain.adminServerPodTemplateExtraPodSpecProperties" . | fromYaml -}}
 {{- $args := merge (dict) . -}}
 {{- $ignore := set $args "serverType" "admin" -}}
 {{- $ignore := set $args "extraPodSpecProperties" $extraPodSpecProperties -}}
-{{ include "domain.serverPodTemplate" $args -}}
+{{- include "domain.serverPodTemplate" $args }}
 {{- end }}

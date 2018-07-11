@@ -1,20 +1,14 @@
-{{/* vim: set filetype=mustache: */}}
-
 {{/*
-Prints out the extra pod container properties that a sit cfg generator pod template needs
+Prints out the extra pod container template properties that the domain introspector pod needs
 */}}
-{{- define "domain.sitCfgGeneratorPodTemplateExtraContainerProperties" -}}
+{{- define "domain.domainIntrospectorPodTemplateExtraContainerProperties" -}}
 command:
-- /weblogic-operator/scripts/generateSitCfg.sh
+- /weblogic-operator/scripts/introspectDomain.sh
 env:
 - name: DOMAIN_UID
-  value: {{ .domainUID }}
+  value: {{ .domainUid }}
 - name: DOMAIN_HOME
   value: {{ .podDomainHomeDir }}
-- name: DOMAIN_LOGS
-  value: {{ .podDomainLogsDir }}
-- name: SITCFG_NAME
-  value: {{ .templateName }}
 - name: DOMAINS_NAMESPACE
   value: {{ .domainsNamespace }}
 {{- if .extraEnv }}
@@ -23,7 +17,7 @@ env:
 livenessProbe:
   exec:
     command:
-    - /weblogic-operator/scripts/sitCfgGeneratorLivenessProbe.sh
+    - /weblogic-operator/scripts/introspectorLivenessProbe.sh
   failureThreshold: 25
   initialDelaySeconds: 30
   periodSeconds: 10
@@ -32,7 +26,7 @@ livenessProbe:
 readinessProbe:
   exec:
     command:
-    - /weblogic-operator/scripts/sitCfgGeneratorReadinessProbe.sh
+    - /weblogic-operator/scripts/introspectorReadinessProbe.sh
   failureThreshold: 1
   initialDelaySeconds: 2
   periodSeconds: 5
@@ -44,12 +38,12 @@ readinessProbe:
 {{- end }}
 
 {{/*
-Creates a pod template that generates a situational configuration for a weblogic domain.
+Creates a pod template that introspects the weblogic domain.
 */}}
-{{- define "domain.sitCfgGeneratorPodTemplate" -}}
-{{- $extraContainerProperties := include "domain.sitCfgGeneratorPodTemplateExtraContainerProperties" . | fromYaml -}}
+{{- define "domain.domainIntrospectorPodTemplate" -}}
+{{- $extraContainerProperties := include "domain.domainIntrospectorPodTemplateExtraContainerProperties" . | fromYaml -}}
 {{- $args := merge (dict) (omit . "extraContainerProperties") -}}
-{{- $ignore := set $args "podName" "sitcfg-generator" -}}
+{{- $ignore := set $args "podName" "domain-introspector" -}}
 {{- $ignore := set $args "extraContainerProperties" $extraContainerProperties -}}
 {{- include "domain.weblogicPod" $args }}
 {{- end }}

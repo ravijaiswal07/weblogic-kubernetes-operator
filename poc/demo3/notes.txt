@@ -66,13 +66,13 @@ how to run demo3
   #   clusterDefaults:
   #     replicas: 1
 
-  ../kit/runtime/simulate-operator-introspect-domain.sh demo3-d-ns demo3-domain-uid default
-  ../kit/runtime/simulate-operator-generate-sitcfg.sh demo3-d-ns demo3-domain-uid default
-  ../kit/runtime/simulate-operator-start-admin-server.sh demo3-o-ns demo3-d-ns demo3-domain-uid default default default demo3-domain as 7300 RUNNING
-  ../kit/runtime/simulate-operator-start-managed-server.sh demo3-o-ns demo3-d-ns demo3-domain-uid default default default demo3-domain as 7300 ms1 8300 RUNNING
-  ../kit/runtime/simulate-operator-stop-managed-server.sh demo3-d-ns demo3-domain-uid default default ms1
-  ../kit/runtime/simulate-operator-stop-admin-server.sh demo3-d-ns demo3-domain-uid default default as
-  ../kit/runtime/simulate-operator-remove-sitcfg.sh demo3-d-ns demo3-domain-uid default
+  ../kit/runtime/simulate-operator-introspect-domain.sh default demo3-d-ns demo3-domain-uid
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh default demo3-d-ns demo3-domain-uid
+  ../kit/runtime/simulate-operator-start-admin-server.sh default default demo3-o-ns demo3-d-ns demo3-domain-uid demo3-domain as 7300 RUNNING
+  ../kit/runtime/simulate-operator-start-managed-server.sh default default demo3-o-ns demo3-d-ns demo3-domain-uid demo3-domain as 7300 ms1 8300 RUNNING
+  ../kit/runtime/simulate-operator-stop-managed-server.sh demo3-d-ns demo3-domain-uid ms1
+  ../kit/runtime/simulate-operator-stop-admin-server.sh demo3-d-ns demo3-domain-uid as
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh default demo3-domain-uid
 
   helm delete --purge demo3-domain
 

@@ -50,8 +50,6 @@ how to run demo4
   #  - resources for the domains (target) namespace
   #helm install ../kit/charts/operator --name demo4-operator-test --values operator-values.yaml --dry-run --debug
   helm install ../kit/charts/operator --name demo4-operator --values operator-values.yaml --wait
-  #kubectl get cm -n weblogic-operator weblogic-operator-cm -o yaml
-  #kubectl get cm -n default weblogic-domain-cm -o yaml | grep ": |"
 
   # create a kubernetes secret holding that domain's admin credentials
   kubectl -n default create secret generic demo4-domain-uid-domain-creds --from-literal=username=weblogic --from-literal=password=welcome1
@@ -77,34 +75,31 @@ how to run demo4
   # simulate the operator runtime
   #   note: the operator has access to the domain crd
 
-  # use the domain crd to figure out which pod template to instantiate to create
+  # use the domain crd to figure out which template to instantiate to create
   # a pod that introspects the domain and returns its topology
-  ../kit/runtime/simulate-operator-introspect-domain.sh default demo4-domain-uid default
+  ../kit/runtime/simulate-operator-introspect-domain.sh default default demo4-domain-uid
 
   # use the domain crd to figure out which template to instantiate to create a
   # situational config file for the domain
-  ../kit/runtime/simulate-operator-generate-sitcfg.sh default demo4-domain-uid default
-  #kubectl get cm demo4-domain-uid-default-sitcfg-cm -o yaml
+  ../kit/runtime/simulate-operator-generate-sitcfg.sh default default demo4-domain-uid
 
   # use the domain topology to get the name of the admin server
   # use the domain crd to figure out whether the admin server should be running
-  # use the domain crd to figure out which pod template to instantiate for the admin server
+  # use the domain crd to figure out which template to instantiate for the admin server
   # put the generated sit config file in a place the admin server pod can find it
-  #kubectl get cm demo4-domain-uid-default-admin-server-pod-template-cm -o yaml
-  ../kit/runtime/simulate-operator-start-admin-server.sh weblogic-operator default demo4-domain-uid default default default demo4-domain as 7400 RUNNING
-  #kubectl get po demo4-domain-uid-as -o yaml
+  ../kit/runtime/simulate-operator-start-admin-server.sh default default weblogic-operator default demo4-domain-uid demo4-domain as 7400 RUNNING
 
   # use the domain topology to get the names of the clusters and their servers
   # use the domain crd to figure out which clustered servers should be running
-  # use the domain crd to figure out what pod template to instantiate for the each managed server
+  # use the domain crd to figure out which template to instantiate for the each managed server
   # put the generated sit config file in a place each managed server can find it
-  ../kit/runtime/simulate-operator-start-managed-server.sh weblogic-operator default demo4-domain-uid default default default demo4-domain as 7400 ms1 8400 RUNNING
+  ../kit/runtime/simulate-operator-start-managed-server.sh default default weblogic-operator default demo4-domain-uid demo4-domain as 7400 ms1 8400 RUNNING
 
-  ../kit/runtime/simulate-operator-stop-managed-server.sh default demo4-domain-uid default default ms1
+  ../kit/runtime/simulate-operator-stop-managed-server.sh default demo4-domain-uid ms1
 
-  ../kit/runtime/simulate-operator-stop-admin-server.sh default demo4-domain-uid default default as
+  ../kit/runtime/simulate-operator-stop-admin-server.sh default demo4-domain-uid as
 
-  ../kit/runtime/simulate-operator-remove-sitcfg.sh default demo4-domain-uid default
+  ../kit/runtime/simulate-operator-remove-sitcfg.sh default demo4-domain-uid
 
   helm delete --purge demo4-domain
 
