@@ -29,6 +29,10 @@ build:
     code: |
       echo "Building Oracle WebLogic Server Kubernetes Operator..."
       echo "The branch and commit id are $WERCKER_GIT_BRANCH, $WERCKER_GIT_COMMIT"
+      export IMAGE_TAG_OPERATOR="${IMAGE_TAG_OPERATOR:-${WERCKER_GIT_BRANCH//[_\/]/-}}"
+      if [ "$IMAGE_TAG_OPERATOR" = "master" ]; then
+        export IMAGE_TAG_OPERATOR="latest"
+      fi
   - script:
     name: Install pre-reqs
     code: |
@@ -37,18 +41,6 @@ build:
     goals: clean install
     version: 3.5.2
     cache_repo: true
-  - script:
-    name: Copy built-artifacts into the image
-    code: |
-      mkdir /operator
-      mkdir /operator/lib
-      cp -R src/scripts/* /operator/
-      cp operator/target/weblogic-kubernetes-operator-1.0.jar /operator/weblogic-kubernetes-operator.jar
-      cp operator/target/lib/*.jar /operator/lib/
-      export IMAGE_TAG_OPERATOR="${IMAGE_TAG_OPERATOR:-${WERCKER_GIT_BRANCH//[_\/]/-}}"
-      if [ "$IMAGE_TAG_OPERATOR" = "master" ]; then
-        export IMAGE_TAG_OPERATOR="latest"
-      fi
   - internal/docker-build:
     image-name: $REPO_REPOSITORY:$IMAGE_TAG_OPERATOR
   - internal/docker-push:
