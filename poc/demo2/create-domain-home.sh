@@ -33,6 +33,7 @@ export DOMAIN_PVS_DIR="${PVS_DIR}/${DOMAIN_UID}"
 export DOMAIN_HOME_PV_DIR="${DOMAIN_PVS_DIR}${POD_DOMAIN_HOME_DIR}"
 export DOMAIN_LOGS_PV_DIR="${DOMAIN_PVS_DIR}${POD_DOMAIN_LOGS_DIR}"
 
+#${OPERATOR_SAMPLES}/create-domain-home-with-dynamic-cluster.sh
 ${OPERATOR_SAMPLES}/create-domain-home-with-configured-cluster.sh
 cp -r ${DOMAIN_PATH} ${DOMAIN_HOME_PV_DIR}
 ${OPERATOR_SAMPLES}/patch-domain-home.sh ${DOMAIN_HOME_PV_DIR}

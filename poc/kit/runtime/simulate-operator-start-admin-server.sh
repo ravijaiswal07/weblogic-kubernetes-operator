@@ -5,14 +5,13 @@ set -x
 export THIS_DIR=`dirname ${BASH_SOURCE[0]}`
 
 export TEMPLATE=$1
-export SITCFG=$2
-export OPERATOR_NAMESPACE=$3
-export DOMAINS_NAMESPACE=$4
-export DOMAIN_UID=$5
-export DOMAIN_NAME=$6
-export ADMIN_SERVER_NAME=$7
-export ADMIN_SERVER_PORT=$8
-export DESIRED_STATE=$9
+export OPERATOR_NAMESPACE=$2
+export DOMAINS_NAMESPACE=$3
+export DOMAIN_UID=$4
+export DOMAIN_NAME=$5
+export ADMIN_SERVER_NAME=$6
+export ADMIN_SERVER_PORT=$7
+export DESIRED_STATE=$8
 
 export STARTUP_MODE=""
 if [ "ADMIN" == "${DESIRED_STATE}" ]; then
@@ -41,7 +40,7 @@ sed -i.bak \
   -e "s|'%SERVER_PORT_AS_INT%'|${ADMIN_SERVER_PORT}|" \
   -e "s|\"%SERVER_PORT_AS_INT%\"|${ADMIN_SERVER_PORT}|" \
   -e "s|%DOMAIN_NAME%|${DOMAIN_NAME}|" \
-  -e "s|%SITCFG_NAME%|${SITCFG}|" \
+  -e "s|%TEMPLATE_NAME%|${TEMPLATE}|" \
   -e "s|%INTERNAL_OPERATOR_CERT%|${INTERNAL_OPERATOR_CERT}|" \
   -e "s|%STARTUP_MODE%|${STARTUP_MODE}|" \
 ${RESOURCES_YAML}

@@ -24,9 +24,6 @@ The minimum bar for creating a pod that has access to the domain home
       imagePullPolicy: {{ .weblogicImagePullPolicy }}
       name: weblogic-server
       volumeMounts:
-      - name: weblogic-credentials-volume
-        mountPath: /weblogic-operator/secrets
-        readOnly: true
       - name: weblogic-domain-cm-volume
         mountPath: /weblogic-operator/scripts
         readOnly: true
@@ -37,10 +34,6 @@ The minimum bar for creating a pod that has access to the domain home
 {{ toYaml .extraContainerProperties | trim | indent 6 }}
 {{- end }}
     volumes:
-    - name: weblogic-credentials-volume
-      secret:
-        defaultMode: 420
-        secretName:  {{ .weblogicDomainCredentialsSecretName }}
     - name: weblogic-domain-cm-volume
       configMap:
         defaultMode: 365

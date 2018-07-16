@@ -61,9 +61,6 @@ how to run demo4
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chown 1000"
   #  /usr/local/packages/aime/ias/run_as_root "find /scratch/k8s-dir/ -name '*' | xargs chgrp 1000"
 
-  # copy the values file for creating a domain and customize it for this domain
-  # (including the internal operator REST cert generated earlier)
-
   # create the domain's kubernetes resources
   helm install ../kit/charts/domain --name demo4-domain --values domain-values.yaml --wait
 
@@ -79,27 +76,23 @@ how to run demo4
   # a pod that introspects the domain and returns its topology
   ../kit/runtime/simulate-operator-introspect-domain.sh default default demo4-domain-uid
 
-  # use the domain crd to figure out which template to instantiate to create a
-  # situational config file for the domain
-  ../kit/runtime/simulate-operator-generate-sitcfg.sh default default demo4-domain-uid
-
   # use the domain topology to get the name of the admin server
   # use the domain crd to figure out whether the admin server should be running
   # use the domain crd to figure out which template to instantiate for the admin server
   # put the generated sit config file in a place the admin server pod can find it
-  ../kit/runtime/simulate-operator-start-admin-server.sh default default weblogic-operator default demo4-domain-uid demo4-domain as 7400 RUNNING
+  ../kit/runtime/simulate-operator-start-admin-server.sh default weblogic-operator default demo4-domain-uid demo4-domain as 7400 RUNNING
 
   # use the domain topology to get the names of the clusters and their servers
   # use the domain crd to figure out which clustered servers should be running
   # use the domain crd to figure out which template to instantiate for the each managed server
   # put the generated sit config file in a place each managed server can find it
-  ../kit/runtime/simulate-operator-start-managed-server.sh default default weblogic-operator default demo4-domain-uid demo4-domain as 7400 ms1 8400 RUNNING
+  ../kit/runtime/simulate-operator-start-managed-server.sh default weblogic-operator default demo4-domain-uid demo4-domain as 7400 ms1 8400 RUNNING
 
   ../kit/runtime/simulate-operator-stop-managed-server.sh default demo4-domain-uid ms1
 
   ../kit/runtime/simulate-operator-stop-admin-server.sh default demo4-domain-uid as
 
-  ../kit/runtime/simulate-operator-remove-sitcfg.sh default demo4-domain-uid
+  ../kit/runtime/simulate-operator-remove-server-resources.sh default demo4-domain-uid
 
   helm delete --purge demo4-domain
 
@@ -110,4 +103,3 @@ how to run demo4
   docker rmi demo4-image:latest
 
   helm delete --purge demo4-operator
-

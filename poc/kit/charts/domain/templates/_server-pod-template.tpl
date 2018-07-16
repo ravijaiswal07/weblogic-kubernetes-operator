@@ -73,8 +73,11 @@ Prints out the extra volume mounts that a server pod template needs
 */}}
 {{- define "domain.serverPodTemplateExtraVolumeMounts" -}}
 extraVolumeMounts:
-- name: sitcfg-cm-volume
-  mountPath: /weblogic-operator/sitcfg
+- name: server-cm-volume
+  mountPath: /weblogic-operator/server/cm
+  readOnly: true
+- name: server-secret-volume
+  mountPath: /weblogic-operator/server/secret
   readOnly: true
 {{- if .domainLogsPersistentVolumeDir }}
 - name: weblogic-domain-logs-storage-volume
@@ -90,10 +93,14 @@ Prints out the extra volumes that a server pod template needs
 */}}
 {{- define "domain.serverPodTemplateExtraVolumes" -}}
 extraVolumes:
-- name: sitcfg-cm-volume
+- name: server-cm-volume
   configMap:
     defaultMode: 365
-    name: {{ .domainUID }}-%SITCFG_NAME%-sitcfg-cm
+    name: {{ .domainUID }}-%TEMPLATE_NAME%-server-cm
+- name: server-secret-volume
+  secret:
+    defaultMode: 420
+    secretName: {{ .domainUID }}-%TEMPLATE_NAME%-server-secret
 {{- if .domainLogsPersistentVolumeDir }}
 - name: weblogic-domain-logs-storage-volume
   persistentVolumeClaim:

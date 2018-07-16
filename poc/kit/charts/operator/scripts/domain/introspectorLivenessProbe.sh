@@ -1,9 +1,9 @@
 #!/bin/bash
-CONFIG_MAP="/u01/introspection-results.yaml"
-if [ -f $CONFIG_MAP ]; then
+export OUTPUT_DIR="/u01"
+export TOPOLOGY_YAML="${OUTPUT_DIR}/topology.yaml"
+if [ -f $TOPOLOGY_YAML ]; then
   exit 0
-else
-  echo "Error : ${CONFIG_MAP} not found."
-  exit 1
 fi
+echo "${TOPOLOGY_YAML} not found."
+exit 1
 

@@ -123,12 +123,14 @@ echo "Arguments=${USER_MEM_ARGS} -XX\:+UnlockExperimentalVMOptions -XX\:+UseCGro
 
 echo "Copy the generated situational config to the domain home"
 mkdir ${DOMAIN_HOME}/optconfig
-cp /weblogic-operator/sitcfg/operator-situational-config.xml ${DOMAIN_HOME}/optconfig
+cp /weblogic-operator/server/cm/operator-situational-config.xml ${DOMAIN_HOME}/optconfig
+
+echo "Copy the generated boot properties to the domain home"
+mkdir -p ${DOMAIN_HOME}/servers/${SERVER_NAME}/security
+cp /weblogic-operator/server/cm/boot.properties ${DOMAIN_HOME}/servers/${SERVER_NAME}/security
 
 echo "Start the server"
 wlst.sh -skipWLSModuleScanning /weblogic-operator/scripts/start-server.py ${DOMAIN_UID}
-
-cat ${DOMAIN_HOME}/servers/${SERVER_NAME}/security/boot.properties
 
 echo "Wait indefinitely so that the Kubernetes pod does not exit and try to restart"
 while true; do sleep 60; done

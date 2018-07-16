@@ -12,7 +12,7 @@ while [ "${readyHave}" != "${readyWant}" -a ${iter} -lt 101 ] ; do
   readyHave=`kubectl get pod -n ${NAMESPACE} ${POD} -o jsonpath='{.status.containerStatuses[0].ready}'`
   echo readyHave=${readyHave}
   if [ "${readyHave}" != "${readyWant}" ] ; then
-    echo "waiting for ${POD_NAME} to start, attempt ${iter} : ready=${readyHave}"
+    echo "waiting for ${POD} to start, attempt ${iter} : ready=${readyHave}"
     iter=`expr $iter + 1`
     sleep 10
   else
