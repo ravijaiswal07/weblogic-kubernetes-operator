@@ -28,20 +28,6 @@
   <build>
     <plugins>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-failsafe-plugin</artifactId>
-        <version>2.22.0</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>integration-test</goal>
-              <goal>verify</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-      
-      <plugin>
         <groupId>com.coveo</groupId>
         <artifactId>fmt-maven-plugin</artifactId>
         <version>2.4.0</version>
@@ -97,9 +83,6 @@
   <profiles>
     <profile>
       <id>helm-integration-test</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-      </activation>
       <build>
         <plugins>
           <plugin>
