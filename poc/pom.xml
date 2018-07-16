@@ -97,6 +97,9 @@
   <profiles>
     <profile>
       <id>helm-integration-test</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
       <build>
         <plugins>
           <plugin>
