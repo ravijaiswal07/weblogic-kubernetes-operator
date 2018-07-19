@@ -81,8 +81,13 @@
 #   LB_TYPE        Load balancer type. Can be 'TRAEFIK', 'VOYAGER', or 'APACHE'.
 #                  Default is 'TRAEFIK'.
 #
-#   VERBOSE        Set to 'true' to echo verbose output to stdout.
+#   VERBOSE        Set to 'true' to echo verbose tracing to stdout.
 #                  Default is 'false'.
+#
+#   DEBUG_OUT      Set to 'tee' to echo various command output to stdout that
+#                  is normally only stored in files.  Set to 'cat' to echo such
+#                  commands via 'cat' instead of 'tee'.   Set to 'file' to
+#                  only put the output in files.  Default is 'file'.
 #
 #   QUICKTEST      When set to "true", limits testing to a subset of
 #                  of the tests.
@@ -217,7 +222,7 @@ function renewLease {
   if [ ! "$LEASE_ID" = "" ]; then
     # RESULT_DIR may not have been created yet, so use /tmp
     local outfile=/tmp/acc_test_renew_lease.out
-    $SCRIPTPATH/lease.sh -r "$LEASE_ID" 2>&1 | tee $outfile
+    $SCRIPTPATH/lease.sh -r "$LEASE_ID" 2>&1 | opt_tee $outfile
     if [ $? -ne 0 ]; then
       trace "Lease renew error:"
       echo "" >> $outfile
@@ -370,6 +375,24 @@ function trace {
   echo "[`date '+%m-%d-%YT%H:%M:%S'`] [secs=$SECONDS] [test=$TEST_ID] [fn=${FUNCNAME[1]}]: ""$@"
 }
 
+#
+# opt_tee <filename>
+# Use this function in place of 'tee' for most use cases.
+# See the description of 'DEBUG_OUT' above for information about this function
+#
+function opt_tee {
+  local filename="${1?}"
+  if [ "$DEBUG_OUT" = "tee" ]; then
+    tee $filename
+  elif [ "$DEBUG_OUT" = "cat" ]; then
+    cat > $filename
+    cat $filename
+  else
+    cat > $filename
+  fi
+  echo "[`date '+%m-%d-%YT%H:%M:%S'`] [secs=$SECONDS] [test=$TEST_ID] [fn=${FUNCNAME[1]}]: Output from last command is in ""$1"
+}
+
 # 
 # state_dump <dir-suffix>
 #   - called at the end of a run, and from fail
@@ -388,6 +411,7 @@ function state_dump {
      local PROJECT_ROOT="`cat /tmp/test_suite.project_root`"
      local SCRIPTPATH="$PROJECT_ROOT/src/integration-tests/bash"
      local LEASE_ID="`cat /tmp/test_suite.lease_id`"
+     local DEBUG_OUT="`cat /tmp/test_suite.debug_out`"
 
      if [ ! -d "$RESULT_DIR" ]; then
         trace State dump exiting early.  RESULT_DIR \"$RESULT_DIR\" does not exist or is not a directory.
@@ -409,8 +433,8 @@ function state_dump {
   #   get domains is in its own command since this can fail if domain CRD undefined
 
   trace Dumping kubectl gets to kgetmany.out and kgetdomains.out in ${DUMP_DIR}
-  kubectl get all,crd,cm,pv,pvc,ns,roles,rolebindings,clusterroles,clusterrolebindings,secrets --show-labels=true --all-namespaces=true 2>&1 | tee ${DUMP_DIR}/kgetmany.out
-  kubectl get domains --show-labels=true --all-namespaces=true 2>&1 | tee ${DUMP_DIR}/kgetdomains.out
+  kubectl get all,crd,cm,pv,pvc,ns,roles,rolebindings,clusterroles,clusterrolebindings,secrets --show-labels=true --all-namespaces=true 2>&1 | opt_tee ${DUMP_DIR}/kgetmany.out
+  kubectl get domains --show-labels=true --all-namespaces=true 2>&1 | opt_tee ${DUMP_DIR}/kgetdomains.out
 
   # Get all pod logs and redirect/copy to files 
 
@@ -428,15 +452,15 @@ function state_dump {
     for pod in $pods; do
       local logfile=${DUMP_DIR}/pod-log.${namespace}.${pod}
       local descfile=${DUMP_DIR}/pod-describe.${namespace}.${pod}
-      kubectl log $pod -n $namespace 2>&1 | tee $logfile
-      kubectl describe pod $pod -n $namespace 2>&1 | tee $descfile
+      kubectl log $pod -n $namespace 2>&1 | opt_tee $logfile
+      kubectl describe pod $pod -n $namespace 2>&1 | opt_tee $descfile
     done
   done
 
   # use a job to archive PV, /scratch mounts to PV_ROOT in the K8S cluster
   trace "Archiving pv directory using a kubernetes job.  Look for it on k8s cluster in $PV_ROOT/acceptance_test_pv_archive"
   local outfile=${DUMP_DIR}/archive_pv_job.out
-  $SCRIPTPATH/job.sh "/scripts/archive.sh /scratch/acceptance_test_pv /scratch/acceptance_test_pv_archive" 2>&1 | tee ${outfile}
+  $SCRIPTPATH/job.sh "/scripts/archive.sh /scratch/acceptance_test_pv /scratch/acceptance_test_pv_archive" 2>&1 | opt_tee ${outfile}
   if [ "$?" = "0" ]; then
      trace Job complete.
   else
@@ -445,12 +469,12 @@ function state_dump {
 
   if [ ! "$LEASE_ID" = "" ]; then
     # release the lease if we own it
-    ${SCRIPTPATH}/lease.sh -d "$LEASE_ID" 2>&1 | tee ${RESULT_DIR}/release_lease.out
+    ${SCRIPTPATH}/lease.sh -d "$LEASE_ID" 2>&1 | opt_tee ${RESULT_DIR}/release_lease.out
     if [ "$?" = "0" ]; then
       trace Lease released.
     else
       trace Lease could not be released:
-      cat /tmp/release_lease.out 
+      cat /${RESULT_DIR}/release_lease.out 
     fi
   fi
 
@@ -498,6 +522,7 @@ function ctrl_c() {
     declare_new_test_from_trap 1 run_aborted_with_ctrl_c
     # disable the trap:
     trap - INT
+    set -o pipefail
     fail "Trapped CTRL-C"
 }
 
@@ -731,12 +756,12 @@ function deploy_operator {
       local outfile="${TMP_DIR}/create-weblogic-operator-helm.out"
       trace "Run helm install to deploy the weblogic operator, see \"$outfile\" for tracking."
       cd $PROJECT_ROOT/kubernetes/helm-charts
-      helm install weblogic-operator --name ${NAMESPACE} -f $inputs --namespace ${NAMESPACE} 2>&1 | tee ${outfile}
+      helm install weblogic-operator --name ${NAMESPACE} -f $inputs --namespace ${NAMESPACE} 2>&1 | opt_tee ${outfile}
       operator_ready_wait $opkey
     else
       local outfile="${TMP_DIR}/create-weblogic-operator.sh.out"
       trace "Run the script to deploy the weblogic operator, see \"$outfile\" for tracking."
-      sh $PROJECT_ROOT/kubernetes/create-weblogic-operator.sh -i $inputs -o $USER_PROJECTS_DIR 2>&1 | tee ${outfile}
+      sh $PROJECT_ROOT/kubernetes/create-weblogic-operator.sh -i $inputs -o $USER_PROJECTS_DIR 2>&1 | opt_tee ${outfile}
     fi
 
     if [ "$?" = "0" ]; then
@@ -977,7 +1002,7 @@ function run_create_domain_job {
 
     # Note that the job.sh job mounts PV_ROOT to /scratch and runs as UID 1000,
     # so PV_ROOT must already exist and have 777 or UID=1000 permissions.
-    $SCRIPTPATH/job.sh "mkdir -p /scratch/acceptance_test_pv/$DOMAIN_STORAGE_DIR" 2>&1 | tee ${outfile}
+    $SCRIPTPATH/job.sh "mkdir -p /scratch/acceptance_test_pv/$DOMAIN_STORAGE_DIR" 2>&1 | opt_tee ${outfile}
     if [ "$?" = "0" ]; then
        cat ${outfile} | sed 's/^/+/g'
        trace Job complete.  Directory created on k8s cluster.
@@ -991,11 +1016,11 @@ function run_create_domain_job {
     if [ "$USE_HELM" = "true" ]; then
       trace "Run helm install to create the domain, see \"$outfile\" for tracing."
       cd $PROJECT_ROOT/kubernetes/helm-charts
-      helm install weblogic-domain --name $1 -f $inputs --namespace ${NAMESPACE} 2>&1 | tee ${outfile}
+      helm install weblogic-domain --name $1 -f $inputs --namespace ${NAMESPACE} 2>&1 | opt_tee ${outfile}
     else
       trace "Run the script to create the domain, see \"$outfile\" for tracing."
 
-      sh $PROJECT_ROOT/kubernetes/create-weblogic-domain.sh -i $inputs -o $USER_PROJECTS_DIR 2>&1 | tee ${outfile}
+      sh $PROJECT_ROOT/kubernetes/create-weblogic-domain.sh -i $inputs -o $USER_PROJECTS_DIR 2>&1 | opt_tee ${outfile}
     fi
 
     if [ "$?" = "0" ]; then
@@ -1741,7 +1766,7 @@ function test_mvn_integration_local {
     [ "$?" = "0" ] || fail "Error: Could not find mvn in path."
 
     local mstart=`date +%s`
-    mvn -P integration-tests clean install > $RESULT_DIR/mvn.out 2>&1
+    mvn -P integration-tests clean install 2>&1 | opt_tee $RESULT_DIR/mvn.out
     # Clean up clusteroles created by mvn build 
     kubectl delete clusterrole weblogic-operator-cluster-role-nonresource
     kubectl delete clusterrole weblogic-operator-cluster-role
@@ -1753,7 +1778,7 @@ function test_mvn_integration_local {
 
     confirm_mvn_build $RESULT_DIR/mvn.out
 
-    docker build -t "${IMAGE_NAME_OPERATOR}:${IMAGE_TAG_OPERATOR}" --no-cache=true . 2>&1 | tee $RESULT_DIR/docker_build_tag.out
+    docker build -t "${IMAGE_NAME_OPERATOR}:${IMAGE_TAG_OPERATOR}" --no-cache=true . 2>&1 | opt_tee $RESULT_DIR/docker_build_tag.out
     [ "$?" = "0" ] || fail "Error:  Failed to docker tag operator image, see $RESULT_DIR/docker_build_tag.out".
 
     declare_test_pass
@@ -1765,7 +1790,7 @@ function test_mvn_integration_wercker {
     trace "Running mvn -P integration-tests install.  Output in $RESULT_DIR/mvn.out"
 
     local mstart=`date +%s`
-    mvn -P integration-tests install 2>&1 | tee $RESULT_DIR/mvn.out
+    mvn -P integration-tests install 2>&1 | opt_tee $RESULT_DIR/mvn.out
     local mend=`date +%s`
     local msecs=$((mend-mstart))
     trace "mvn complete, runtime $msecs seconds"
@@ -1886,7 +1911,7 @@ function run_wlst_script {
 
     cat << EOF > $TMP_DIR/empty.py
 EOF
-    java weblogic.WLST $TMP_DIR/empty.py 2>&1 | tee $TMP_DIR/empty.py.out
+    java weblogic.WLST $TMP_DIR/empty.py 2>&1 | opt_tee $TMP_DIR/empty.py.out
     if [ "$?" = "0" ]; then
       # We're running WLST locally.  No need to do anything fancy.
       local mycommand="java weblogic.WLST ${pyfile_lcl} ${username} ${password} ${t3url_lcl}"
@@ -1952,7 +1977,7 @@ EOF
   local maxwaitsecs=180
   local failedonce="false"
   while : ; do
-    eval "$mycommand ""$@" 2>&1 | tee ${pyfile_lcl}.out
+    eval "$mycommand ""$@" 2>&1 | opt_tee ${pyfile_lcl}.out
     local result="$?"
 
     # '+' marks verbose tracing
@@ -2679,6 +2704,7 @@ function test_suite_init {
                    PV_ROOT \
                    LB_TYPE \
                    VERBOSE \
+                   DEBUG_OUT \
                    QUICKTEST \
                    NODEPORT_HOST \
                    JVM_ARGS \
@@ -2712,8 +2738,12 @@ function test_suite_init {
 
     export LEASE_ID="${LEASE_ID}"
 
-   if [ -z "$LB_TYPE" ]; then
+    if [ -z "$LB_TYPE" ]; then
       export LB_TYPE=TRAEFIK
+    fi
+
+    if [ -z "$DEBUG_OUT"; then
+      export DEBUG_OUT="false"
     fi
 
     # The following customizable exports are currently only customized by WERCKER
@@ -2731,6 +2761,7 @@ function test_suite_init {
                    PV_ROOT \
                    LB_TYPE \
                    VERBOSE \
+                   DEBUG_OUT \
                    QUICKTEST \
                    NODEPORT_HOST \
                    JVM_ARGS \
@@ -2766,6 +2797,7 @@ function test_suite_init {
     echo "${PV_ROOT}" > /tmp/test_suite.pv_root
     echo "${PROJECT_ROOT}" > /tmp/test_suite.project_root
     echo "${LEASE_ID}" > /tmp/test_suite.lease_id
+    echo "${DEBUG_OUT}" > /tmp/test_suite.debug_out
 
     # Declare we're in a test.  We did not declare at the start
     # of the function to ensure that any env vars that might
@@ -3005,6 +3037,15 @@ function test_suite {
 
 
 # entry point
+
+# "set -o pipefail" ensures that "$?" reflects the first failure in a pipe
+# instead of the status of the last command in the pipe.
+# For example, this script:
+#   ls missing-file | tee /tmp/ls.out
+#   echo $?
+# Will echo "0" by default, and echo "2" with "set -o pipefile" 
+
+set -o pipefail
 
 if [ "$WERCKER" = "true" -o "$JENKINS" = "true" ]; then
   if [ "${VERBOSE:-false}" = "true" ]; then
