@@ -559,6 +559,8 @@ function createYamlFiles {
   sed -i -e "s|%END_IF%|${helmEndIf}|g" ${createJobOutput}
   sed -i -e "s|%IF_WEBLOGIC_IMAGE_PULL_SECRETS_NAME%|${helmIfWeblogicImagePullSecretsName}|g" ${createJobOutput}
   sed -i -e "s|%IF_CREATE_WEBLOGIC_DOMAIN%|${helmIfCreateWeblogicDomain}|g" ${createJobOutput}
+  sed -i -e "s|%HELM_PRE_INSTALL_HOOK_CM%|${helmPreInstallHookCM}|g" ${createJobOutput}
+  sed -i -e "s|%HELM_PRE_INSTALL_HOOK_JOB%|${helmPreInstallHookJob}|g" ${createJobOutput}
 
   # Generate the yaml to create the kubernetes job that will delete the weblogic domain_home folder
   # Note: not generating helm charts template for delete weblogic job 

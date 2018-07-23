@@ -1,5 +1,6 @@
 # Copyright 2017, 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
 # Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+%IF_CREATE_WEBLOGIC_DOMAIN%
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,6 +10,7 @@ metadata:
     weblogic.resourceVersion: domain-v1
     weblogic.domainUID: %DOMAIN_UID%
     weblogic.domainName: %DOMAIN_NAME%
+  %HELM_PRE_INSTALL_HOOK_CM%
 data:
   utility.sh: |-
     #!/bin/bash
@@ -258,12 +260,12 @@ data:
     exit()
 
 ---
-%IF_CREATE_WEBLOGIC_DOMAIN%
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: %DOMAIN_UID%-create-weblogic-domain-job
   namespace: %NAMESPACE%
+  %HELM_PRE_INSTALL_HOOK_JOB%
 spec:
   template:
     metadata:

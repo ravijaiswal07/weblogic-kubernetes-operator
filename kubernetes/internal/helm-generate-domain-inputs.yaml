@@ -130,5 +130,8 @@ helmIfExposeAdminNodePort: "{{- if .Values.exposeAdminNodePort }}"
 helmIfExposeAdminT3Channel: "{{- if .Values.exposeAdminT3Channel }}"
 helmIfWeblogicImagePullSecretsName: "{{- if .Values.weblogicImagePullSecretName }}"
 helmIfCreateWeblogicDomain: "{{- if .Values.createWeblogicDomain }}"
+helmPreInstallHookCM: "  annotations:\n    \"helm.sh/hook\": pre-install\n    \"helm.sh/hook-weight\": \"-5\"\n    \"helm.sh/hook-delete-policy\": hook-succeeded"
+helmPreInstallHookJob: "  annotations:\n    \"helm.sh/hook\": pre-install\n    \"helm.sh/hook-weight\": \"0\"\n    \"helm.sh/hook-delete-policy\": hook-succeeded"
+
 helmEndIf: "{{- end }}"
 

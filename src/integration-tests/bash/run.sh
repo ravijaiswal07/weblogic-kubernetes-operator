@@ -919,11 +919,10 @@ function run_create_domain_job {
     local WEBLOGIC_CREDENTIALS_FILE="${tmp_dir}/weblogic-credentials.yaml"
 
     # Common inputs file for creating a domain
+    local inputs="$tmp_dir/create-weblogic-domain-inputs.yaml"
     if [ "$USE_HELM" = "true" ]; then
-      local inputs=$tmp_dir/weblogic-operator-values.yaml
       cp $PROJECT_ROOT/kubernetes/helm-charts/weblogic-domain/values.yaml $inputs
     else
-      local inputs="$tmp_dir/create-weblogic-domain-inputs.yaml"
       cp $PROJECT_ROOT/kubernetes/create-weblogic-domain-inputs.yaml $inputs
     fi
 
@@ -2389,7 +2388,7 @@ function startup_domain {
     local NAMESPACE="`dom_get $1 NAMESPACE`"
 
     if [ "$USE_HELM" = "true" ]; then
-      local inputs=$TMP_DIR/weblogic-operator-values.yaml
+      local inputs=$TMP_DIR/create-weblogic-domain-inputs.yaml
       cd $PROJECT_ROOT/kubernetes/helm-charts
       trace "calling helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWeblogicDomain=false"
       helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWeblogicDomain=false
@@ -2617,6 +2616,7 @@ function test_cluster_scale {
 
     local DOM_KEY="$1"
     local VERIFY_DOM_KEY="$2"
+    local NAMESPACE="`dom_get $1 NAMESPACE`"
 
     local TMP_DIR="`dom_get $1 TMP_DIR`"
 
@@ -2625,6 +2625,9 @@ function test_cluster_scale {
 
     trace "test cluster scale-up from 2 to 3"
     local domainCR="$TMP_DIR/domain-custom-resource.yaml"
+    if [ "$USE_HELM" = "true" ]; then
+      kubectl get domain $DOM_KEY -n $NAMESPACE -o yaml > $domainCR
+    fi
     sed -i -e "0,/replicas:/s/replicas:.*/replicas: 3/"  $domainCR
     kubectl apply -f $domainCR
 
@@ -2632,6 +2635,9 @@ function test_cluster_scale {
     verify_webapp_load_balancing $DOM_KEY 3
 
     trace "test cluster scale-down from 3 to 2"
+    if [ "$USE_HELM" = "true" ]; then
+      kubectl get domain $DOM_KEY -n $NAMESPACE -o yaml > $domainCR
+    fi
     sed -i -e "0,/replicas:/s/replicas:.*/replicas: 2/"  $domainCR
     kubectl apply -f $domainCR
 
@@ -2742,7 +2748,7 @@ function test_suite_init {
       export LB_TYPE=TRAEFIK
     fi
 
-    if [ -z "$DEBUG_OUT"; then
+    if [ -z "$DEBUG_OUT" ]; then
       export DEBUG_OUT="false"
     fi
 
@@ -2913,7 +2919,6 @@ function test_suite {
     dom_define domain4  oper2   test2     domain4    AUTO            cluster-1       CONFIGURED       managed-server 7041       30051           30704           8041    30308                  30318
     dom_define domain5  oper1   default   domain5    ADMIN           cluster-1       DYNAMIC          managed-server 7051       30061           30705           8051    30309                  30319
     dom_define domain6  oper1   default   domain6    AUTO            cluster-1       DYNAMIC          managed-server 7061       30071           30706           8061    30310                  30320
-    dom_define domain7  oper1   default   domain7    AUTO            cluster-1       DYNAMIC          managed-server 7071       30081           30707           8061    30311                  30321
 
     # create namespaces for domains (the operator job creates a namespace if needed)
     # TODO have the op_define commands themselves create target namespace if it doesn't already exist, or test if the namespace creation is needed in the first place, and if so, ask MikeG to create them as part of domain create job
@@ -2943,13 +2948,13 @@ function test_suite {
         trace 'helm is not installed. Skipping helm charts tests'
       else
         USE_HELM="true"
-        test_first_operator oper1
-        test_domain_creation domain7 
-        test_domain_lifecycle domain7 
-        test_operator_lifecycle domain7
-        test_shutdown_domain domain7
-        shutdown_operator oper1
-        USE_HELM="false"
+#        test_first_operator oper1
+#        test_domain_creation domain7 
+#        test_domain_lifecycle domain7 
+#        test_operator_lifecycle domain7
+#        test_shutdown_domain domain7
+#        shutdown_operator oper1
+#        USE_HELM="false"
       fi
     fi
 
@@ -2995,7 +3000,7 @@ function test_suite {
 
       # test scaling domain4 cluster from 2 to 3 servers and back to 2, plus verify no impact on domain1
       test_cluster_scale domain4 domain1 
-  
+ 
       # cycle domain1 down and back up, plus verify no impact on domain4
       test_domain_lifecycle domain1 domain4 
 

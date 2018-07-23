@@ -1,5 +1,6 @@
 # Copyright 2017, 2018, Oracle Corporation and/or its affiliates.  All rights reserved.
 # Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
+{{- if .Values.createWeblogicDomain }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,6 +10,10 @@ metadata:
     weblogic.resourceVersion: domain-v1
     weblogic.domainUID: {{ .Values.domainUID }}
     weblogic.domainName: {{ .Values.domainName }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
 data:
   utility.sh: |-
     #!/bin/bash
@@ -258,12 +263,15 @@ data:
     exit()
 
 ---
-{{- if .Values.createWeblogicDomain }}
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ .Values.domainUID }}-create-weblogic-domain-job
   namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": hook-succeeded
 spec:
   template:
     metadata:
