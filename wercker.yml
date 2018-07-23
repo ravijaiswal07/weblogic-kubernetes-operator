@@ -30,8 +30,10 @@ build:
       echo "Building Oracle WebLogic Server Kubernetes Operator..."
       echo "The branch and commit id are $WERCKER_GIT_BRANCH, $WERCKER_GIT_COMMIT"
       export IMAGE_TAG_OPERATOR="${IMAGE_TAG_OPERATOR:-${WERCKER_GIT_BRANCH//[_\/]/-}}"
-      if [ "$IMAGE_TAG_OPERATOR" = "master" ]; then
+      if [ "$IMAGE_TAG_OPERATOR" = "develop" ]; then
         export IMAGE_TAG_OPERATOR="latest"
+      elif [ "$IMAGE_TAG_OPERATOR" = "master" ]; then
+        export IMAGE_TAG_OPERATOR="1.0"
       fi
   - script:
     name: Install pre-reqs
@@ -43,6 +45,8 @@ build:
     cache_repo: true
   - internal/docker-build:
     image-name: $REPO_REPOSITORY:$IMAGE_TAG_OPERATOR
+  # push the image to Docker using the GIT branch as the tag
+  # this image needs to be available to the integration-test pipeline for testing
   - internal/docker-push:
     username: $REPO_USERNAME
     password: $REPO_PASSWORD
@@ -160,8 +164,10 @@ integration-test:
 
       export IMAGE_NAME_OPERATOR="${REPO_REPOSITORY}"
       export IMAGE_TAG_OPERATOR="${WERCKER_GIT_BRANCH//[_\/]/-}"
-      if [ "$IMAGE_TAG_OPERATOR" = "master" ]; then
+      if [ "$IMAGE_TAG_OPERATOR" = "develop" ]; then
         export IMAGE_TAG_OPERATOR="latest"
+      elif [ "$IMAGE_TAG_OPERATOR" = "master" ]; then
+        export IMAGE_TAG_OPERATOR="1.0"
       fi
       export IMAGE_PULL_POLICY_OPERATOR="Always"
       export IMAGE_PULL_SECRET_OPERATOR="ocir-registry"
@@ -258,8 +264,10 @@ integration-test-java:
 
       export IMAGE_NAME_OPERATOR="${REPO_REPOSITORY}"
       export IMAGE_TAG_OPERATOR="${WERCKER_GIT_BRANCH//[_\/]/-}"
-      if [ "$IMAGE_TAG_OPERATOR" = "master" ]; then
+      if [ "$IMAGE_TAG_OPERATOR" = "develop" ]; then
         export IMAGE_TAG_OPERATOR="latest"
+      elif [ "$IMAGE_TAG_OPERATOR" = "master" ]; then
+        export IMAGE_TAG_OPERATOR="1.0"
       fi
       export IMAGE_PULL_POLICY_OPERATOR="Always"
       export IMAGE_PULL_SECRET_OPERATOR="ocir-registry"
@@ -292,7 +300,6 @@ integration-test-java:
 
       cleanup_and_store
 
-
 # This pipeline runs quality checks
 quality:
   steps:
@@ -307,6 +314,13 @@ quality:
     cache_repo: true
     version: 3.5.2
 
+promote-image:
+  steps:
+  - internal/docker-push:
+    username: $REPO_USERNAME
+    password: $REPO_PASSWORD
+    repository: oracle/weblogic-kubernetes-operator
+    tag: $IMAGE_TAG_OPERATOR
 
 dev:
   steps:
