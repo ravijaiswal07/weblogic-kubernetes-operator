@@ -751,7 +751,7 @@ function deploy_operator {
       echo "createOperatorNamespace: false" >> $inputs
       echo "operatorNamespace: \"${NAMESPACE}\"" >> $inputs
       echo "operatorServiceAccount: weblogic-operator" >> $inputs
-      echo "**** debug ****  printout out file $inputs"
+      echo "Contents after customization in file $inputs"
       cat $inputs
 
       local outfile="${TMP_DIR}/create-weblogic-operator-helm.out"
@@ -1787,9 +1787,9 @@ function test_mvn_integration_local {
     local mstart=`date +%s`
     mvn -P integration-tests clean install 2>&1 | opt_tee $RESULT_DIR/mvn.out
     # Clean up clusteroles created by mvn build 
-    kubectl delete clusterrole weblogic-operator-cluster-role-nonresource
-    kubectl delete clusterrole weblogic-operator-cluster-role
-    kubectl delete clusterrole weblogic-operator-namespace-role
+    #kubectl delete clusterrole weblogic-operator-cluster-role-nonresource
+    #kubectl delete clusterrole weblogic-operator-cluster-role
+    #kubectl delete clusterrole weblogic-operator-namespace-role
 
     local mend=`date +%s`
     local msecs=$((mend-mstart))
