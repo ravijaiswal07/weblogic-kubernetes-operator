@@ -587,14 +587,17 @@ function setup_local {
 function setup_wercker {
   trace "Perform setup for running in wercker"
 
-  trace "Install tiller"
-  helm init
+  if [ "$USE_HELM" = "true" ]; then
 
-  helm version
+    trace "Install tiller"
+    helm init
 
-  kubectl get po -n kube-system
+    helm version
 
-  setup_tiller_rbac
+    kubectl get po -n kube-system
+
+    setup_tiller_rbac
+  fi
 
   trace "Completed setup_wercker"
 }
@@ -1053,6 +1056,8 @@ function run_create_domain_job {
       trace "Run helm install to create the domain, see \"$outfile\" for tracing."
       cd $PROJECT_ROOT/kubernetes/charts
       helm install weblogic-domain --name $1 -f $inputs --namespace ${NAMESPACE} 2>&1 | opt_tee ${outfile}
+      trace "helm install output:"
+      cat $outfile
     else
       trace "Run the script to create the domain, see \"$outfile\" for tracing."
 
@@ -2436,9 +2441,12 @@ function startup_domain {
 
     if [ "$USE_HELM" = "true" ]; then
       local inputs=$TMP_DIR/create-weblogic-domain-inputs.yaml
+      local outfile="$TMP_DIR/startup-weblogic-domain.out"
       cd $PROJECT_ROOT/kubernetes/charts
       trace "calling helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWeblogicDomain=false"
-      helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWeblogicDomain=false
+      helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWeblogicDomain=false 2>&1 | opt_tee ${outfile}
+      trace "helm install output:"
+      cat $outfile
     else   
       kubectl create -f ${TMP_DIR}/domain-custom-resource.yaml
     fi
@@ -2517,7 +2525,10 @@ function startup_operator {
 
     if [ "$USE_HELM" = "true" ]; then
       local inputs="$TMP_DIR/weblogic-operator-values.yaml"
-      helm install weblogic-operator --name ${OPERATOR_NS} -f $inputs 
+      local outfile="$TMP_DIR/startup-weblogic-operator.out"
+      helm install weblogic-operator --name ${OPERATOR_NS} -f $inputs 2>&1 | opt_tee ${outfile}
+      trace "helm install output:"
+      cat $outfile
     else
       kubectl create -f $TMP_DIR/weblogic-operator.yaml
     fi
@@ -2860,6 +2871,15 @@ function test_suite_init {
     cd $PROJECT_ROOT || fail "Could not cd to $PROJECT_ROOT"
    
 
+    # Test installation using helm charts if helm is available
+    #
+    if ! [ -x "$(command -v helm)" ]; then
+      trace 'helm is not installed. Skipping helm charts tests'
+    else
+      USE_HELM="true"
+      trace 'helm is installed. Using helm for the tests'
+    fi
+
     if [ "$WERCKER" = "true" ]; then 
       trace "Test Suite is running locally on Wercker and k8s is running on remote nodes."
 
@@ -2989,14 +3009,6 @@ function test_suite {
       test_mvn_integration_local
     fi
 
-    # Test installation using helm charts if helm is available
-    #
-    if ! [ -x "$(command -v helm)" ]; then
-      trace 'helm is not installed. Skipping helm charts tests'
-    else
-      USE_HELM="true"
-      trace 'helm is installed. Using helm for the tests'
-    fi
 
     # create and start first operator, manages namespaces default & test1
     test_first_operator oper1
