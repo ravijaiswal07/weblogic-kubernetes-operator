@@ -149,8 +149,9 @@ integration-test:
       mkdir /tmp/helm
       tar xzf helm-v2.7.2-linux-amd64.tar.gz -C /tmp/helm
       chmod +x /tmp/helm/linux-amd64/helm
-      cp /tmp/helm/linux-amd64/helm /usr/local/bin/"
+      mv /tmp/helm/linux-amd64/helm /usr/local/bin/
       rm -rf /tmp/helm
+      echo @@ "Calling helm init to install Tiller"
       helm init
       echo @@ "Helm is configured."
 
