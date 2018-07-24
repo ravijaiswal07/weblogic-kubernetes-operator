@@ -1820,6 +1820,16 @@ function test_mvn_integration_wercker {
     declare_test_pass
 }
 
+function setup_tiller_rbac {
+    trace "Running setup_tiller_rbac"
+
+    kubectl create serviceaccount --namespace kube-system tiller
+    kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+    kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+
+    trace "setup_tiller_rbac completed"
+}
+
 function check_pv {
 
     trace "Checking if the persistent volume ${1:?} is ${2:?}"
@@ -2956,6 +2966,7 @@ function test_suite {
     trace 'Running mvn integration tests...'
     if [ "$WERCKER" = "true" ]; then
       test_mvn_integration_wercker
+      setup_tiller_rbac
     elif [ "$JENKINS" = "true" ]; then
       test_mvn_integration_jenkins
     else
