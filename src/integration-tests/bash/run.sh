@@ -584,6 +584,21 @@ function setup_local {
 
 }
 
+function setup_wercker {
+  trace "Perform setup for running in wercker"
+
+  trace "Install tiller"
+  helm init
+
+  helm version
+
+  kubectl get po -n kube-system
+
+  setup_tiller_rbac
+
+  trace "Completed setup_wercker"
+}
+
 function create_image_pull_secret_jenkins {
 
     trace "Creating Secret"
@@ -2856,6 +2871,8 @@ function test_suite_init {
       mkdir -p $RESULT_ROOT/acceptance_test_tmp || fail "Could not mkdir -p RESULT_ROOT/acceptance_test_tmp (RESULT_ROOT=$RESULT_ROOT)"
 
       create_image_pull_secret_wercker
+
+      setup_wercker
       
     elif [ "$JENKINS" = "true" ]; then
     
@@ -2966,7 +2983,6 @@ function test_suite {
     trace 'Running mvn integration tests...'
     if [ "$WERCKER" = "true" ]; then
       test_mvn_integration_wercker
-      setup_tiller_rbac
     elif [ "$JENKINS" = "true" ]; then
       test_mvn_integration_jenkins
     else

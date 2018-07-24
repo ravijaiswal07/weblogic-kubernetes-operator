@@ -151,9 +151,8 @@ integration-test:
       chmod +x /tmp/helm/linux-amd64/helm
       mv /tmp/helm/linux-amd64/helm /usr/local/bin/
       rm -rf /tmp/helm
-      echo @@ "Calling helm init to install Tiller"
-      helm init
-      echo @@ "Helm is configured."
+      helm version
+      echo @@ "Helm is installed."
 
       # obtain an exclusive k8s cluster lease using the 'lease.sh' helper script
       #   - first set LEASE_ID to a unique value
