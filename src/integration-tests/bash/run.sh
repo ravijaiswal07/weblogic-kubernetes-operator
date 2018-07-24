@@ -751,13 +751,15 @@ function deploy_operator {
       echo "createOperatorNamespace: false" >> $inputs
       echo "operatorNamespace: \"${NAMESPACE}\"" >> $inputs
       echo "operatorServiceAccount: weblogic-operator" >> $inputs
-      echo "Contents after customization in file $inputs"
+      trace "Contents after customization in file $inputs"
       cat $inputs
 
       local outfile="${TMP_DIR}/create-weblogic-operator-helm.out"
       trace "Run helm install to deploy the weblogic operator, see \"$outfile\" for tracking."
       cd $PROJECT_ROOT/kubernetes/charts
       helm install weblogic-operator --name ${NAMESPACE} -f $inputs 2>&1 | opt_tee ${outfile}
+      trace "helm install output:"
+      cat $outfile
       operator_ready_wait $opkey
     else
       local inputs="$TMP_DIR/create-weblogic-operator-inputs.yaml"
