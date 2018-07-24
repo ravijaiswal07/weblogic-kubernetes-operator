@@ -145,9 +145,9 @@ integration-test:
       kubectl version
 
       echo @@ "Helm installation starts"
-      wget -q -O  /tmp/helm-v2.7.2-linux-amd64.tar.gz https://kubernetes-helm.storage.googleapis.com/helm-v2.7.2-linux-amd64.tar.gz
+      curl -LO http://kubernetes-helm.storage.googleapis.com/helm-v2.7.2-linux-amd64.tar.gz
       mkdir /tmp/helm
-      tar xzf /tmp/helm-v2.7.2-linux-amd64.tar.gz -C /tmp/helm
+      tar xzf helm-v2.7.2-linux-amd64.tar.gz -C /tmp/helm
       chmod +x /tmp/helm/linux-amd64/helm
       cp /tmp/helm/linux-amd64/helm /usr/local/bin/"
       rm -rf /tmp/helm
