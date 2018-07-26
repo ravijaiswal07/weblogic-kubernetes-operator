@@ -2014,9 +2014,11 @@ EOF
       # let's see if we can access the t3 channel external port from within a pod using 'NODEPORT_HOST' instead of pod name
       mycommand="${mycommand} ${t3url_lcl}"
       trace "**** debug *** testing NODEPORT_HOST $NODEPORT_HOST"
-      ping -t 1 ${NODEPORT_HOST}
+      kubectl -n {$NAMESPACE} exec -it curl http://${NODEPORT_HOST}:30701/ready
       trace "**** debug *** showing services"
       kubectl get services -n ${NAMESPACE}
+      trace "**** debug *** showing pods"
+      kubectl get pods -n ${NAMESPACE} -o wide
     else
       # otherwise let's use an URL constructed from the pod name (still using t3 port)
       mycommand="${mycommand} ${t3url_pod}"
