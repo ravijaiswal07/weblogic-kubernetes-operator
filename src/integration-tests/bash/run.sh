@@ -2892,9 +2892,6 @@ function test_suite_init {
     if [ "$WERCKER" = "true" ]; then 
       trace "Test Suite is running locally on Wercker and k8s is running on remote nodes."
 
-      # do not use helm when running on wercker, for now
-      USE_HELM="false"
-
       # No need to check M2_HOME or docker_pass -- not used by local runs
 
       # Assume store/oracle/weblogic:12.2.1.3 and store/oracle/serverjre:8 are already
