@@ -459,6 +459,7 @@ function state_dump {
 
   # use a job to archive PV, /scratch mounts to PV_ROOT in the K8S cluster
   echo "**** debug **** printing out contents of domain1 admin-server.log"
+  find $PV_ROOT/acceptance_test_pv -name "admin-server.log
   cat  $PV_ROOT/acceptance_test_pv/domain1/logs/admin-server.log
 
   trace "Archiving pv directory using a kubernetes job.  Look for it on k8s cluster in $PV_ROOT/acceptance_test_pv_archive"
@@ -2017,9 +2018,10 @@ EOF
       # let's see if we can access the t3 channel external port from within a pod using 'NODEPORT_HOST' instead of pod name
       mycommand="${mycommand} ${t3url_lcl}"
       trace "**** debug *** testing NODEPORT_HOST $NODEPORT_HOST"
-      kubectl -n {$NAMESPACE} exec -it curl http://${NODEPORT_HOST}:30701/ready
+      kubectl -n {$NAMESPACE} exec -it ${AS_NAME} curl http://${NODEPORT_HOST}:30701/ready
       trace "**** debug *** showing services"
       kubectl get services -n ${NAMESPACE}
+      kubectl describe service domain1-admin-server-extchannel-t3channel -n ${NAMESPACE}
       trace "**** debug *** showing pods"
       kubectl get pods -n ${NAMESPACE} -o wide
     else
