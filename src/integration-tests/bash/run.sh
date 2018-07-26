@@ -459,8 +459,8 @@ function state_dump {
 
   # use a job to archive PV, /scratch mounts to PV_ROOT in the K8S cluster
   echo "**** debug **** printing out contents of domain1 admin-server.log"
-  find /scratch -name "admin-server.log"
-  cat  $PV_ROOT/acceptance_test_pv/domain1-storage/logs/admin-server.log
+  find /pipeline/output/k8s_dir -name "admin-server.log" 
+  find /pipeline/output/k8s_dir -name "admin-server.log" -exec cat {} \; -print
 
   trace "Archiving pv directory using a kubernetes job.  Look for it on k8s cluster in $PV_ROOT/acceptance_test_pv_archive"
   local outfile=${DUMP_DIR}/archive_pv_job.out
@@ -2017,11 +2017,9 @@ EOF
     if [ "$location" = "hybrid" ]; then
       # let's see if we can access the t3 channel external port from within a pod using 'NODEPORT_HOST' instead of pod name
       mycommand="${mycommand} ${t3url_lcl}"
-      trace "**** debug *** testing NODEPORT_HOST $NODEPORT_HOST"
-      kubectl -n {$NAMESPACE} exec -it ${AS_NAME} curl http://${NODEPORT_HOST}:30701/ready
       trace "**** debug *** showing services"
       kubectl get services -n ${NAMESPACE}
-      kubectl describe service domain1-admin-server-extchannel-t3channel -n ${NAMESPACE}
+    kubectl describe service ${AS_NAME}-admin-server-extchannel-t3channel -n ${NAMESPACE}
       trace "**** debug *** showing pods"
       kubectl get pods -n ${NAMESPACE} -o wide
     else
@@ -2039,8 +2037,15 @@ EOF
   local maxwaitsecs=180
   local failedonce="false"
   while : ; do
+    echo "**** debug *** testing NODEPORT_HOST $NODEPORT_HOST"
+    kubectl -n {$NAMESPACE} exec -it ${AS_NAME} curl http://${NODEPORT_HOST}:30701/ready
+
     eval "$mycommand ""$@" 2>&1 | opt_tee ${pyfile_lcl}.out
     local result="$?"
+
+    echo "**** debug *** showing services after WLST"
+    kubectl get services -n ${NAMESPACE}
+    kubectl describe service ${AS_NAME}-admin-server-extchannel-t3channel -n ${NAMESPACE}
 
     # '+' marks verbose tracing
     cat ${pyfile_lcl}.out | sed 's/^/+/'
