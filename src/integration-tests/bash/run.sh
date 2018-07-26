@@ -458,9 +458,6 @@ function state_dump {
   done
 
   # use a job to archive PV, /scratch mounts to PV_ROOT in the K8S cluster
-  echo "**** debug **** printing out contents of domain1 admin-server.log"
-  find /pipeline/output/k8s_dir -name "admin-server.log" 
-  find /pipeline/output/k8s_dir -name "admin-server.log" -exec cat {} \; -print
 
   trace "Archiving pv directory using a kubernetes job.  Look for it on k8s cluster in $PV_ROOT/acceptance_test_pv_archive"
   local outfile=${DUMP_DIR}/archive_pv_job.out
@@ -2017,10 +2014,10 @@ EOF
     if [ "$location" = "hybrid" ]; then
       # let's see if we can access the t3 channel external port from within a pod using 'NODEPORT_HOST' instead of pod name
       mycommand="${mycommand} ${t3url_lcl}"
-      trace "**** debug *** showing services"
+      echo "**** debug *** showing services before calling WLST"
       kubectl get services -n ${NAMESPACE}
-    kubectl describe service ${AS_NAME}-admin-server-extchannel-t3channel -n ${NAMESPACE}
-      trace "**** debug *** showing pods"
+    kubectl describe service ${AS_NAME}-extchannel-t3channel -n ${NAMESPACE}
+      echo "**** debug *** showing pods before calling WLST"
       kubectl get pods -n ${NAMESPACE} -o wide
     else
       # otherwise let's use an URL constructed from the pod name (still using t3 port)
@@ -2045,7 +2042,7 @@ EOF
 
     echo "**** debug *** showing services after WLST"
     kubectl get services -n ${NAMESPACE}
-    kubectl describe service ${AS_NAME}-admin-server-extchannel-t3channel -n ${NAMESPACE}
+    kubectl describe service ${AS_NAME}-extchannel-t3channel -n ${NAMESPACE}
 
     # '+' marks verbose tracing
     cat ${pyfile_lcl}.out | sed 's/^/+/'
