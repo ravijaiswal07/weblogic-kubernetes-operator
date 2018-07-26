@@ -1908,7 +1908,7 @@ function verify_wlst_access {
 
   local pyfile_con=$TMP_DIR/connect.py
   cat << EOF > ${pyfile_con}
-  connect(sys.argv[1],sys.argv[2],sys.argv[3])
+  connect(sys.argv[1],sys.argv[2],sys.argv[3],60)
 EOF
 
   run_wlst_script $1 local ${pyfile_con} 
@@ -2013,6 +2013,10 @@ EOF
     if [ "$location" = "hybrid" ]; then
       # let's see if we can access the t3 channel external port from within a pod using 'NODEPORT_HOST' instead of pod name
       mycommand="${mycommand} ${t3url_lcl}"
+      trace "**** debug *** testing NODEPORT_HOST $NODEPORT_HOST"
+      ping -t 1 ${NODEPORT_HOST}
+      trace "**** debug *** showing services"
+      kubectl get services -n ${NAMESPACE}
     else
       # otherwise let's use an URL constructed from the pod name (still using t3 port)
       mycommand="${mycommand} ${t3url_pod}"
