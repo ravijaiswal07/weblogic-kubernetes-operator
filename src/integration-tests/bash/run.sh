@@ -1908,7 +1908,7 @@ function verify_wlst_access {
 
   local pyfile_con=$TMP_DIR/connect.py
   cat << EOF > ${pyfile_con}
-  connect(sys.argv[1],sys.argv[2],sys.argv[3],60)
+  connect(sys.argv[1],sys.argv[2],sys.argv[3],timeout='60000')
 EOF
 
   run_wlst_script $1 local ${pyfile_con} 
