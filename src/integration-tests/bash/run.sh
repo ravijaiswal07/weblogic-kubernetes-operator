@@ -458,6 +458,9 @@ function state_dump {
   done
 
   # use a job to archive PV, /scratch mounts to PV_ROOT in the K8S cluster
+  echo "**** debug **** printing out contents of domain1 admin-server.log"
+  cat  $PV_ROOT/acceptance_test_pv/domain1/logs/admin-server.log
+
   trace "Archiving pv directory using a kubernetes job.  Look for it on k8s cluster in $PV_ROOT/acceptance_test_pv_archive"
   local outfile=${DUMP_DIR}/archive_pv_job.out
   $SCRIPTPATH/job.sh "/scripts/archive.sh /scratch/acceptance_test_pv /scratch/acceptance_test_pv_archive" 2>&1 | opt_tee ${outfile}

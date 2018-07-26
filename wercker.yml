@@ -315,7 +315,9 @@ integration-test-java:
         # store the artifacts so we can download them easily 
         tar czvf ${WERCKER_REPORT_ARTIFACTS_DIR}/integration-test-data.tar.gz /pipeline/output/*
 
-        helm reset --force
+        if [ -x "$(command -v helm)" ]; then
+          helm reset --force
+        fi
       }
       
       cleanup_and_store
