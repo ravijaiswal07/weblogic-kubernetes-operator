@@ -310,7 +310,9 @@ integration-test-java:
         tar czvf ${WERCKER_REPORT_ARTIFACTS_DIR}/integration-test-data.tar.gz /pipeline/output/*
 
         if [ -x "$(command -v helm)" ]; then
-          helm reset --force
+          echo @@ "Reseting helm"
+          helm reset -f
+          helm version
         fi
       }
 

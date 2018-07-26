@@ -767,7 +767,6 @@ function deploy_operator {
       trace 'customize the inputs yaml file to set the java logging level to $LOGLEVEL_OPERATOR'
       echo "javaLoggingLevel: \"$LOGLEVEL_OPERATOR\"" >> $inputs
       echo "externalRestHttpsPort: ${EXTERNAL_REST_HTTPSPORT}" >>  $inputs
-      echo "createOperatorNamespace: false" >> $inputs
       echo "operatorNamespace: \"${NAMESPACE}\"" >> $inputs
       echo "operatorServiceAccount: weblogic-operator" >> $inputs
       trace "Contents after customization in file $inputs"
@@ -3003,8 +3002,11 @@ function test_suite {
     kubectl create namespace test1 2>&1 | sed 's/^/+/g' 
     kubectl create namespace test2 2>&1 | sed 's/^/+/g' 
 
-    kubectl create namespace weblogic-operator-1 2>&1 | sed 's/^/+/g' 
-    kubectl create namespace weblogic-operator-2 2>&1 | sed 's/^/+/g' 
+
+    if ! [ "$USE_HELM" = "true" ]; then
+      kubectl create namespace weblogic-operator-1 2>&1 | sed 's/^/+/g' 
+      kubectl create namespace weblogic-operator-2 2>&1 | sed 's/^/+/g' 
+    fi
 
     # This test pass pairs with 'declare_new_test 1 define_operators_and_domains' above
     declare_test_pass
