@@ -459,7 +459,7 @@ function state_dump {
 
   # use a job to archive PV, /scratch mounts to PV_ROOT in the K8S cluster
   echo "**** debug **** printing out contents of domain1 admin-server.log"
-  find $PV_ROOT/acceptance_test_pv -name "admin-server.log
+  find $PV_ROOT/acceptance_test_pv -name "admin-server.log"
   cat  $PV_ROOT/acceptance_test_pv/domain1/logs/admin-server.log
 
   trace "Archiving pv directory using a kubernetes job.  Look for it on k8s cluster in $PV_ROOT/acceptance_test_pv_archive"
