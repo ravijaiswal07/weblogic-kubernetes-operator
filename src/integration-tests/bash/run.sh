@@ -672,7 +672,7 @@ function create_image_pull_secret_wercker {
 
 function op_define {
     if [ "$#" != 5 ] ; then
-      fail "requires 4 parameters: OP_KEY NAMESPACE TARGET_NAMESPACES EXTERNAL_REST_HTTPSPORT SETUP_KUBERNETES_CLUSTER"
+      fail "requires 5 parameters: OP_KEY NAMESPACE TARGET_NAMESPACES EXTERNAL_REST_HTTPSPORT SETUP_KUBERNETES_CLUSTER"
     fi
     local opkey="`echo \"${1?}\" | sed 's/-/_/g'`"
     eval export OP_${opkey}_NAMESPACE="$2"
@@ -1809,10 +1809,6 @@ function test_mvn_integration_local {
 
     local mstart=`date +%s`
     mvn -P integration-tests clean install 2>&1 | opt_tee $RESULT_DIR/mvn.out
-    # Clean up clusteroles created by mvn build 
-    #kubectl delete clusterrole weblogic-operator-cluster-role-nonresource
-    #kubectl delete clusterrole weblogic-operator-cluster-role
-    #kubectl delete clusterrole weblogic-operator-namespace-role
 
     local mend=`date +%s`
     local msecs=$((mend-mstart))
@@ -2895,6 +2891,9 @@ function test_suite_init {
 
     if [ "$WERCKER" = "true" ]; then 
       trace "Test Suite is running locally on Wercker and k8s is running on remote nodes."
+
+      # do not use helm when running on wercker, for now
+      USE_HELM="false"
 
       # No need to check M2_HOME or docker_pass -- not used by local runs
 
