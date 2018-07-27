@@ -776,7 +776,7 @@ function deploy_operator {
       local outfile="${TMP_DIR}/create-weblogic-operator-helm.out"
       trace "Run helm install to deploy the weblogic operator, see \"$outfile\" for tracking."
       cd $PROJECT_ROOT/kubernetes/charts
-      helm install weblogic-operator --name ${NAMESPACE} -f $inputs 2>&1 | opt_tee ${outfile}
+      helm install weblogic-operator --name ${opkey} -f $inputs 2>&1 | opt_tee ${outfile}
       trace "helm install output:"
       cat $outfile
       operator_ready_wait $opkey
@@ -2509,7 +2509,8 @@ function shutdown_operator {
     local TMP_DIR="`op_get $OP_KEY TMP_DIR`"
 
     if [ "$USE_HELM" = "true" ]; then
-      helm delete $OPERATOR_NS --purge
+      helm delete $OP_KEY --purge
+      wait_for_operator_shutdown $OPERATOR_NS
     else
       kubectl delete -f $TMP_DIR/weblogic-operator.yaml
     fi
@@ -2524,6 +2525,26 @@ function shutdown_operator {
     fi
 }
 
+function wait_for_operator_shutdown {
+  name=$1
+  deleted=false
+  iter=1
+  while [ ${deleted} == false -a $iter -lt 101 ]; do
+    kubectl get namespace ${name}
+    if [ $? != 0 ]; then
+      deleted=true
+    else
+      iter=`expr $iter + 1`
+      sleep 5
+    fi
+  done
+  if [ ${deleted} == false ]; then
+    fail 'operator fail to be deleted'
+  else
+    trace "operator namespace ${name} has been deleted"
+  fi
+}
+
 function startup_operator {
     if [ "$#" != 1 ] ; then
       fail "requires 1 parameter: operatorKey"
@@ -2535,7 +2556,7 @@ function startup_operator {
     if [ "$USE_HELM" = "true" ]; then
       local inputs="$TMP_DIR/weblogic-operator-values.yaml"
       local outfile="$TMP_DIR/startup-weblogic-operator.out"
-      helm install weblogic-operator --name ${OPERATOR_NS} -f $inputs 2>&1 | opt_tee ${outfile}
+      helm install weblogic-operator --name ${OP_KEY} -f $inputs 2>&1 | opt_tee ${outfile}
       trace "helm install output:"
       cat $outfile
     else
