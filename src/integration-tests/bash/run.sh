@@ -2529,6 +2529,7 @@ function wait_for_operator_shutdown {
   name=$1
   deleted=false
   iter=1
+  trace "waiting for operator shutdown by verifying that namespace ${name} no longer exist "
   while [ ${deleted} == false -a $iter -lt 101 ]; do
     kubectl get namespace ${name}
     if [ $? != 0 ]; then
