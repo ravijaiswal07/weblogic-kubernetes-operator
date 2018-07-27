@@ -763,7 +763,7 @@ function deploy_operator {
       done
       echo "operatorImagPullPolicy: ${IMAGE_PULL_POLICY_OPERATOR}" >> $inputs
       echo "operatorImage: ${IMAGE_NAME_OPERATOR}:${IMAGE_TAG_OPERATOR}" >> $inputs
-      echo "externalRestEnabled: true" >> $inputs
+      echo "externalRestOption: SELF_SIGNED_CERT" >> $inputs
       trace 'customize the inputs yaml file to set the java logging level to $LOGLEVEL_OPERATOR'
       echo "javaLoggingLevel: \"$LOGLEVEL_OPERATOR\"" >> $inputs
       echo "externalRestHttpsPort: ${EXTERNAL_REST_HTTPSPORT}" >>  $inputs
