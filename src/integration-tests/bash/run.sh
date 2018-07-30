@@ -654,7 +654,7 @@ function create_image_pull_secret_wercker {
 
 }
 
-# op_define OP_KEY NAMESPACE TARGET_NAMESPACES EXTERNAL_REST_HTTPSPORT SETUP_KUBERNETES_CLUSTER
+# op_define OP_KEY NAMESPACE TARGET_NAMESPACES EXTERNAL_REST_HTTPSPORT CREATE_SHARED_OPERATOR_RESOURCES
 #   sets up table of operator values.
 #
 # op_get    OP_KEY
@@ -672,13 +672,13 @@ function create_image_pull_secret_wercker {
 
 function op_define {
     if [ "$#" != 5 ] ; then
-      fail "requires 5 parameters: OP_KEY NAMESPACE TARGET_NAMESPACES EXTERNAL_REST_HTTPSPORT SETUP_KUBERNETES_CLUSTER"
+      fail "requires 5 parameters: OP_KEY NAMESPACE TARGET_NAMESPACES EXTERNAL_REST_HTTPSPORT CREATE_SHARED_OPERATOR_RESOURCES"
     fi
     local opkey="`echo \"${1?}\" | sed 's/-/_/g'`"
     eval export OP_${opkey}_NAMESPACE="$2"
     eval export OP_${opkey}_TARGET_NAMESPACES="$3"
     eval export OP_${opkey}_EXTERNAL_REST_HTTPSPORT="$4"
-    eval export OP_${opkey}_SETUP_KUBERNETES_CLUSTER="$5"
+    eval export OP_${opkey}_CREATE_SHARED_OPERATOR_RESOURCES="$5"
 
     # generated TMP_DIR for operator = $USER_PROJECTS_DIR/weblogic-operators/$NAMESPACE :
     eval export OP_${opkey}_TMP_DIR="$USER_PROJECTS_DIR/weblogic-operators/$2"
@@ -746,20 +746,19 @@ function deploy_operator {
     mkdir -p $TMP_DIR
     if [ "$USE_HELM" = "true" ]; then
       local inputs="$TMP_DIR/weblogic-operator-values.yaml"
-      local SETUP_KUBERNETES_CLUSTER="`op_get $opkey SETUP_KUBERNETES_CLUSTER`"
+      local CREATE_SHARED_OPERATOR_RESOURCES="`op_get $opkey CREATE_SHARED_OPERATOR_RESOURCES`"
 
       # generate certificates
       $PROJECT_ROOT/kubernetes/generate-internal-weblogic-operator-certificate.sh > $inputs
       $PROJECT_ROOT/kubernetes/generate-external-weblogic-operator-certificate.sh DNS:${NODEPORT_HOST} >> $inputs
 
-      echo "setupKubernetesCluster: $SETUP_KUBERNETES_CLUSTER" >> $inputs
+      echo "createSharedOperatorResources: $CREATE_SHARED_OPERATOR_RESOURCES" >> $inputs
 
       trace 'customize the inputs yaml file to add test namespace'
-      echo "createDomainsNamespace: false" >> $inputs
       echo "domainsNamespaces:" >> $inputs
       for i in $(echo $TARGET_NAMESPACES | sed "s/,/ /g")
       do
-        echo "  $i: {}" >> $inputs
+        echo "  - $i" >> $inputs
       done
       echo "operatorImagPullPolicy: ${IMAGE_PULL_POLICY_OPERATOR}" >> $inputs
       echo "operatorImage: ${IMAGE_NAME_OPERATOR}:${IMAGE_TAG_OPERATOR}" >> $inputs
@@ -2452,8 +2451,8 @@ function startup_domain {
       local inputs=$TMP_DIR/create-weblogic-domain-inputs.yaml
       local outfile="$TMP_DIR/startup-weblogic-domain.out"
       cd $PROJECT_ROOT/kubernetes/charts
-      trace "calling helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWeblogicDomain=false"
-      helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWeblogicDomain=false 2>&1 | opt_tee ${outfile}
+      trace "calling helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWebLogicDomain=false"
+      helm install weblogic-domain --name ${DOM_KEY} -f $inputs --namespace ${NAMESPACE} --set createWebLogicDomain=false 2>&1 | opt_tee ${outfile}
       trace "helm install output:"
       cat $outfile
     else   
@@ -2498,6 +2497,27 @@ function test_domain_lifecycle {
     fi
 
     declare_test_pass
+}
+
+function wait_for_operator_shutdown {
+  name=$1
+  deleted=false
+  iter=1
+  trace "waiting for operator shutdown by verifying that namespace ${name} no longer exist "
+  while [ ${deleted} == false -a $iter -lt 101 ]; do
+    kubectl get namespace ${name}
+    if [ $? != 0 ]; then
+      deleted=true
+    else
+      iter=`expr $iter + 1`
+      sleep 5
+    fi
+  done
+  if [ ${deleted} == false ]; then
+    fail 'operator fail to be deleted'
+  else
+    trace "operator namespace ${name} has been deleted"
+  fi
 }
 
 function shutdown_operator {
@@ -3008,7 +3028,7 @@ function test_suite {
     
     declare_new_test 1 define_operators_and_domains
 
-    #          OP_KEY  NAMESPACE            TARGET_NAMESPACES  EXTERNAL_REST_HTTPSPORT  SETUP_KUBERNETES_CLUSTER
+    #          OP_KEY  NAMESPACE            TARGET_NAMESPACES  EXTERNAL_REST_HTTPSPORT  CREATE_SHARED_OPERATOR_RESOURCES
     op_define  oper1   weblogic-operator-1  "default,test1"    31001                    true
     op_define  oper2   weblogic-operator-2  test2              32001                    false
 
@@ -3025,8 +3045,8 @@ function test_suite {
     kubectl create namespace test1 2>&1 | sed 's/^/+/g' 
     kubectl create namespace test2 2>&1 | sed 's/^/+/g' 
 
-
     if ! [ "$USE_HELM" = "true" ]; then
+      # do not create ooperator namespace when using helm charts
       kubectl create namespace weblogic-operator-1 2>&1 | sed 's/^/+/g' 
       kubectl create namespace weblogic-operator-2 2>&1 | sed 's/^/+/g' 
     fi

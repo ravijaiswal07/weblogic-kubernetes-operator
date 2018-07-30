@@ -3,8 +3,8 @@
 
 {{- define "operator.validateInputs" -}}
 {{- $scope := . -}}
-{{- if include "operator.verifyBooleanInput" (list $scope $scope "setupKubernetesCluster") -}}
-{{-   if $scope.setupKubernetesCluster }}
+{{- if include "operator.verifyBooleanInput" (list $scope $scope "createSharedOperatorResources") -}}
+{{-   if $scope.createSharedOperatorResources }}
 {{-     $ignore := include "operator.verifyBooleanInput" (list $scope $scope "elkIntegrationEnabled") -}}
 {{-   end }}
 {{- end }}
@@ -49,23 +49,9 @@
 {{-         $ignore := include "operator.verifyIntegerInput" (list $scope $scope "externalDebugHttpPort") -}}
 {{-       end -}}
 {{-     end -}}
-{{-     if include "operator.verifyObjectInput" (list $scope $scope "domainsNamespaces") -}}
-{{-       $domainsNamespaces := $scope.domainsNamespaces -}}
-{{-       range $key, $element := $domainsNamespaces -}}
-{{-         if include "operator.verifyObjectInput" (list $scope $domainsNamespaces $key) -}}
-{{-           $s := merge (dict) $element $scope -}}
-{{-           if include "operator.verifyBooleanInput" (list $scope $s "createDomainsNamespace") -}}
-{{-             if eq $key "default" -}}
-{{-               if $s.createDomainsNamespace -}}
-{{-                 $errorMsg := cat "The effective createDomainsNamespace value for the 'default' domainsNamespace must be set to false." -}}
-{{-                 $ignore := include "operator.recordValidationError" (list $scope $errorMsg) -}}
-{{-               end -}}
-{{-             end -}}
-{{-           end -}}
-{{-         end -}}
-{{-       end -}}
-{{-     end -}}
+{{-     $ignore := include "operator.verifyStringListInput" (list $scope $scope "domainsNamespaces") -}}
 {{-   end -}}
 {{- end -}}
+{{- $ignore := include "operator.verifyDictListInput" (list $scope $scope "extraResources") -}}
 {{- include "operator.reportValidationErrors" $scope -}}
 {{- end -}}

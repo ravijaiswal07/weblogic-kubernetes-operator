@@ -10,7 +10,6 @@ import static org.hamcrest.Matchers.both;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyString;
 
-import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import org.hamcrest.Matcher;
 import org.junit.Before;
@@ -22,7 +21,7 @@ public class CreateOperatorInputsValidationIT extends ChartITBase {
   private static final String WRONG_TYPE = "The %s property %s must be a %s instead";
 
   private static final String[] TOP_LEVEL_BOOLEAN_PROPERTIES = {
-    "setupKubernetesCluster", "createOperator" // , "elkIntegrationEnabled"
+    "createSharedOperatorResources", "createOperator" // , "elkIntegrationEnabled"
   };
 
   private static final String[] OPERATOR_LEVEL_BOOLEAN_PROPERTIES = {"elkIntegrationEnabled"};
@@ -322,37 +321,6 @@ public class CreateOperatorInputsValidationIT extends ChartITBase {
   public void whenDomainsNamespacesPrimitiveType_reportError() throws Exception {
     setProperty("domainsNamespaces", true);
 
-    assertThat(getProcessingError(), containsTypeError("domainsNamespaces", "map", "bool"));
-  }
-
-  @Test
-  public void whenDomainsNamespacesCreateNotBool_reportError() throws Exception {
-    setProperty(
-        "domainsNamespaces",
-        ImmutableMap.of("aaa", ImmutableMap.of("createDomainsNamespace", 123)));
-
-    assertThat(
-        getProcessingError(), containsTypeError("createDomainsNamespace", "bool", "float64"));
-  }
-
-  @Test
-  public void whenDefaultNamespaceHasCreatedTrue_reportError() throws Exception {
-    setProperty(
-        "domainsNamespaces",
-        ImmutableMap.of("default", ImmutableMap.of("createDomainsNamespace", true)));
-
-    assertThat(
-        getProcessingError(),
-        containsString(
-            "The effective createDomainsNamespace value for the 'default' domainsNamespace must be set to false."));
-  }
-
-  @Test
-  public void whenDefaultNamespaceHasCreatedFalse_doNotReportError() throws Exception {
-    setProperty(
-        "domainsNamespaces",
-        ImmutableMap.of("default", ImmutableMap.of("createDomainsNamespace", false)));
-
-    assertThat(getProcessingError(), emptyString());
+    assertThat(getProcessingError(), containsTypeError("domainsNamespaces", "slice", "bool"));
   }
 }
